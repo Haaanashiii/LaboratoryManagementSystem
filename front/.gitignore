@@ -20,7 +20,9 @@ dist-ssr
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
+*.sln.
+
+
 *.sw?
 
 node_modules/
