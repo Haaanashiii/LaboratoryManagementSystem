@@ -4,120 +4,129 @@ import {
   FlaskConical, CheckCircle, Users, BarChart3, Package, Shield,
   ClipboardList, ArrowRight, Zap, BookOpen, Microscope, Cpu,
   GraduationCap, UserCheck, Wrench, ChevronRight, Star,
-  MousePointerClick, FileBadge, RotateCcw, Menu, X,
+  MousePointerClick, FileBadge, RotateCcw, Menu, X, Globe,
 } from 'lucide-react';
-import FaultyTerminal from '@/components/ui/FaultyTerminal';
-
-const features = [
-  { icon: Package, title: 'Equipment Catalog', desc: 'Browse and request lab equipment easily from a centralized catalog.' },
-  { icon: ClipboardList, title: 'Multi-Step Approvals', desc: 'Structured workflow with lecturer and head-of-lab sign-off.' },
-  { icon: Users, title: 'Role-Based Access', desc: 'Tailored dashboards for students, lecturers, assistants, and admins.' },
-  { icon: BarChart3, title: 'Reports & Analytics', desc: 'Track borrowing trends and equipment utilization at a glance.' },
-  { icon: Shield, title: 'Return Management', desc: 'Log equipment returns with condition assessment and remarks.' },
-  { icon: CheckCircle, title: 'Real-Time Status', desc: 'Visual progress tracking for every borrow request.' },
-];
-
-const stats = [
-  { value: '500+', label: 'Equipment Items' },
-  { value: '1,200+', label: 'Borrow Requests' },
-  { value: '4', label: 'User Roles' },
-  { value: '99.9%', label: 'Uptime' },
-];
-
-const steps = [
-  {
-    icon: MousePointerClick,
-    step: '01',
-    title: 'Browse the Catalog',
-    desc: 'Students explore available equipment, check availability, and submit a borrow request with required details.',
-  },
-  {
-    icon: FileBadge,
-    step: '02',
-    title: 'Approval Workflow',
-    desc: 'Requests are routed to the course lecturer, then to the lab head for final authorization.',
-  },
-  {
-    icon: Wrench,
-    step: '03',
-    title: 'Equipment Preparation',
-    desc: 'Lab assistants receive approved requests, prepare the items, and mark them as ready for pickup.',
-  },
-  {
-    icon: RotateCcw,
-    step: '04',
-    title: 'Return & Assessment',
-    desc: 'After use, equipment is returned and assessed for condition, closing the borrow lifecycle.',
-  },
-];
-
-const roles = [
-  {
-    icon: GraduationCap,
-    role: 'Student',
-    color: 'from-blue-500/20 to-blue-600/5',
-    border: 'border-blue-500/20',
-    iconColor: 'text-blue-400',
-    perks: ['Browse equipment catalog', 'Submit borrow requests', 'Track request status', 'View borrow history'],
-  },
-  {
-    icon: BookOpen,
-    role: 'Lecturer',
-    color: 'from-indigo-500/20 to-indigo-600/5',
-    border: 'border-indigo-500/20',
-    iconColor: 'text-indigo-400',
-    perks: ['Review student requests', 'Approve or reject requests', 'Monitor class equipment', 'View approval history'],
-  },
-  {
-    icon: UserCheck,
-    role: 'Lab Head',
-    color: 'from-violet-500/20 to-violet-600/5',
-    border: 'border-violet-500/20',
-    iconColor: 'text-violet-400',
-    perks: ['Final approval authority', 'Full inventory oversight', 'Analytics & reports', 'Manage all requests'],
-  },
-  {
-    icon: Wrench,
-    role: 'Lab Assistant',
-    color: 'from-cyan-500/20 to-cyan-600/5',
-    border: 'border-cyan-500/20',
-    iconColor: 'text-cyan-400',
-    perks: ['Prepare approved equipment', 'Process returns', 'Condition assessments', 'Inventory management'],
-  },
-];
-
-const testimonials = [
-  {
-    name: 'Andi Pratama',
-    role: 'Physics Student',
-    text: 'Equimon made borrowing lab equipment so much easier. No more waiting in queues — I just submit a request and track it in real time.',
-  },
-  {
-    name: 'Dr. Siti Rahayu',
-    role: 'Lecturer, Chemistry Dept.',
-    text: 'I can review and approve my students\' requests from anywhere. The workflow is clear and nothing slips through the cracks.',
-  },
-  {
-    name: 'Budi Santoso',
-    role: 'Lab Assistant',
-    text: 'Managing returns and condition checks used to be a mess on paper. Now everything is logged digitally and auditable.',
-  },
-];
-
-const equipmentCategories = [
-  { icon: Microscope, label: 'Microscopes' },
-  { icon: FlaskConical, label: 'Glassware' },
-  { icon: Cpu, label: 'Electronics' },
-  { icon: Zap, label: 'Power Tools' },
-  { icon: BarChart3, label: 'Measurement' },
-  { icon: Shield, label: 'Safety Gear' },
-];
+import LandingBG from '@/components/layouts/LandingBG';
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function Landing() {
+  const { t, lang, toggleLang } = useLang();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const features = [
+    { icon: Package, title: t('featureCatalogTitle'), desc: t('featureCatalogDesc') },
+    { icon: ClipboardList, title: t('featureApprovalTitle'), desc: t('featureApprovalDesc') },
+    { icon: Users, title: t('featureRoleTitle'), desc: t('featureRoleDesc') },
+    { icon: BarChart3, title: t('featureReportsTitle'), desc: t('featureReportsDesc') },
+    { icon: Shield, title: t('featureReturnTitle'), desc: t('featureReturnDesc') },
+    { icon: CheckCircle, title: t('featureStatusTitle'), desc: t('featureStatusDesc') },
+  ];
+
+  const stats = [
+    { value: '500+', label: t('equipmentItems') },
+    { value: '1,200+', label: t('borrowRequests') },
+    { value: '4', label: t('userRoles') },
+    { value: '99.9%', label: t('uptime') },
+  ];
+
+  const steps = [
+    {
+      icon: MousePointerClick,
+      step: '01',
+      title: t('browseCatalog'),
+      desc: t('browseCatalogDesc'),
+    },
+    {
+      icon: FileBadge,
+      step: '02',
+      title: t('approvalWorkflow'),
+      desc: t('approvalWorkflowDesc'),
+    },
+    {
+      icon: Wrench,
+      step: '03',
+      title: t('equipmentPreparationStep'),
+      desc: t('equipmentPreparationDesc'),
+    },
+    {
+      icon: RotateCcw,
+      step: '04',
+      title: t('returnAssessment'),
+      desc: t('returnAssessmentDesc'),
+    },
+  ];
+
+  const roles = [
+    {
+      icon: GraduationCap,
+      role: t('studentRole'),
+      color: 'from-blue-500/20 to-blue-600/5',
+      border: 'border-blue-500/20',
+      iconColor: 'text-blue-400',
+      perks: [t('studentPerk1'), t('studentPerk2'), t('studentPerk3'), t('studentPerk4')],
+    },
+    {
+      icon: BookOpen,
+      role: t('lecturerRole'),
+      color: 'from-indigo-500/20 to-indigo-600/5',
+      border: 'border-indigo-500/20',
+      iconColor: 'text-indigo-400',
+      perks: [t('lecturerPerk1'), t('lecturerPerk2'), t('lecturerPerk3'), t('lecturerPerk4')],
+    },
+    {
+      icon: UserCheck,
+      role: t('labHeadRole'),
+      color: 'from-violet-500/20 to-violet-600/5',
+      border: 'border-violet-500/20',
+      iconColor: 'text-violet-400',
+      perks: [t('labHeadPerk1'), t('labHeadPerk2'), t('labHeadPerk3'), t('labHeadPerk4')],
+    },
+    {
+      icon: Wrench,
+      role: t('labAssistantRole'),
+      color: 'from-cyan-500/20 to-cyan-600/5',
+      border: 'border-cyan-500/20',
+      iconColor: 'text-cyan-400',
+      perks: [t('labAssistantPerk1'), t('labAssistantPerk2'), t('labAssistantPerk3'), t('labAssistantPerk4')],
+    },
+  ];
+
+  const testimonials = [
+    {
+      name: t('testimonial1Name'),
+      role: t('testimonial1Role'),
+      text: t('testimonial1Text'),
+    },
+    {
+      name: t('testimonial2Name'),
+      role: t('testimonial2Role'),
+      text: t('testimonial2Text'),
+    },
+    {
+      name: t('testimonial3Name'),
+      role: t('testimonial3Role'),
+      text: t('testimonial3Text'),
+    },
+  ];
+
+  const equipmentCategories = [
+    { icon: Microscope, label: t('microscopes') },
+    { icon: FlaskConical, label: t('glassware') },
+    { icon: Cpu, label: t('electronics') },
+    { icon: Zap, label: t('powerTools') },
+    { icon: BarChart3, label: t('measurement') },
+    { icon: Shield, label: t('safetyGear') },
+  ];
+
+  const navLinks = [
+    { label: t('features'), href: '#features', id: 'features' },
+    { label: t('howItWorks'), href: '#how-it-works', id: 'how-it-works' },
+    { label: t('roles'), href: '#roles', id: 'roles' },
+    { label: t('stats'), href: '#stats', id: 'stats' },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -140,37 +149,12 @@ export default function Landing() {
     return () => observers.forEach(o => o?.disconnect());
   }, []);
 
-  const navLinks = [
-    { label: 'Features', href: '#features', id: 'features' },
-    { label: 'How It Works', href: '#how-it-works', id: 'how-it-works' },
-    { label: 'Roles', href: '#roles', id: 'roles' },
-    { label: 'Stats', href: '#stats', id: 'stats' },
-  ];
-
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white overflow-x-hidden">
 
-      {/* ── FaultyTerminal background (full page) ── */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-20">
-        <FaultyTerminal
-          scale={1.5}
-          gridMul={[1, 0.5]}
-          digitSize={1.5}
-          timeScale={0.3}
-          scanlineIntensity={1.2}
-          glitchAmount={1.2}
-          flickerAmount={1}
-          noiseAmp={1}
-          chromaticAberration={0}
-          dither={0}
-          curvature={0}
-          tint="#3b82f6"
-          mouseReact={false}
-          pageLoadAnimation={true}
-          brightness={1.2}
-          dpr={1}
-          style={{ width: '100%', height: '100%' }}
-        />
+      {/* ── Orb background (full page) ── */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-30">
+        <LandingBG />
       </div>
 
       {/* ── Top Navbar ── */}
@@ -199,7 +183,7 @@ export default function Landing() {
                 Equi<span className="text-blue-400">mon</span>
               </span>
               <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-[0.18em] mt-0.5">
-                Lab Management
+                {t('labManagement')}
               </span>
             </div>
           </a>
@@ -223,6 +207,16 @@ export default function Landing() {
 
           {/* ── Right: CTA + Mobile toggle ── */}
           <div className="flex items-center gap-3">
+            {/* Language Switcher */}
+            <button
+              onClick={toggleLang}
+              className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-white px-3 py-2 rounded-lg border border-white/10 hover:border-white/20 transition-all"
+              title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+            >
+              <Globe className="w-4 h-4" />
+              <span className="text-xs font-bold">{lang.toUpperCase()}</span>
+            </button>
+
             <button
               onClick={() => navigate('/login')}
               className="hidden sm:flex items-center gap-2 text-sm font-semibold text-white px-5 py-2 rounded-full transition-all duration-200
@@ -231,7 +225,7 @@ export default function Landing() {
                 shadow-lg shadow-blue-700/30 hover:shadow-blue-500/40
                 hover:-translate-y-0.5 active:translate-y-0"
             >
-              Sign In
+              {t('signIn')}
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -268,12 +262,22 @@ export default function Landing() {
                 {label}
               </a>
             ))}
-            <div className="pt-3 border-t border-white/5">
+            <div className="pt-3 border-t border-white/5 space-y-2">
+              {/* Mobile Language Switcher */}
+              <button
+                onClick={toggleLang}
+                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-slate-400 hover:text-white px-4 py-3 rounded-xl border border-white/10 hover:border-white/20 transition-all"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="font-bold">{lang.toUpperCase()}</span>
+                <span className="text-xs opacity-70">({lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'})</span>
+              </button>
+              
               <button
                 onClick={() => { setMobileOpen(false); navigate('/login'); }}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-all shadow-lg shadow-blue-700/30"
               >
-                Sign In <ArrowRight className="w-4 h-4" />
+                {t('signIn')} <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -285,21 +289,20 @@ export default function Landing() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs sm:text-sm font-semibold px-4 py-2 rounded-full mb-8 border border-blue-500/20 backdrop-blur-sm">
           <Zap className="w-3.5 h-3.5" />
-          Laboratory Inventory & Borrowing Management
+          {t('labInventoryBorrowing')}
         </div>
 
         {/* Headline */}
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight mb-6">
-          Manage Lab Gear
+          {t('manageLabGear')}
           <br />
           <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-            with Equimon
+            {t('withEquimon')}
           </span>
         </h1>
 
         <p className="text-slate-400 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-          A modern platform for borrowing, approving, and tracking laboratory equipment —
-          built for students, lecturers, and lab staff.
+          {t('modernPlatformDesc')}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -307,13 +310,13 @@ export default function Landing() {
             onClick={() => navigate('/login')}
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-all shadow-2xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5"
           >
-            Get Started <ArrowRight className="w-5 h-5" />
+            {t('getStarted')} <ArrowRight className="w-5 h-5" />
           </button>
           <a
             href="#features"
             className="inline-flex items-center gap-2 border border-white/10 hover:border-white/25 text-slate-300 hover:text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-all backdrop-blur-sm hover:-translate-y-0.5"
           >
-            Explore Features
+            {t('exploreFeatures')}
           </a>
         </div>
       </section>
@@ -334,13 +337,13 @@ export default function Landing() {
       <section id="features" className="relative z-10 px-4 sm:px-6 lg:px-12 py-16 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            Everything you need to{' '}
+            {t('everythingYouNeedToRunLab')}{' '}
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              run the lab
+              {t('runTheLab')}
             </span>
           </h2>
           <p className="text-slate-400 text-base max-w-xl mx-auto">
-            Equimon covers the full lifecycle — from browsing equipment to returning it.
+            {t('equimonCoversLifecycle')}
           </p>
         </div>
 
@@ -363,14 +366,14 @@ export default function Landing() {
       {/* ── How It Works ── */}
       <section id="how-it-works" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">Process</span>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('processLabel')}</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            How{' '}
+            {t('howItWorks')}{' '}
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Equimon</span>
-            {' '}works
+            {' '}{t('howEquimonWorks')}
           </h2>
           <p className="text-slate-400 text-base max-w-xl mx-auto">
-            From request to return — a simple four-step lifecycle for every piece of equipment.
+            {t('requestToReturn')}
           </p>
         </div>
 
@@ -398,13 +401,13 @@ export default function Landing() {
       {/* ── Roles ── */}
       <section id="roles" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">Who It's For</span>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('whoItsFor')}</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            Built for every{' '}
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">stakeholder</span>
+            {t('builtForEvery')}{' '}
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">{t('stakeholder')}</span>
           </h2>
           <p className="text-slate-400 text-base max-w-xl mx-auto">
-            Equimon adapts to each user's responsibilities with a dedicated dashboard and permission set.
+            {t('equimonAdapts')}
           </p>
         </div>
 
@@ -431,9 +434,9 @@ export default function Landing() {
       {/* ── Equipment Categories ── */}
       <section className="relative z-10 px-4 sm:px-6 lg:px-12 py-16 max-w-5xl mx-auto">
         <div className="text-center mb-10">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">Inventory</span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">What's in the catalog</h2>
-          <p className="text-slate-400 text-sm max-w-md mx-auto">Equimon manages a broad range of lab assets across multiple categories.</p>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('inventoryLabel')}</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">{t('whatsInCatalog')}</h2>
+          <p className="text-slate-400 text-sm max-w-md mx-auto">{t('manageBroadRange')}</p>
         </div>
         <div className="flex flex-wrap justify-center gap-4">
           {equipmentCategories.map(({ icon: Icon, label }) => (
@@ -448,9 +451,9 @@ export default function Landing() {
       {/* ── Testimonials ── */}
       <section className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">Testimonials</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Loved by lab users</h2>
-          <p className="text-slate-400 text-base max-w-xl mx-auto">Here's what the community says about Equimon.</p>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('testimonialsLabel')}</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{t('lovedByLabUsers')}</h2>
+          <p className="text-slate-400 text-base max-w-xl mx-auto">{t('communityFeedback')}</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map(({ name, role, text }) => (
@@ -483,15 +486,15 @@ export default function Landing() {
           <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-56 h-56 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative">
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready to get started?</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{t('readyToGetStarted')}</h2>
             <p className="text-slate-400 mb-8 max-w-md mx-auto">
-              Sign in to access your dashboard and start managing equipment today.
+              {t('signInToAccess')}
             </p>
             <button
               onClick={() => navigate('/login')}
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-10 py-3.5 rounded-xl text-base transition-all shadow-2xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5"
             >
-              Sign In Now <ArrowRight className="w-5 h-5" />
+              {t('signInNow')} <ArrowRight className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -509,13 +512,13 @@ export default function Landing() {
               <span className="text-lg font-extrabold">Equi<span className="text-blue-400">mon</span></span>
             </div>
             <p className="text-slate-500 text-sm leading-relaxed max-w-xs">
-              Laboratory Inventory & Borrowing Management System. Streamlining equipment workflows for academic institutions.
+              {t('footerTagline')}
             </p>
           </div>
 
           {/* Quick links */}
           <div>
-            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">Navigation</h4>
+            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('navigationLabel')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
               {['#features', '#how-it-works', '#roles', '#stats', '#cta'].map(href => (
                 <li key={href}>
@@ -529,21 +532,21 @@ export default function Landing() {
 
           {/* System info */}
           <div>
-            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">System</h4>
+            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('systemLabel')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Role-based authentication</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Audit trail & history</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Multi-step approvals</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Real-time status tracking</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('roleBasedAuth')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('auditTrailHistory')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('multiStepApprovals')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('realTimeStatusTracking')}</li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-white/5 px-4 sm:px-6 lg:px-12 py-5 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-slate-600 text-xs">
-            © {new Date().getFullYear()} <span className="text-slate-500 font-semibold">Equimon</span>. All rights reserved.
+            © {new Date().getFullYear()} <span className="text-slate-500 font-semibold">Equimon</span>. {t('allRightsReserved')}
           </p>
-          <p className="text-slate-700 text-xs">Laboratory Inventory & Borrowing Management System</p>
+          <p className="text-slate-700 text-xs">{t('landingTagline')}</p>
         </div>
       </footer>
     </div>

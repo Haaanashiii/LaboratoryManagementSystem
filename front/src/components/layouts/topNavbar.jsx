@@ -10,9 +10,10 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Menu, Bell, LogOut, User, Settings, Loader2 } from 'lucide-react';
+import { Menu, Bell, LogOut, User, Settings, Loader2, Globe } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLang } from '@/components/i18n/LangContext';
 
 const roles = [
   { value: 'admin', label: 'Admin' },
@@ -25,6 +26,7 @@ const roles = [
 export default function TopNav({ user, onMenuClick, title }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState(user?.role || 'student');
+  const { lang, toggleLang, t } = useLang();
 
   const queryClient = useQueryClient();
 
@@ -62,6 +64,18 @@ export default function TopNav({ user, onMenuClick, title }) {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Language Switcher */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative flex items-center gap-1 px-3"
+            onClick={toggleLang}
+            title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+          >
+            <Globe className="w-5 h-5 text-slate-600" />
+            <span className="text-xs font-medium text-slate-600">{lang.toUpperCase()}</span>
+          </Button>
+
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5 text-slate-600" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
@@ -79,12 +93,12 @@ export default function TopNav({ user, onMenuClick, title }) {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={handleOpenSettings}>
                 <Settings className="w-4 h-4 mr-2" />
-                Settings
+                {t('settings')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                 <LogOut className="w-4 h-4 mr-2" />
-                Logout
+                {t('logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -95,7 +109,7 @@ export default function TopNav({ user, onMenuClick, title }) {
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Settings</DialogTitle>
+            <DialogTitle>{t('settings')}</DialogTitle>
           </DialogHeader>
 
           <div className="py-4 space-y-6">
@@ -112,7 +126,7 @@ export default function TopNav({ user, onMenuClick, title }) {
 
             {/* Role Selector */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Current Role</Label>
+              <Label className="text-sm font-medium">{t('currentRole')}</Label>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
                 <SelectTrigger className="h-11">
                   <SelectValue />
@@ -120,26 +134,26 @@ export default function TopNav({ user, onMenuClick, title }) {
                 <SelectContent>
                   {roles.map(role => (
                     <SelectItem key={role.value} value={role.value}>
-                      {role.label}
+                      {t(role.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-400">Changing your role will update the navigation and dashboard view.</p>
+              <p className="text-xs text-slate-400">{t('roleChangeNote')}</p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>{t('cancel')}</Button>
             <Button
               onClick={() => updateRoleMutation.mutate(selectedRole)}
               disabled={updateRoleMutation.isPending || selectedRole === user?.role}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               {updateRoleMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('saving')}</>
               ) : (
-                'Save Changes'
+                t('saveChanges')
               )}
             </Button>
           </DialogFooter>

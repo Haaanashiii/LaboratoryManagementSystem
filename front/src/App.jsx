@@ -28,6 +28,7 @@ import Returns from './pages/inventory/returns'
 
 // Settings
 import Settings from './pages/Settings'
+import Profile from './pages/Profile'
 
 import './App.css'
 
@@ -64,7 +65,8 @@ function App() {
           <Route path="equipment-prep" element={<EquipmentPrep />} />
           <Route path="returns" element={<Returns />} />
           
-          {/* Settings */}
+          {/* Profile & Settings */}
+          <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

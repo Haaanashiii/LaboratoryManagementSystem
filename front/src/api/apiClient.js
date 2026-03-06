@@ -69,6 +69,38 @@ export const api = {
       };
     },
     
+    updateMe: async (data) => {
+      // Update current user data
+      if (currentUser) {
+        currentUser = { ...currentUser, ...data };
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        // Also update in mockUsers array
+        const userIndex = mockUsers.findIndex(u => u.id === currentUser.id);
+        if (userIndex !== -1) {
+          mockUsers[userIndex] = { ...mockUsers[userIndex], ...data };
+        }
+      }
+      return currentUser;
+    },
+    
+    changePassword: async (data) => {
+      // Mock password change - in real app, this would call backend
+      // For now, just simulate a successful change
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (!data.currentPassword) {
+        throw new Error('Current password is required');
+      }
+      
+      if (!data.newPassword) {
+        throw new Error('New password is required');
+      }
+      
+      // Simulate success
+      return { success: true, message: 'Password changed successfully' };
+    },
+    
     redirectToLogin: (redirectUrl) => {
       window.location.href = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
     },

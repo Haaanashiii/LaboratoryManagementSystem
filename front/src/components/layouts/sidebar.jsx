@@ -14,42 +14,44 @@ import {
   X
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { useLang } from '@/components/i18n/LangContext';
 
 const menuConfig = {
   admin: [
-    { label: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'Inventory', icon: Package, page: 'Inventory' },
-    { label: 'All Requests', icon: ClipboardList, page: 'AllRequests' },
-    { label: 'Users', icon: Users, page: 'Users' },
-    { label: 'Reports', icon: BarChart3, page: 'Reports' }
+    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+    { label: 'inventory', icon: Package, page: 'Inventory' },
+    { label: 'allRequests', icon: ClipboardList, page: 'AllRequests' },
+    { label: 'users', icon: Users, page: 'Users' },
+    { label: 'reports', icon: BarChart3, page: 'Reports' }
   ],
   lecturer: [
-    { label: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'Pending Approvals', icon: CheckSquare, page: 'LecturerApprovals' },
-    { label: 'My History', icon: ClipboardList, page: 'ApprovalHistory' }
+    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+    { label: 'pendingApprovals', icon: CheckSquare, page: 'LecturerApprovals' },
+    { label: 'myHistory', icon: ClipboardList, page: 'ApprovalHistory' }
   ],
   head_of_lab: [
-    { label: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'Final Approvals', icon: CheckSquare, page: 'HeadApprovals' },
-    { label: 'Lab Equipment', icon: Package, page: 'Inventory' },
-    { label: 'Reports', icon: BarChart3, page: 'Reports' }
+    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+    { label: 'finalApprovals', icon: CheckSquare, page: 'HeadApprovals' },
+    { label: 'labEquipment', icon: Package, page: 'Inventory' },
+    { label: 'reports', icon: BarChart3, page: 'Reports' }
   ],
   lab_assistant: [
-    { label: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'Equipment Prep', icon: PackageCheck, page: 'EquipmentPrep' },
-    { label: 'Returns', icon: Package, page: 'Returns' },
-    { label: 'Inventory', icon: Package, page: 'Inventory' }
+    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+    { label: 'equipmentPrep', icon: PackageCheck, page: 'EquipmentPrep' },
+    { label: 'returns', icon: Package, page: 'Returns' },
+    { label: 'inventory', icon: Package, page: 'Inventory' }
   ],
   student: [
-    { label: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'Equipment Catalog', icon: Package, page: 'Catalog' },
-    { label: 'My Requests', icon: ClipboardList, page: 'MyRequests' }
+    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
+    { label: 'equipmentCatalog', icon: Package, page: 'Catalog' },
+    { label: 'myRequests', icon: ClipboardList, page: 'MyRequests' }
   ]
 };
 
 export default function Sidebar({ user, currentPage, isOpen, onClose }) {
   const userRole = user?.role || 'student';
   const menu = menuConfig[userRole] || menuConfig.student;
+  const { t } = useLang();
 
   return (
     <>
@@ -77,7 +79,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose }) {
               </div>
               <div>
                 <h1 className="font-bold text-lg">LabEquip</h1>
-                <p className="text-xs text-slate-400">Management System</p>
+                <p className="text-xs text-slate-400">{t('appSubtitle')}</p>
               </div>
             </div>
             <Button 
@@ -109,7 +111,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose }) {
                 `}
               >
                 <item.icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
+                <span className="font-medium">{t(item.label)}</span>
               </Link>
             );
           })}
@@ -123,7 +125,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{user?.full_name || 'User'}</p>
-              <p className="text-xs text-slate-400 capitalize">{userRole.replace('_', ' ')}</p>
+              <p className="text-xs text-slate-400 capitalize">{t(userRole.replace('_', ''))}</p>
             </div>
           </div>
         </div>

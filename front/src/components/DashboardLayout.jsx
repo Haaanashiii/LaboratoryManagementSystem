@@ -15,53 +15,65 @@ import {
   X,
   Home,
   LogOut,
-  Settings
+  Settings,
+  Globe,
+  Bell,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from './ui/button';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel
+} from "./ui/dropdown-menu";
+import { useLang } from '@/components/i18n/LangContext';
 
 // Role-based navigation configuration
 const navigationConfig = {
   student: [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Equipment Catalog', href: '/catalog', icon: Package },
-    { name: 'My Requests', href: '/requests', icon: FileText },
-    { name: 'Request History', href: '/approval-history', icon: History },
+    { name: 'dashboard', href: '/dashboard', icon: Home },
+    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'myRequests', href: '/requests', icon: FileText },
+    { name: 'myHistory', href: '/approval-history', icon: History },
   ],
   
   lecturer: [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Equipment Catalog', href: '/catalog', icon: Package },
-    { name: 'Pending Approvals', href: '/lecturer-approvals', icon: CheckSquare },
-    { name: 'Approval History', href: '/approval-history', icon: History },
-    { name: 'All Approvals', href: '/all-approval-history', icon: BarChart3 },
+    { name: 'dashboard', href: '/dashboard', icon: Home },
+    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'pendingApprovals', href: '/lecturer-approvals', icon: CheckSquare },
+    { name: 'approvalHistory', href: '/approval-history', icon: History },
+    { name: 'allRequests', href: '/all-approval-history', icon: BarChart3 },
   ],
   
   head_of_lab: [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Equipment Catalog', href: '/catalog', icon: Package },
-    { name: 'Pending Approvals', href: '/head-approvals', icon: CheckCircle },
-    { name: 'All Requests', href: '/all-requests', icon: BarChart3 },
-    { name: 'Approval History', href: '/all-approval-history', icon: History },
-    { name: 'Inventory Overview', href: '/inventory', icon: Package },
+    { name: 'dashboard', href: '/dashboard', icon: Home },
+    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'finalApprovals', href: '/head-approvals', icon: CheckCircle },
+    { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
+    { name: 'approvalHistory', href: '/all-approval-history', icon: History },
+    { name: 'inventory', href: '/inventory', icon: Package },
   ],
   
   lab_assistant: [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Equipment Catalog', href: '/catalog', icon: Package },
-    { name: 'Equipment Prep', href: '/equipment-prep', icon: CheckCircle },
-    { name: 'Process Returns', href: '/returns', icon: History },
-    { name: 'All Requests', href: '/all-requests', icon: FileText },
+    { name: 'dashboard', href: '/dashboard', icon: Home },
+    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'equipmentPrep', href: '/equipment-prep', icon: CheckCircle },
+    { name: 'returns', href: '/returns', icon: History },
+    { name: 'allRequests', href: '/all-requests', icon: FileText },
   ],
   
   admin: [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'User Management', href: '/users', icon: Users },
-    { name: 'Inventory Management', href: '/inventory', icon: Package },
-    { name: 'Equipment Catalog', href: '/catalog', icon: Package },
-    { name: 'All Requests', href: '/all-requests', icon: BarChart3 },
-    { name: 'Equipment Prep', href: '/equipment-prep', icon: CheckCircle },
-    { name: 'Process Returns', href: '/returns', icon: History },
-    { name: 'System Settings', href: '/settings', icon: Settings },
+    { name: 'dashboard', href: '/dashboard', icon: Home },
+    { name: 'users', href: '/users', icon: Users },
+    { name: 'inventory', href: '/inventory', icon: Package },
+    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
+    { name: 'equipmentPrep', href: '/equipment-prep', icon: CheckCircle },
+    { name: 'returns', href: '/returns', icon: History },
+    { name: 'settings', href: '/settings', icon: Settings },
   ],
 };
 
@@ -73,18 +85,11 @@ const roleColors = {
   admin: 'bg-red-100 text-red-800',
 };
 
-const roleNames = {
-  student: 'Student',
-  lecturer: 'Lecturer',
-  head_of_lab: 'Head of Lab',
-  lab_assistant: 'Lab Assistant',
-  admin: 'Administrator',
-};
-
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { t, lang, toggleLang } = useLang();
 
   // Get current user
   const { data: user } = useQuery({
@@ -110,109 +115,146 @@ export default function DashboardLayout() {
         />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-slate-200 transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex h-full flex-col">
+      {/* Mobile Menu Dropdown */}
+      {sidebarOpen && (
+        <div className="fixed top-16 left-0 right-0 z-50 lg:hidden bg-white border-b border-slate-200 shadow-lg">
+          <nav className="p-4 space-y-1">
+            {navigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {t(item.name)}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
+
+      {/* Header/Navbar */}
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+        <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
           {/* Logo */}
-          <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-6">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <FlaskConical className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-bold text-slate-900">LabEquip</span>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="ml-auto lg:hidden"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="hidden sm:block">
+              <span className="text-lg font-bold text-slate-900">LabEquip</span>
+              <p className="text-xs text-slate-500 leading-none">{t('appSubtitle')}</p>
+            </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-1">
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </div>
+          {/* Mobile Menu Toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden ml-2"
+          >
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center gap-1 ml-8 flex-1">
+            {navigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {t(item.name)}
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* User section */}
-          <div className="border-t border-slate-200 p-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">
+          {/* Right Side Actions */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Language Switcher - Always visible */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex items-center gap-1 px-3"
+              onClick={toggleLang}
+              title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+            >
+              <Globe className="w-5 h-5 text-slate-600" />
+              <span className="text-xs font-medium text-slate-600">{lang.toUpperCase()}</span>
+            </Button>
+
+            {/* Notification Bell */}
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="w-5 h-5 text-slate-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+            </Button>
+
+            {/* User Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 hover:bg-slate-100">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm">
                     {user?.name?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate">{user?.name || 'User'}</p>
-                  <p className="text-xs text-slate-500 truncate">{user?.email || 'user@its.ac.id'}</p>
-                  <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${roleColors[user?.role] || 'bg-slate-100 text-slate-800'}`}>
-                    {roleNames[user?.role] || 'User'}
-                  </span>
-                </div>
-              </div>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
+                  </div>
+                  <span className="hidden md:inline text-sm font-medium text-slate-900">{user?.name}</span>
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                {/* User Info Section - Clickable to navigate to profile */}
+                <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-slate-50">
+                  <div className="flex items-center gap-3 py-2 w-full">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'User'}</p>
+                      <p className="text-xs text-slate-500 truncate">{user?.email || 'user@its.ac.id'}</p>
+                      <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${roleColors[user?.role] || 'bg-slate-100 text-slate-800'}`}>
+                        {t(user?.role || 'student')}
+                      </span>
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  {t('settings')}
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {t('logout')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </aside>
+      </header>
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 sm:px-6">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          
-          <div className="flex-1" />
-          
-          <Button
-            onClick={() => navigate('/')}
-            variant="outline"
-            size="sm"
-          >
-            Home
-          </Button>
-        </header>
-
-        {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">
-          <Outlet />
-        </main>
-      </div>
+      <main className="p-4 sm:p-6 lg:p-8">
+        <Outlet />
+      </main>
     </div>
   );
 }
