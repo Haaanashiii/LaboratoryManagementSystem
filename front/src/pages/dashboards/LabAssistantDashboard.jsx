@@ -5,6 +5,7 @@ import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Package, Clock, History } from 'lucide-react';
+import { EquipmentStatsChart } from '@/components/layouts/Charts';
 
 export default function LabAssistantDashboard() {
   const navigate = useNavigate();
@@ -17,6 +18,11 @@ export default function LabAssistantDashboard() {
   const { data: allRequests = [] } = useQuery({
     queryKey: ['allRequests'],
     queryFn: () => api.entities.BorrowRequest.list(),
+  });
+
+  const { data: equipment = [] } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: () => api.entities.Equipment.list(),
   });
 
   const readyForPrep = allRequests.filter(r => r.status === 'head_approved');
@@ -102,6 +108,9 @@ export default function LabAssistantDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Equipment Statistics */}
+      <EquipmentStatsChart equipment={equipment} requests={allRequests} />
 
       {/* Equipment Prep Queue */}
       {readyForPrep.length > 0 && (

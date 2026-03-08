@@ -5,6 +5,7 @@ import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, Clock, CheckCircle, History } from 'lucide-react';
+import { EquipmentStatsChart } from '@/components/layouts/Charts';
 
 export default function LecturerDashboard() {
   const navigate = useNavigate();
@@ -18,6 +19,11 @@ export default function LecturerDashboard() {
     queryKey: ['lecturerRequests', user?.email],
     queryFn: () => api.entities.BorrowRequest.filter({ lecturer_email: user?.email }),
     enabled: !!user?.email,
+  });
+
+  const { data: equipment = [] } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: () => api.entities.Equipment.list(),
   });
 
   const pendingApprovals = allRequests.filter(r => r.status === 'pending_lecturer');
@@ -91,6 +97,9 @@ export default function LecturerDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Equipment Statistics */}
+      <EquipmentStatsChart equipment={equipment} requests={allRequests} />
 
       {/* Recent Pending Requests */}
       {pendingApprovals.length > 0 && (
