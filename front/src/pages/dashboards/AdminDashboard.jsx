@@ -5,6 +5,7 @@ import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Package, BarChart3, Settings, FileText, CheckCircle } from 'lucide-react';
+import { UserDistributionChart, EquipmentStatsChart } from '@/components/layouts/Charts';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -121,57 +122,9 @@ export default function AdminDashboard() {
 
       {/* User Summary */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">User Distribution</h2>
-            <div className="space-y-3">
-              {['admin', 'head_of_lab', 'lecturer', 'lab_assistant', 'student'].map((role) => {
-                const roleUsers = users.filter(u => u.role === role);
-                const roleNames = {
-                  admin: 'Administrators',
-                  head_of_lab: 'Head of Lab',
-                  lecturer: 'Lecturers',
-                  lab_assistant: 'Lab Assistants',
-                  student: 'Students',
-                };
-                return (
-                  <div key={role} className="flex items-center justify-between py-2">
-                    <span className="text-slate-700">{roleNames[role]}</span>
-                    <span className="text-lg font-semibold text-slate-900">{roleUsers.length}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        <UserDistributionChart users={users} />
 
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Equipment Status</h2>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2">
-                <span className="text-slate-700">Total Equipment</span>
-                <span className="text-lg font-semibold text-slate-900">{totalEquipment}</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-slate-700">Available</span>
-                <span className="text-lg font-semibold text-emerald-600">{availableEquipment}</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-slate-700">Total Quantity</span>
-                <span className="text-lg font-semibold text-slate-900">
-                  {equipment.reduce((sum, e) => sum + (e.quantity || 0), 0)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-slate-700">Available Units</span>
-                <span className="text-lg font-semibold text-blue-600">
-                  {equipment.reduce((sum, e) => sum + (e.available || 0), 0)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <EquipmentStatsChart equipment={equipment} requests={allRequests} />
       </div>
 
       {/* Recent Activity */}

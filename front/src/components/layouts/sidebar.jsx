@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 import { 
   LayoutDashboard, 
   Package, 
@@ -11,40 +10,51 @@ import {
   PackageCheck,
   Settings,
   FlaskConical,
-  X
+  X,
+  Home,
+  History,
+  CheckCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useLang } from '@/components/i18n/LangContext';
 
 const menuConfig = {
   admin: [
-    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'inventory', icon: Package, page: 'Inventory' },
-    { label: 'allRequests', icon: ClipboardList, page: 'AllRequests' },
-    { label: 'users', icon: Users, page: 'Users' },
-    { label: 'reports', icon: BarChart3, page: 'Reports' }
+    { label: 'dashboard', icon: Home, href: '/dashboard' },
+    { label: 'users', icon: Users, href: '/users' },
+    { label: 'inventory', icon: Package, href: '/inventory' },
+    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
+    { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
+    { label: 'returns', icon: History, href: '/returns' },
+    { label: 'settings', icon: Settings, href: '/settings' }
   ],
   lecturer: [
-    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'pendingApprovals', icon: CheckSquare, page: 'LecturerApprovals' },
-    { label: 'myHistory', icon: ClipboardList, page: 'ApprovalHistory' }
+    { label: 'dashboard', icon: Home, href: '/dashboard' },
+    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'pendingApprovals', icon: CheckSquare, href: '/lecturer-approvals' },
+    { label: 'approvalHistory', icon: History, href: '/approval-history' },
+    { label: 'allRequests', icon: BarChart3, href: '/all-approval-history' }
   ],
   head_of_lab: [
-    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'finalApprovals', icon: CheckSquare, page: 'HeadApprovals' },
-    { label: 'labEquipment', icon: Package, page: 'Inventory' },
-    { label: 'reports', icon: BarChart3, page: 'Reports' }
+    { label: 'dashboard', icon: Home, href: '/dashboard' },
+    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'finalApprovals', icon: CheckCircle, href: '/head-approvals' },
+    { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
+    { label: 'approvalHistory', icon: History, href: '/all-approval-history' },
+    { label: 'inventory', icon: Package, href: '/inventory' }
   ],
   lab_assistant: [
-    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'equipmentPrep', icon: PackageCheck, page: 'EquipmentPrep' },
-    { label: 'returns', icon: Package, page: 'Returns' },
-    { label: 'inventory', icon: Package, page: 'Inventory' }
+    { label: 'dashboard', icon: Home, href: '/dashboard' },
+    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
+    { label: 'returns', icon: History, href: '/returns' },
+    { label: 'allRequests', icon: ClipboardList, href: '/all-requests' }
   ],
   student: [
-    { label: 'dashboard', icon: LayoutDashboard, page: 'Dashboard' },
-    { label: 'equipmentCatalog', icon: Package, page: 'Catalog' },
-    { label: 'myRequests', icon: ClipboardList, page: 'MyRequests' }
+    { label: 'dashboard', icon: Home, href: '/dashboard' },
+    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'myRequests', icon: ClipboardList, href: '/requests' }
   ]
 };
 
@@ -65,27 +75,27 @@ export default function Sidebar({ user, currentPage, isOpen, onClose }) {
       
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
-        w-72 bg-slate-900 text-white
+        w-72 h-screen bg-white border-r border-slate-200
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        flex flex-col
+        flex flex-col shadow-sm overflow-hidden
       `}>
         {/* Header */}
-        <div className="p-6 border-b border-slate-800">
+        <div className="p-6 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
                 <FlaskConical className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="font-bold text-lg">LabEquip</h1>
-                <p className="text-xs text-slate-400">{t('appSubtitle')}</p>
+                <h1 className="font-bold text-lg text-slate-900">LabEquip</h1>
+                <p className="text-xs text-slate-500">{t('appSubtitle')}</p>
               </div>
             </div>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="lg:hidden text-slate-400"
+              className="lg:hidden text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               onClick={onClose}
             >
               <X className="w-5 h-5" />
@@ -94,19 +104,19 @@ export default function Sidebar({ user, currentPage, isOpen, onClose }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="p-4 space-y-1">
           {menu.map((item) => {
-            const isActive = currentPage === item.page;
+            const isActive = currentPage === item.href;
             return (
               <Link
-                key={item.page}
-                to={createPageUrl(item.page)}
+                key={item.href}
+                to={item.href}
                 onClick={onClose}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all
+                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all
                   ${isActive 
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'bg-blue-50 text-blue-600 font-medium' 
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
                   }
                 `}
               >
@@ -117,15 +127,18 @@ export default function Sidebar({ user, currentPage, isOpen, onClose }) {
           })}
         </nav>
 
+        {/* Spacer to push user info to bottom */}
+        <div className="flex-1"></div>
+
         {/* User Info */}
-        <div className="p-4 border-t border-slate-800">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-800/50">
+        <div className="p-4 border-t border-slate-200">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50/50">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
               {user?.full_name?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{user?.full_name || 'User'}</p>
-              <p className="text-xs text-slate-400 capitalize">{t(userRole.replace('_', ''))}</p>
+              <p className="font-medium text-sm text-slate-900 truncate">{user?.full_name || 'User'}</p>
+              <p className="text-xs text-slate-500 capitalize">{t(userRole.replace('_', ''))}</p>
             </div>
           </div>
         </div>

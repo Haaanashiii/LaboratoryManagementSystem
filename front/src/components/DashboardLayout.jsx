@@ -30,6 +30,7 @@ import {
   DropdownMenuLabel
 } from "./ui/dropdown-menu";
 import { useLang } from '@/components/i18n/LangContext';
+import Sidebar from '@/components/layouts/sidebar';
 
 // Role-based navigation configuration
 const navigationConfig = {
@@ -105,6 +106,111 @@ export default function DashboardLayout() {
     navigate('/login');
   };
 
+  // Determine if current user should use sidebar (all roles except student)
+  const useSidebar = user?.role && user.role !== 'student';
+
+  // If using sidebar layout
+  if (useSidebar) {
+    return (
+      <div className="flex h-screen bg-slate-50 overflow-hidden">
+        {/* Sidebar Component */}
+        <Sidebar 
+          user={user} 
+          currentPage={location.pathname}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Top Navbar - Simplified for sidebar layout */}
+          <header className="flex-shrink-0 bg-white border-b border-slate-200">
+            <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
+              {/* Mobile Menu Toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden"
+              >
+                <Menu className="w-6 h-6 text-slate-600" />
+              </Button>
+
+              {/* Page title or breadcrumb can go here */}
+              <div className="flex-1"></div>
+
+              {/* Right Side Actions */}
+              <div className="flex items-center gap-2">
+                {/* Language Switcher */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="flex items-center gap-1 px-3"
+                  onClick={toggleLang}
+                  title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+                >
+                  <Globe className="w-5 h-5 text-slate-600" />
+                  <span className="text-xs font-medium text-slate-600">{lang.toUpperCase()}</span>
+                </Button>
+
+                {/* Notification Bell */}
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="w-5 h-5 text-slate-600" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+                </Button>
+
+                {/* User Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center gap-2 hover:bg-slate-100">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm">
+                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <span className="hidden md:inline text-sm font-medium text-slate-900">{user?.name}</span>
+                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-slate-50">
+                      <div className="flex items-center gap-3 py-2 w-full">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg">
+                          {user?.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'User'}</p>
+                          <p className="text-xs text-slate-500 truncate">{user?.email || 'user@its.ac.id'}</p>
+                          <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${roleColors[user?.role] || 'bg-slate-100 text-slate-800'}`}>
+                            {t(user?.role || 'student')}
+                          </span>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/settings')}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      {t('settings')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      {t('logout')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </header>
+
+          {/* Main content - Scrollable */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Student layout - horizontal navbar
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Mobile sidebar backdrop */}

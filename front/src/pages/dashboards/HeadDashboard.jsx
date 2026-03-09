@@ -5,6 +5,7 @@ import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock, BarChart3, Package } from 'lucide-react';
+import { EquipmentStatsChart } from '@/components/layouts/Charts';
 
 export default function HeadDashboard() {
   const navigate = useNavigate();
@@ -107,6 +108,9 @@ export default function HeadDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Equipment Statistics */}
+      <EquipmentStatsChart equipment={equipment} requests={allRequests} />
 
       {/* Pending Approvals */}
       {pendingApprovals.length > 0 && (
