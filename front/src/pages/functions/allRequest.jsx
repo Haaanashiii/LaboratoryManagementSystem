@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { Search, Filter, Loader2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function AllRequests() {
@@ -30,26 +29,35 @@ export default function AllRequests() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">All Requests</h1>
+        <p className="mt-0.5 text-sm text-slate-500">Complete list of all equipment borrowing requests.</p>
+      </div>
+
+      <hr className="border-slate-200" />
+
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
           <Input
             placeholder="Search by equipment or borrower..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-11 bg-white"
+            className="pl-9 bg-white border-slate-200"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-48 h-11 bg-white">
+          <SelectTrigger className="w-full md:w-44 bg-white border-slate-200">
             <Filter className="w-4 h-4 mr-2 text-slate-400" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -67,62 +75,60 @@ export default function AllRequests() {
       </div>
 
       {/* Table */}
-      <Card className="border-0 shadow-sm overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead>Equipment</TableHead>
-                  <TableHead>Borrower</TableHead>
-                  <TableHead>Borrow Date</TableHead>
-                  <TableHead>Return Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
+      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-slate-100">
+                <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">Borrower</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">Return Date</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">Created</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredRequests.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-20">
+                    <div className="text-center">
+                      <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-slate-600">No requests found</p>
+                      <p className="text-xs text-slate-400">Try adjusting your search or filter.</p>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRequests.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-slate-500">
-                      No requests found
+              ) : (
+                filteredRequests.map((request) => (
+                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50">
+                    <TableCell>
+                      <p className="text-sm font-medium text-slate-800">{request.equipment_name}</p>
+                      <p className="text-xs text-slate-400">Qty: {request.quantity}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm font-medium text-slate-800">{request.borrower_name}</p>
+                      <p className="text-xs text-slate-400">{request.borrower_email}</p>
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      {request.borrow_date && format(new Date(request.borrow_date), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      {request.return_date && format(new Date(request.return_date), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={request.status} />
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-400">
+                      {request.created_date && format(new Date(request.created_date), 'MMM d, yyyy')}
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredRequests.map((request) => (
-                    <TableRow key={request.id} className="hover:bg-slate-50/50">
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-slate-900">{request.equipment_name}</p>
-                          <p className="text-xs text-slate-400">Qty: {request.quantity}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-slate-900">{request.borrower_name}</p>
-                          <p className="text-xs text-slate-400">{request.borrower_email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {request.borrow_date && format(new Date(request.borrow_date), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {request.return_date && format(new Date(request.return_date), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={request.status} />
-                      </TableCell>
-                      <TableCell className="text-slate-400 text-sm">
-                        {request.created_date && format(new Date(request.created_date), 'MMM d, yyyy')}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     </div>
   );
 }

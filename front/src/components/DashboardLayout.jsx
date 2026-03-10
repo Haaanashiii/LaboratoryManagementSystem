@@ -21,6 +21,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Button } from './ui/button';
+import { MenuFoldOutlined, MenuUnfoldOutlined } from './antd-icons';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -88,6 +89,7 @@ const roleColors = {
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { t, lang, toggleLang } = useLang();
@@ -119,6 +121,7 @@ export default function DashboardLayout() {
           currentPage={location.pathname}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          collapsed={sidebarCollapsed}
         />
 
         {/* Main content area */}
@@ -135,6 +138,15 @@ export default function DashboardLayout() {
               >
                 <Menu className="w-6 h-6 text-slate-600" />
               </Button>
+
+              {/* Sidebar collapse toggle (desktop) */}
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                {sidebarCollapsed ? <MenuUnfoldOutlined style={{ fontSize: 20 }} /> : <MenuFoldOutlined style={{ fontSize: 20 }} />}
+              </button>
 
               {/* Page title or breadcrumb can go here */}
               <div className="flex-1"></div>

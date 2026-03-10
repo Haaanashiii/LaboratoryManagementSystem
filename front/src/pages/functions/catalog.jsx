@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { Search, Filter, Loader2, Package } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 export default function Catalog() {
@@ -68,20 +68,29 @@ export default function Catalog() {
   };
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">Equipment Catalog</h1>
+        <p className="mt-0.5 text-sm text-slate-500">Browse and borrow available laboratory equipment.</p>
+      </div>
+
+      <hr className="border-slate-200" />
+
       {/* Search and Filter */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
+      <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
           <Input
             placeholder="Search equipment..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-12 bg-white border-slate-200"
+            className="pl-9 bg-white border-slate-200"
           />
         </div>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-full md:w-48 h-12 bg-white">
+          <SelectTrigger className="w-full md:w-44 bg-white border-slate-200">
             <Filter className="w-4 h-4 mr-2 text-slate-400" />
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -97,14 +106,16 @@ export default function Catalog() {
       {/* Equipment Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
         </div>
       ) : filteredEquipment.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-slate-500">No equipment found matching your criteria</p>
+          <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm font-medium text-slate-600">No equipment found</p>
+          <p className="text-xs text-slate-400">Try adjusting your search or filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredEquipment.map(item => (
             <EquipmentCard
               key={item.id}
@@ -171,7 +182,7 @@ export default function Catalog() {
             <Button 
               onClick={handleBorrowSubmit}
               disabled={createRequestMutation.isPending || !borrowForm.purpose}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-slate-900 hover:bg-slate-700"
             >
               {createRequestMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</>
