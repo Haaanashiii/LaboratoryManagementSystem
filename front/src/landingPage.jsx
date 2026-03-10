@@ -52,36 +52,36 @@ export default function Landing() {
     {
       icon: Search,
       step: '01',
-      title: 'Browse Catalog',
-      desc: 'Students search and browse available laboratory equipment from the centralized catalog system.',
+      title: t('browseCatalog'),
+      desc: t('browseCatalogDesc'),
     },
     {
       icon: FileBadge,
       step: '02',
-      title: 'Submit Request',
-      desc: 'Submit borrowing request with required details and await lecturer verification and approval.',
+      title: t('approvalWorkflow'),
+      desc: t('approvalWorkflowDesc'),
     },
     {
       icon: CheckCircle,
       step: '03',
-      title: 'Equipment Preparation',
-      desc: 'Lab assistants prepare approved equipment for pickup after verification is complete.',
+      title: t('equipmentPreparationStep'),
+      desc: t('equipmentPreparationDesc'),
     },
     {
       icon: RotateCcw,
       step: '04',
-      title: 'Return & Assessment',
-      desc: 'Equipment is returned and assessed for condition, completing the borrowing cycle.',
+      title: t('returnAssessment'),
+      desc: t('returnAssessmentDesc'),
     },
   ];
 
   const equipmentCategories = [
-    { icon: Microscope, label: 'Microscopes' },
-    { icon: FlaskConical, label: 'Glassware' },
-    { icon: Cpu, label: 'Electronics' },
-    { icon: Zap, label: 'Power Tools' },
-    { icon: Package, label: 'Measurement Tools' },
-    { icon: Shield, label: 'Safety Equipment' },
+    { icon: Microscope, label: t('microscopes') },
+    { icon: FlaskConical, label: t('glassware') },
+    { icon: Cpu, label: t('electronics') },
+    { icon: Zap, label: t('powerTools') },
+    { icon: Package, label: t('measurement') },
+    { icon: Shield, label: t('safetyGear') },
   ];
 
   const capabilities = [
@@ -196,7 +196,7 @@ export default function Landing() {
             <button
               onClick={toggleLang}
               className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-white px-3 py-2 rounded-lg border border-white/10 hover:border-white/20 transition-all"
-              title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+              title={lang === 'en' ? t('switchToIndonesian') : t('switchToEnglish')}
             >
               <Globe className="w-4 h-4" />
               <span className="text-xs font-bold">{lang.toUpperCase()}</span>
@@ -210,7 +210,7 @@ export default function Landing() {
                 shadow-lg shadow-blue-700/30 hover:shadow-blue-500/40
                 hover:-translate-y-0.5 active:translate-y-0"
             >
-              Sign In
+              {t('signIn')}
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -255,14 +255,14 @@ export default function Landing() {
               >
                 <Globe className="w-4 h-4" />
                 <span className="font-bold">{lang.toUpperCase()}</span>
-                <span className="text-xs opacity-70">({lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'})</span>
+                <span className="text-xs opacity-70">({lang === 'en' ? t('switchToIndonesian') : t('switchToEnglish')})</span>
               </button>
               
               <button
                 onClick={() => { setMobileOpen(false); navigate('/login'); }}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-all shadow-lg shadow-blue-700/30"
               >
-                Sign In <ArrowRight className="w-4 h-4" />
+                {t('signIn')} <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -274,21 +274,16 @@ export default function Landing() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs sm:text-sm font-semibold px-4 py-2 rounded-full mb-8 border border-blue-500/20 backdrop-blur-sm">
           <Zap className="w-3.5 h-3.5" />
-          Laboratory Management System
+          {t('landingTagline')}
         </div>
 
         {/* Headline */}
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight mb-6">
-          EquiMon: Manage Laboratory Inventory{' '}
-          <br />
-          <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-            & Equipment Borrowing
-          </span>
+          {t('labInventoryBorrowing')}
         </h1>
 
         <p className="text-slate-400 text-base sm:text-lg lg:text-xl max-w-3xl mx-auto mb-10 leading-relaxed">
-          EquiMon is a comprehensive web-based application designed to streamline laboratory equipment management. 
-          Track inventory, manage borrowing requests, and ensure lecturer verification for all equipment loans.
+          {t('modernPlatformDesc')}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -296,13 +291,13 @@ export default function Landing() {
             onClick={() => navigate('/login')}
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-all shadow-2xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5"
           >
-            Get Started <ArrowRight className="w-5 h-5" />
+            {t('getStarted')} <ArrowRight className="w-5 h-5" />
           </button>
           <a
             href="#features"
             className="inline-flex items-center gap-2 border border-white/10 hover:border-white/25 text-slate-300 hover:text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-all backdrop-blur-sm hover:-translate-y-0.5"
           >
-            Explore Features
+            {t('exploreFeatures')}
           </a>
         </div>
 
@@ -310,18 +305,18 @@ export default function Landing() {
         <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
           <div className="bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 rounded-xl p-5">
             <Database className="w-8 h-8 text-blue-400 mb-3" />
-            <h3 className="text-white font-bold mb-2">Centralized System</h3>
-            <p className="text-slate-400 text-sm">All equipment data in one unified platform</p>
+            <h3 className="text-white font-bold mb-2">{t('featureCatalogTitle')}</h3>
+            <p className="text-slate-400 text-sm">{t('featureCatalogDesc')}</p>
           </div>
           <div className="bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 rounded-xl p-5">
             <FileCheck className="w-8 h-8 text-indigo-400 mb-3" />
-            <h3 className="text-white font-bold mb-2">Verified Requests</h3>
-            <p className="text-slate-400 text-sm">Lecturer approval required for all borrowing</p>
+            <h3 className="text-white font-bold mb-2">{t('featureApprovalTitle')}</h3>
+            <p className="text-slate-400 text-sm">{t('featureApprovalDesc')}</p>
           </div>
           <div className="bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 rounded-xl p-5">
             <Shield className="w-8 h-8 text-cyan-400 mb-3" />
-            <h3 className="text-white font-bold mb-2">Complete Tracking</h3>
-            <p className="text-slate-400 text-sm">Monitor equipment from request to return</p>
+            <h3 className="text-white font-bold mb-2">{t('featureStatusTitle')}</h3>
+            <p className="text-slate-400 text-sm">{t('featureStatusDesc')}</p>
           </div>
         </div>
       </section>
@@ -329,15 +324,15 @@ export default function Landing() {
       {/* ── Features Grid ── */}
       <section id="features" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">System Features</span>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('features')}</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            Everything You Need to{' '}
+            {t('everythingYouNeedToRunLab')}{' '}
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              Manage Your Lab
+              {t('runTheLab')}
             </span>
           </h2>
           <p className="text-slate-400 text-base max-w-2xl mx-auto">
-            EquiMon provides comprehensive features designed to streamline equipment tracking, borrowing workflows, and inventory management for educational laboratories.
+            {t('equimonCoversLifecycle')}
           </p>
         </div>
 
@@ -360,13 +355,12 @@ export default function Landing() {
       {/* ── How It Works / Workflow ── */}
       <section id="workflow" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">Borrowing Process</span>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('processLabel')}</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            How the{' '}
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">System Works</span>
+            {t('howEquimonWorks')}
           </h2>
           <p className="text-slate-400 text-base max-w-2xl mx-auto">
-            EquiMon's streamlined four-step process ensures proper equipment management from initial request through verification, preparation, and final return.
+            {t('requestToReturn')}
           </p>
         </div>
 
@@ -394,10 +388,10 @@ export default function Landing() {
       {/* ── Equipment Categories ── */}
       <section className="relative z-10 px-4 sm:px-6 lg:px-12 py-16 max-w-6xl mx-auto">
         <div className="text-center mb-10">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">Equipment Catalog</span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">Manage Diverse Laboratory Equipment</h2>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('inventoryLabel')}</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">{t('whatsInCatalog')}</h2>
           <p className="text-slate-400 text-sm max-w-2xl mx-auto">
-            EquiMon helps you track and manage a wide range of laboratory equipment categories, from precision instruments to safety gear.
+            {t('manageBroadRange')}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-4">
@@ -413,15 +407,15 @@ export default function Landing() {
       {/* ── System Capabilities ── */}
       <section id="capabilities" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">Core Capabilities</span>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('capabilities')}</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            Built for{' '}
+            {t('builtForEvery')}{' '}
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              Operational Excellence
+              {t('stakeholder')}
             </span>
           </h2>
           <p className="text-slate-400 text-base max-w-2xl mx-auto">
-            EquiMon delivers advanced features that ensure efficient laboratory operations, from security to analytics, all in one integrated platform.
+            {t('equimonAdapts')}
           </p>
         </div>
 
@@ -446,15 +440,15 @@ export default function Landing() {
           <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-56 h-56 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative">
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready to Streamline Your Lab?</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{t('readyToGetStarted')}</h2>
             <p className="text-slate-400 mb-8 max-w-md mx-auto">
-              Sign in to EquiMon and start managing your laboratory equipment inventory efficiently with our comprehensive management system.
+              {t('signInToAccess')}
             </p>
             <button
               onClick={() => navigate('/login')}
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-10 py-3.5 rounded-xl text-base transition-all shadow-2xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5"
             >
-              Sign In Now <ArrowRight className="w-5 h-5" />
+              {t('signInNow')} <ArrowRight className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -472,38 +466,38 @@ export default function Landing() {
               <span className="text-lg font-extrabold">Equi<span className="text-blue-400">mon</span></span>
             </div>
             <p className="text-slate-500 text-sm leading-relaxed max-w-xs">
-              EquiMon streamlines laboratory equipment management with comprehensive tracking, borrowing workflows, and inventory control.
+              {t('footerTagline')}
             </p>
           </div>
 
           {/* Quick links */}
           <div>
-            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">Navigation</h4>
+            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('navigationLabel')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
-              <li><a href="#features" className="hover:text-blue-400 transition-colors">Features</a></li>
-              <li><a href="#workflow" className="hover:text-blue-400 transition-colors">How It Works</a></li>
-              <li><a href="#capabilities" className="hover:text-blue-400 transition-colors">Capabilities</a></li>
-              <li><a href="#cta" className="hover:text-blue-400 transition-colors">Get Started</a></li>
+              <li><a href="#features" className="hover:text-blue-400 transition-colors">{t('features')}</a></li>
+              <li><a href="#workflow" className="hover:text-blue-400 transition-colors">{t('howItWorks')}</a></li>
+              <li><a href="#capabilities" className="hover:text-blue-400 transition-colors">{t('capabilities')}</a></li>
+              <li><a href="#cta" className="hover:text-blue-400 transition-colors">{t('getStarted')}</a></li>
             </ul>
           </div>
 
           {/* System info */}
           <div>
-            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">System Features</h4>
+            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('systemLabel')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Role-Based Authentication</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Audit Trail & History</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Multi-Step Approvals</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Real-Time Status Tracking</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('roleBasedAuth')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('auditTrailHistory')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('multiStepApprovals')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('realTimeStatusTracking')}</li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-white/5 px-4 sm:px-6 lg:px-12 py-5 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-slate-600 text-xs">
-            © {new Date().getFullYear()} <span className="text-slate-500 font-semibold">Equimon</span>. All rights reserved.
+            © {new Date().getFullYear()} <span className="text-slate-500 font-semibold">Equimon</span>. {t('allRightsReserved')}
           </p>
-          <p className="text-slate-700 text-xs">Laboratory Management System</p>
+          <p className="text-slate-700 text-xs">{t('landingTagline')}</p>
         </div>
       </footer>
     </div>
