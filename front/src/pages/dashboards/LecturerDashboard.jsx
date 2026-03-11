@@ -6,9 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, Clock, CheckCircle, History } from 'lucide-react';
 import { EquipmentStatsChart } from '@/components/layouts/Charts';
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function LecturerDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -26,27 +28,35 @@ export default function LecturerDashboard() {
     queryFn: () => api.entities.Equipment.list(),
   });
 
+  // Function to get greeting based on time of day
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return t('goodMorning');
+    if (hour < 18) return t('goodAfternoon');
+    return t('goodEvening');
+  };
+
   const pendingApprovals = allRequests.filter(r => r.status === 'pending_lecturer');
   const approvedByMe = allRequests.filter(r => r.status !== 'pending_lecturer' && r.status !== 'rejected');
   const totalRequests = allRequests.length;
 
   const stats = [
     { 
-      name: 'Pending Approvals', 
+      name: t('pendingApprovals'), 
       value: pendingApprovals.length, 
       icon: Clock,
       color: 'bg-amber-50 text-amber-600',
       action: () => navigate('/lecturer-approvals')
     },
     { 
-      name: 'Approved by Me', 
+      name: t('approvedByMe'), 
       value: approvedByMe.length, 
       icon: CheckCircle,
       color: 'bg-emerald-50 text-emerald-600',
       action: () => navigate('/approval-history')
     },
     { 
-      name: 'Total Requests', 
+      name: t('totalRequests'), 
       value: totalRequests, 
       icon: CheckSquare,
       color: 'bg-blue-50 text-blue-600',
@@ -58,8 +68,10 @@ export default function LecturerDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Welcome, {user?.name}!</h1>
-        <p className="mt-2 text-slate-600">Review and approve student equipment borrowing requests.</p>
+        <h1 className="text-3xl font-bold text-slate-900">
+          {getTimeGreeting()}, {user?.full_name || 'User'}
+        </h1>
+        <p className="mt-2 text-slate-600">{t('lecturerDailyReport')}</p>
       </div>
 
       {/* Stats Grid */}

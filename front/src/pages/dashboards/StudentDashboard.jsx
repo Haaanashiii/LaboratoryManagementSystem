@@ -9,7 +9,7 @@ import { useLang } from '@/components/i18n/LangContext';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -26,6 +26,22 @@ export default function StudentDashboard() {
     queryKey: ['equipment'],
     queryFn: () => api.entities.Equipment.list(),
   });
+
+  // Function to get greeting based on time of day
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return t('goodMorning');
+    if (hour < 18) return t('goodAfternoon');
+    return t('goodEvening');
+  };
+
+  // Function to format the current date
+  const getTodayDate = () => {
+    const locale = lang === 'id' ? 'id-ID' : 'en-US';
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = new Date().toLocaleDateString(locale, options);
+    return `${t('todayIs')} ${formattedDate}`;
+  };
 
   const pendingRequests = myRequests.filter(r => r.status === 'pending_lecturer' || r.status === 'pending_head');
   const approvedRequests = myRequests.filter(r => r.status === 'head_approved' || r.status === 'ready_pickup');
@@ -66,8 +82,10 @@ export default function StudentDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">{t('welcomeBack')}, {user?.name}!</h1>
-        <p className="mt-2 text-slate-600">{t('dashboardSubtitle')}</p>
+        <h1 className="text-3xl font-bold text-slate-900">
+          {getTimeGreeting()}, {user?.full_name || 'User'}
+        </h1>
+        <p className="mt-2 text-slate-600">{getTodayDate()}</p>
       </div>
 
       {/* Stats Grid */}

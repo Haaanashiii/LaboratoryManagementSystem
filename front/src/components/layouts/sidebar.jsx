@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -13,7 +13,9 @@ import {
   X,
   Home,
   History,
-  CheckCircle
+  CheckCircle,
+  Calendar,
+  Clock
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useLang } from '@/components/i18n/LangContext';
@@ -61,7 +63,28 @@ const menuConfig = {
 export default function Sidebar({ user, currentPage, isOpen, onClose }) {
   const userRole = user?.role || 'student';
   const menu = menuConfig[userRole] || menuConfig.student;
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDate = (date) => {
+    const locale = lang === 'id' ? 'id-ID' : 'en-US';
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString(locale, options);
+  };
+
+  const formatTime = (date) => {
+    const locale = lang === 'id' ? 'id-ID' : 'en-US';
+    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
 
   return (
     <>
@@ -139,6 +162,20 @@ export default function Sidebar({ user, currentPage, isOpen, onClose }) {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm text-slate-900 truncate">{user?.full_name || 'User'}</p>
               <p className="text-xs text-slate-500 capitalize">{t(userRole.replace('_', ''))}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Date and Time */}
+        <div className="px-4 pb-4">
+          <div className="px-4 py-3 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <p className="text-xs font-medium text-blue-900">{formatDate(currentDateTime)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-600" />
+              <p className="text-sm font-semibold text-blue-900 tabular-nums">{formatTime(currentDateTime)}</p>
             </div>
           </div>
         </div>

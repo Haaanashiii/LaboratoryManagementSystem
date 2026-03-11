@@ -6,9 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock, BarChart3, Package } from 'lucide-react';
 import { EquipmentStatsChart } from '@/components/layouts/Charts';
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function HeadDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -25,6 +27,14 @@ export default function HeadDashboard() {
     queryFn: () => api.entities.Equipment.list(),
   });
 
+  // Function to get greeting based on time of day
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return t('goodMorning');
+    if (hour < 18) return t('goodAfternoon');
+    return t('goodEvening');
+  };
+
   const pendingApprovals = allRequests.filter(r => r.status === 'pending_head');
   const approvedRequests = allRequests.filter(r => r.status === 'head_approved' || r.status === 'ready_pickup' || r.status === 'borrowed');
   const totalEquipment = equipment.length;
@@ -32,28 +42,28 @@ export default function HeadDashboard() {
 
   const stats = [
     { 
-      name: 'Pending Final Approval', 
+      name: t('pendingFinalApproval'), 
       value: pendingApprovals.length, 
       icon: Clock,
       color: 'bg-amber-50 text-amber-600',
       action: () => navigate('/head-approvals')
     },
     { 
-      name: 'Approved Requests', 
+      name: t('approvedRequests'), 
       value: approvedRequests.length, 
       icon: CheckCircle,
       color: 'bg-emerald-50 text-emerald-600',
       action: () => navigate('/all-approval-history')
     },
     { 
-      name: 'Total Equipment', 
+      name: t('totalEquipment'), 
       value: totalEquipment, 
       icon: Package,
       color: 'bg-blue-50 text-blue-600',
       action: () => navigate('/inventory')
     },
     { 
-      name: 'Available Equipment', 
+      name: t('availableEquipment'), 
       value: availableEquipment, 
       icon: BarChart3,
       color: 'bg-purple-50 text-purple-600',
@@ -65,8 +75,10 @@ export default function HeadDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Head of Laboratory Dashboard</h1>
-        <p className="mt-2 text-slate-600">Monitor equipment usage and provide final approval for borrowing requests.</p>
+        <h1 className="text-3xl font-bold text-slate-900">
+          {getTimeGreeting()}, {user?.full_name || 'User'}
+        </h1>
+        <p className="mt-2 text-slate-600">{t('headDailyReport')}</p>
       </div>
 
       {/* Stats Grid */}

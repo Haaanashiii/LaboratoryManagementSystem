@@ -14,6 +14,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
+import { useLang } from '@/components/i18n/LangContext'
 
 // User Distribution Chart (Radial)
 const roleColors = {
@@ -24,41 +25,42 @@ const roleColors = {
   student: "hsl(160, 70%, 50%)",
 }
 
-const roleLabels = {
-  admin: 'Administrators',
-  head_of_lab: 'Head of Lab',
-  lecturer: 'Lecturers',
-  lab_assistant: 'Lab Assistants',
-  student: 'Students',
-}
-
-const userChartConfig = {
-  count: {
-    label: "Users",
-  },
-  admin: {
-    label: "Administrators",
-    color: roleColors.admin,
-  },
-  head_of_lab: {
-    label: "Head of Lab",
-    color: roleColors.head_of_lab,
-  },
-  lecturer: {
-    label: "Lecturers",
-    color: roleColors.lecturer,
-  },
-  lab_assistant: {
-    label: "Lab Assistants",
-    color: roleColors.lab_assistant,
-  },
-  student: {
-    label: "Students",
-    color: roleColors.student,
-  },
-}
-
 export function UserDistributionChart({ users = [] }) {
+  const { t } = useLang();
+  
+  const roleLabels = {
+    admin: t('administrators'),
+    head_of_lab: t('headoflab'),
+    lecturer: t('lecturers'),
+    lab_assistant: t('labAssistants'),
+    student: t('students'),
+  }
+
+  const userChartConfig = {
+    count: {
+      label: t('usersLabel'),
+    },
+    admin: {
+      label: t('administrators'),
+      color: roleColors.admin,
+    },
+    head_of_lab: {
+      label: t('headoflab'),
+      color: roleColors.head_of_lab,
+    },
+    lecturer: {
+      label: t('lecturers'),
+      color: roleColors.lecturer,
+    },
+    lab_assistant: {
+      label: t('labAssistants'),
+      color: roleColors.lab_assistant,
+    },
+    student: {
+      label: t('students'),
+      color: roleColors.student,
+    },
+  }
   // Calculate user distribution
   const distribution = ['admin', 'head_of_lab', 'lecturer', 'lab_assistant', 'student'].map(role => ({
     role: roleLabels[role],
@@ -71,8 +73,8 @@ export function UserDistributionChart({ users = [] }) {
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
-        <CardTitle>User Distribution</CardTitle>
-        <CardDescription>By Role</CardDescription>
+        <CardTitle>{t('userDistribution')}</CardTitle>
+        <CardDescription>{t('byRole')}</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
@@ -103,10 +105,10 @@ export function UserDistributionChart({ users = [] }) {
       </CardContent>
       <CardFooter className="flex-col gap-2 text-sm">
         <div className="flex items-center gap-2 leading-none font-medium">
-          Total users: {totalUsers}
+          {t('totalUsersCount')}: {totalUsers}
         </div>
         <div className="leading-none text-slate-500">
-          Distribution across all user roles
+          {t('distributionAcrossRoles')}
         </div>
       </CardFooter>
     </Card>
@@ -114,18 +116,19 @@ export function UserDistributionChart({ users = [] }) {
 }
 
 // Equipment Statistics Chart (Bar)
-const equipmentChartConfig = {
-  borrowed: {
-    label: "Borrowed",
-    color: "hsl(210, 70%, 55%)",
-  },
-  available: {
-    label: "Available",
-    color: "hsl(160, 70%, 50%)",
-  },
-}
-
 export function EquipmentStatsChart({ equipment = [], requests = [] }) {
+  const { t } = useLang();
+  
+  const equipmentChartConfig = {
+    borrowed: {
+      label: t('borrowedLabel'),
+      color: "hsl(210, 70%, 55%)",
+    },
+    available: {
+      label: t('availableLabel'),
+      color: "hsl(160, 70%, 50%)",
+    },
+  }
   // Calculate borrowed count per equipment
   const borrowedCounts = {}
   requests.forEach(req => {
@@ -148,8 +151,8 @@ export function EquipmentStatsChart({ equipment = [], requests = [] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Equipment Statistics</CardTitle>
-        <CardDescription>Top 5 Most Borrowed Equipment</CardDescription>
+        <CardTitle>{t('equipmentStatistics')}</CardTitle>
+        <CardDescription>{t('top5MostBorrowedEquipment')}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={equipmentChartConfig} className="h-[300px] w-full">
@@ -186,10 +189,10 @@ export function EquipmentStatsChart({ equipment = [], requests = [] }) {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 font-medium leading-none">
-          Equipment usage overview <Package className="h-4 w-4" />
+          {t('equipmentUsageOverview')} <Package className="h-4 w-4" />
         </div>
         <div className="leading-none text-slate-500">
-          Showing borrowed vs available units
+          {t('showingBorrowedVsAvailable')}
         </div>
       </CardFooter>
     </Card>

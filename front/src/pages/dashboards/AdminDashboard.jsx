@@ -6,11 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Package, BarChart3, Settings, FileText, CheckCircle } from 'lucide-react';
 import { UserDistributionChart, EquipmentStatsChart } from '@/components/layouts/Charts';
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
-  const { data: user } = useQuery({
+  const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.auth.me(),
   });
@@ -30,6 +32,14 @@ export default function AdminDashboard() {
     queryFn: () => api.entities.BorrowRequest.list(),
   });
 
+  // Function to get greeting based on time of day
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return t('goodMorning');
+    if (hour < 18) return t('goodAfternoon');
+    return t('goodEvening');
+  };
+
   const totalUsers = users.length;
   const totalEquipment = equipment.length;
   const availableEquipment = equipment.filter(e => e.available > 0).length;
@@ -39,28 +49,28 @@ export default function AdminDashboard() {
 
   const stats = [
     { 
-      name: 'Total Users', 
+      name: t('totalUsers'), 
       value: totalUsers, 
       icon: Users,
       color: 'bg-blue-50 text-blue-600',
       action: () => navigate('/users')
     },
     { 
-      name: 'Total Equipment', 
+      name: t('totalEquipment'), 
       value: totalEquipment, 
       icon: Package,
       color: 'bg-emerald-50 text-emerald-600',
       action: () => navigate('/inventory')
     },
     { 
-      name: 'Available Equipment', 
+      name: t('availableEquipment'), 
       value: availableEquipment, 
       icon: CheckCircle,
       color: 'bg-purple-50 text-purple-600',
       action: () => navigate('/catalog')
     },
     { 
-      name: 'Active Requests', 
+      name: t('activeRequests'), 
       value: activeRequests, 
       icon: FileText,
       color: 'bg-amber-50 text-amber-600',
@@ -72,8 +82,10 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">System Administrator Dashboard</h1>
-        <p className="mt-2 text-slate-600">Manage users, equipment inventory, and system settings.</p>
+        <h1 className="text-3xl font-bold text-slate-900">
+          {getTimeGreeting()}, {currentUser?.full_name || 'User'}
+        </h1>
+        <p className="mt-2 text-slate-600">{t('dailyReport')}</p>
       </div>
 
       {/* Stats Grid */}
@@ -98,23 +110,23 @@ export default function AdminDashboard() {
       {/* Quick Actions */}
       <Card>
         <CardContent className="p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">{t('quickActions')}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Button onClick={() => navigate('/users')} className="h-auto py-4 flex flex-col gap-2">
               <Users className="w-6 h-6" />
-              <span>Manage Users</span>
+              <span>{t('manageUsers')}</span>
             </Button>
             <Button onClick={() => navigate('/inventory')} variant="outline" className="h-auto py-4 flex flex-col gap-2">
               <Package className="w-6 h-6" />
-              <span>Manage Inventory</span>
+              <span>{t('manageInventory')}</span>
             </Button>
             <Button onClick={() => navigate('/all-requests')} variant="outline" className="h-auto py-4 flex flex-col gap-2">
               <BarChart3 className="w-6 h-6" />
-              <span>View All Requests</span>
+              <span>{t('viewAllRequests')}</span>
             </Button>
             <Button onClick={() => navigate('/settings')} variant="outline" className="h-auto py-4 flex flex-col gap-2">
               <Settings className="w-6 h-6" />
-              <span>System Settings</span>
+              <span>{t('systemSettings')}</span>
             </Button>
           </div>
         </CardContent>
@@ -132,9 +144,9 @@ export default function AdminDashboard() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">Recent Requests</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{t('recentRequests')}</h2>
               <Button onClick={() => navigate('/all-requests')} variant="link" size="sm">
-                View All
+                {t('viewAll')}
               </Button>
             </div>
             <div className="space-y-3">
@@ -142,7 +154,7 @@ export default function AdminDashboard() {
                 <div key={request.id} className="flex items-center justify-between py-3 border-b last:border-0">
                   <div>
                     <p className="font-medium text-slate-900">{request.equipment_name}</p>
-                    <p className="text-sm text-slate-500">Student: {request.student_email}</p>
+                    <p className="text-sm text-slate-500">{t('student_label')}: {request.student_email}</p>
                   </div>
                   <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                     request.status === 'borrowed' ? 'bg-green-100 text-green-800' :

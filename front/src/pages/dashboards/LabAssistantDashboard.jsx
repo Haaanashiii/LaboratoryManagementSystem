@@ -6,9 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Package, Clock, History } from 'lucide-react';
 import { EquipmentStatsChart } from '@/components/layouts/Charts';
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function LabAssistantDashboard() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -25,6 +27,14 @@ export default function LabAssistantDashboard() {
     queryFn: () => api.entities.Equipment.list(),
   });
 
+  // Function to get greeting based on time of day
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return t('goodMorning');
+    if (hour < 18) return t('goodAfternoon');
+    return t('goodEvening');
+  };
+
   const readyForPrep = allRequests.filter(r => r.status === 'head_approved');
   const readyForPickup = allRequests.filter(r => r.status === 'ready_pickup');
   const borrowed = allRequests.filter(r => r.status === 'borrowed');
@@ -32,28 +42,28 @@ export default function LabAssistantDashboard() {
 
   const stats = [
     { 
-      name: 'Ready for Prep', 
+      name: t('readyForPrep'), 
       value: readyForPrep.length, 
       icon: Package,
       color: 'bg-amber-50 text-amber-600',
       action: () => navigate('/equipment-prep')
     },
     { 
-      name: 'Ready for Pickup', 
+      name: t('readyForPickup'), 
       value: readyForPickup.length, 
       icon: CheckCircle,
       color: 'bg-blue-50 text-blue-600',
       action: () => navigate('/equipment-prep')
     },
     { 
-      name: 'Currently Borrowed', 
+      name: t('currentlyBorrowed'), 
       value: borrowed.length, 
       icon: Clock,
       color: 'bg-emerald-50 text-emerald-600',
       action: () => navigate('/returns')
     },
     { 
-      name: 'Pending Returns', 
+      name: t('pendingReturns'), 
       value: toReturn, 
       icon: History,
       color: 'bg-purple-50 text-purple-600',
@@ -65,8 +75,10 @@ export default function LabAssistantDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Lab Assistant Dashboard</h1>
-        <p className="mt-2 text-slate-600">Manage equipment preparation, release, and returns.</p>
+        <h1 className="text-3xl font-bold text-slate-900">
+          {getTimeGreeting()}, {user?.full_name || 'User'}
+        </h1>
+        <p className="mt-2 text-slate-600">{t('labAssistantDailyReport')}</p>
       </div>
 
       {/* Stats Grid */}
