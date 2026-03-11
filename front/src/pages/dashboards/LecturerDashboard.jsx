@@ -212,12 +212,14 @@ export default function LecturerDashboard() {
       </div>
 
       {/* Recent Activity + Recent Requests — one row */}
-      <div className="grid lg:grid-cols-5 gap-6 items-start">
+      <div className="grid lg:grid-cols-5 gap-6 items-stretch">
 
         {/* Recent Activity */}
-        <div className="lg:col-span-2 space-y-3">
-          <h2 className="text-sm font-medium text-slate-700">Recent Activity</h2>
-          <Card className="border-slate-200 shadow-none">
+        <div className="lg:col-span-2 flex flex-col gap-3">
+          <div className="flex items-center h-7">
+            <h2 className="text-sm font-medium text-slate-700">Recent Activity</h2>
+          </div>
+          <Card className="border-slate-200 shadow-none flex-1">
             <CardContent className="p-0">
               {[
                 { label: 'New Requests', sub: 'This week', value: recentRequests.length },
@@ -240,14 +242,14 @@ export default function LecturerDashboard() {
         </div>
 
         {/* Recent Requests */}
-        <div className="lg:col-span-3 space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="lg:col-span-3 flex flex-col gap-3">
+          <div className="flex items-center justify-between h-7">
             <h2 className="text-sm font-medium text-slate-700">Recent Requests</h2>
             <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => navigate('/all-approval-history')}>
               View all <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
           </div>
-          <Card className="border-slate-200 shadow-none">
+          <Card className="border-slate-200 shadow-none flex-1">
             <CardContent className="p-0">
               {recentRequests.length > 0 ? (
                 <Table>
