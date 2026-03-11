@@ -1,9 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings as SettingsIcon, Bell, Lock, Database, Globe, Edit, User } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Lock, Database, Globe, Edit, User, ChevronRight } from 'lucide-react';
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
 import ReflectiveCard from '@/components/ui/ReflectiveCard';
@@ -12,31 +11,79 @@ export default function Settings() {
   const navigate = useNavigate();
   const { t } = useLang();
 
-  // Get current user
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.auth.me(),
   });
 
+  const settingsItems = [
+    {
+      icon: SettingsIcon,
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      label: t('general') || 'General',
+      description: t('generalDescription') || 'Manage your general preferences.',
+    },
+    {
+      icon: Bell,
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      label: t('notifications') || 'Notifications',
+      description: t('notificationsDescription') || 'Control how you receive notifications.',
+    },
+    {
+      icon: Lock,
+      iconBg: 'bg-purple-50',
+      iconColor: 'text-purple-600',
+      label: t('security') || 'Security',
+      description: t('securityDescription') || 'Password, 2FA, and account security.',
+    },
+    {
+      icon: Database,
+      iconBg: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+      label: t('database') || 'Database',
+      description: t('databaseDescription') || 'Data storage and backup settings.',
+    },
+    {
+      icon: Globe,
+      iconBg: 'bg-red-50',
+      iconColor: 'text-red-600',
+      label: t('integrations') || 'Integrations',
+      description: t('integrationsDescription') || 'Connect with external services.',
+    },
+  ];
+
   return (
-    <div className="h-full">
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 h-full">
-        {/* LEFT: Profile Section */}
-        <div className="border-2 border-slate-200 rounded-lg p-6 bg-white shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-900">{t('profile')}</h2>
-            <Button 
+    <div className="max-w-7xl mx-auto space-y-5 pt-1 pb-4 px-4">
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">{t('settings') || 'Settings'}</h1>
+        <p className="mt-0.5 text-sm text-slate-500">{t('systemSettingsDescription') || 'Manage your profile and system preferences.'}</p>
+      </div>
+
+      <hr className="border-slate-200" />
+
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 items-start">
+
+        {/* LEFT: Profile card */}
+        <div className="rounded-lg border border-slate-200 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-700">{t('profile') || 'Profile'}</p>
+            <Button
               onClick={() => navigate('/profile')}
               size="sm"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              variant="outline"
+              className="flex items-center gap-1.5 text-xs h-7 px-2.5 border-slate-200 text-slate-600 hover:text-slate-900"
             >
-              <Edit className="w-4 h-4" />
-              {t('edit')}
+              <Edit className="w-3.5 h-3.5" />
+              {t('edit') || 'Edit'}
             </Button>
           </div>
 
-          <div className="flex justify-center items-start">
+          <div className="flex justify-center">
             <ReflectiveCard
               overlayColor="rgba(15, 23, 42, 0.3)"
               blurStrength={12}
@@ -52,82 +99,46 @@ export default function Settings() {
               userRole={user?.role || 'Student'}
               userId={user?.id || '0000-0000-0000'}
               userAvatar={user?.avatar || null}
-              className="max-w-full"
-              style={{ width: '100%', maxWidth: '320px' }}
+              style={{ width: '100%', maxWidth: '280px' }}
             />
           </div>
-        </div>
 
-        {/* RIGHT: Settings Section */}
-        <div className="border-2 border-slate-200 rounded-lg p-6 bg-white shadow-sm overflow-y-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-900">{t('settings')}</h2>
-            <p className="mt-2 text-slate-600">{t('systemSettingsDescription') || 'Configure system preferences and settings.'}</p>
-          </div>
-
-          {/* Settings Cards Grid */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="border border-slate-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                    <SettingsIcon className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900">{t('general')}</h3>
-                </div>
-                <p className="text-sm text-slate-600">{t('generalDescription')}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-slate-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900">{t('notifications')}</h3>
-                </div>
-                <p className="text-sm text-slate-600">{t('notificationsDescription')}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-slate-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900">{t('security')}</h3>
-                </div>
-                <p className="text-sm text-slate-600">{t('securityDescription')}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-slate-200 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
-                    <Database className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900">{t('database')}</h3>
-                </div>
-                <p className="text-sm text-slate-600">{t('databaseDescription')}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-slate-200 shadow-sm sm:col-span-2">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-red-50 text-red-600">
-                    <Globe className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900">{t('integrations')}</h3>
-                </div>
-                <p className="text-sm text-slate-600">{t('integrationsDescription')}</p>
-              </CardContent>
-            </Card>
+          {/* User info below card */}
+          <div className="pt-1 border-t border-slate-100 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <User className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-sm text-slate-700 font-medium">{user?.name || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 ml-5">{user?.email || '—'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 capitalize ml-5">
+                {user?.role?.replace(/_/g, ' ') || 'Student'}
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* RIGHT: Settings list */}
+        <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+          {settingsItems.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors cursor-pointer group"
+            >
+              <div className={`p-2 rounded-lg ${item.iconBg} ${item.iconColor} shrink-0`}>
+                <item.icon className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900">{item.label}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );

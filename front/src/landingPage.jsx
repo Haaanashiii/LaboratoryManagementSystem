@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FlaskConical, CheckCircle, Users, BarChart3, Package, Shield,
-  ClipboardList, ArrowRight, Zap, BookOpen, Microscope, Cpu,
-  GraduationCap, UserCheck, Wrench, ChevronRight, Star,
-  MousePointerClick, FileBadge, RotateCcw, Menu, X, Globe,
+  FlaskConical, CheckCircle, Package, Shield, ClipboardList, ArrowRight, 
+  Zap, Microscope, Cpu, MousePointerClick, FileBadge, RotateCcw, 
+  Menu, X, Globe, Database, Bell, Lock, FileCheck, TrendingUp, Search,
 } from 'lucide-react';
 import LandingBG from '@/components/layouts/LandingBG';
 import { useLang } from '@/components/i18n/LangContext';
@@ -17,24 +16,41 @@ export default function Landing() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const features = [
-    { icon: Package, title: t('featureCatalogTitle'), desc: t('featureCatalogDesc') },
-    { icon: ClipboardList, title: t('featureApprovalTitle'), desc: t('featureApprovalDesc') },
-    { icon: Users, title: t('featureRoleTitle'), desc: t('featureRoleDesc') },
-    { icon: BarChart3, title: t('featureReportsTitle'), desc: t('featureReportsDesc') },
-    { icon: Shield, title: t('featureReturnTitle'), desc: t('featureReturnDesc') },
-    { icon: CheckCircle, title: t('featureStatusTitle'), desc: t('featureStatusDesc') },
+    { 
+      icon: Database, 
+      title: 'Centralized Inventory', 
+      desc: 'Comprehensive database to record all laboratory equipment with detailed specifications, quantities, and availability status.' 
+    },
+    { 
+      icon: ClipboardList, 
+      title: 'Borrowing Requests', 
+      desc: 'Streamlined request system allowing students to submit equipment borrowing requests with automatic tracking and notifications.' 
+    },
+    { 
+      icon: FileCheck, 
+      title: 'Lecturer Verification', 
+      desc: 'Multi-level approval workflow ensuring all requests are verified by lecturers before equipment can be borrowed.' 
+    },
+    { 
+      icon: Shield, 
+      title: 'Equipment Tracking', 
+      desc: 'Real-time monitoring of equipment status, location, and condition throughout the entire borrowing lifecycle.' 
+    },
+    { 
+      icon: Bell, 
+      title: 'Automated Notifications', 
+      desc: 'Instant alerts for request updates, approvals, return reminders, and equipment availability changes.' 
+    },
+    { 
+      icon: TrendingUp, 
+      title: 'Analytics & Reports', 
+      desc: 'Comprehensive insights on equipment utilization, borrowing patterns, and inventory management metrics.' 
+    },
   ];
 
-  const stats = [
-    { value: '500+', label: t('equipmentItems') },
-    { value: '1,200+', label: t('borrowRequests') },
-    { value: '4', label: t('userRoles') },
-    { value: '99.9%', label: t('uptime') },
-  ];
-
-  const steps = [
+  const workflow = [
     {
-      icon: MousePointerClick,
+      icon: Search,
       step: '01',
       title: t('browseCatalog'),
       desc: t('browseCatalogDesc'),
@@ -46,7 +62,7 @@ export default function Landing() {
       desc: t('approvalWorkflowDesc'),
     },
     {
-      icon: Wrench,
+      icon: CheckCircle,
       step: '03',
       title: t('equipmentPreparationStep'),
       desc: t('equipmentPreparationDesc'),
@@ -59,73 +75,42 @@ export default function Landing() {
     },
   ];
 
-  const roles = [
-    {
-      icon: GraduationCap,
-      role: t('studentRole'),
-      color: 'from-blue-500/20 to-blue-600/5',
-      border: 'border-blue-500/20',
-      iconColor: 'text-blue-400',
-      perks: [t('studentPerk1'), t('studentPerk2'), t('studentPerk3'), t('studentPerk4')],
-    },
-    {
-      icon: BookOpen,
-      role: t('lecturerRole'),
-      color: 'from-indigo-500/20 to-indigo-600/5',
-      border: 'border-indigo-500/20',
-      iconColor: 'text-indigo-400',
-      perks: [t('lecturerPerk1'), t('lecturerPerk2'), t('lecturerPerk3'), t('lecturerPerk4')],
-    },
-    {
-      icon: UserCheck,
-      role: t('labHeadRole'),
-      color: 'from-violet-500/20 to-violet-600/5',
-      border: 'border-violet-500/20',
-      iconColor: 'text-violet-400',
-      perks: [t('labHeadPerk1'), t('labHeadPerk2'), t('labHeadPerk3'), t('labHeadPerk4')],
-    },
-    {
-      icon: Wrench,
-      role: t('labAssistantRole'),
-      color: 'from-cyan-500/20 to-cyan-600/5',
-      border: 'border-cyan-500/20',
-      iconColor: 'text-cyan-400',
-      perks: [t('labAssistantPerk1'), t('labAssistantPerk2'), t('labAssistantPerk3'), t('labAssistantPerk4')],
-    },
-  ];
-
-  const testimonials = [
-    {
-      name: t('testimonial1Name'),
-      role: t('testimonial1Role'),
-      text: t('testimonial1Text'),
-    },
-    {
-      name: t('testimonial2Name'),
-      role: t('testimonial2Role'),
-      text: t('testimonial2Text'),
-    },
-    {
-      name: t('testimonial3Name'),
-      role: t('testimonial3Role'),
-      text: t('testimonial3Text'),
-    },
-  ];
-
   const equipmentCategories = [
     { icon: Microscope, label: t('microscopes') },
     { icon: FlaskConical, label: t('glassware') },
     { icon: Cpu, label: t('electronics') },
     { icon: Zap, label: t('powerTools') },
-    { icon: BarChart3, label: t('measurement') },
+    { icon: Package, label: t('measurement') },
     { icon: Shield, label: t('safetyGear') },
   ];
 
+  const capabilities = [
+    { 
+      icon: Lock, 
+      title: 'Secure Authentication', 
+      desc: 'Role-based access control ensuring users only see relevant features and data.' 
+    },
+    { 
+      icon: Database, 
+      title: 'Inventory Management', 
+      desc: 'Complete equipment lifecycle management from acquisition to disposal.' 
+    },
+    { 
+      icon: FileCheck, 
+      title: 'Approval Workflows', 
+      desc: 'Configurable multi-step approval processes with delegation support.' 
+    },
+    { 
+      icon: TrendingUp, 
+      title: 'Usage Analytics', 
+      desc: 'Data-driven insights for better resource allocation and planning.' 
+    },
+  ];
+
   const navLinks = [
-    { label: t('features'), href: '#features', id: 'features' },
-    { label: t('howItWorks'), href: '#how-it-works', id: 'how-it-works' },
-    { label: t('roles'), href: '#roles', id: 'roles' },
-    { label: t('stats'), href: '#stats', id: 'stats' },
+    { label: 'Features', href: '#features', id: 'features' },
+    { label: 'How It Works', href: '#workflow', id: 'workflow' },
+    { label: 'Capabilities', href: '#capabilities', id: 'capabilities' },
   ];
 
   useEffect(() => {
@@ -135,7 +120,7 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
-    const sections = ['features', 'how-it-works', 'roles', 'stats', 'cta'];
+    const sections = ['features', 'workflow', 'capabilities', 'cta'];
     const observers = sections.map(id => {
       const el = document.getElementById(id);
       if (!el) return null;
@@ -157,12 +142,12 @@ export default function Landing() {
         <LandingBG />
       </div>
 
-      {/* ── Top Navbar ── */}
+      {/* ── Top Navbar - Fixed ── */}
       <header
-        className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
           scrolled
-            ? 'bg-[#0a0f1e]/90 backdrop-blur-xl border-b border-white/8 shadow-2xl shadow-black/40'
-            : 'bg-transparent border-b border-transparent'
+            ? 'bg-[#0a0f1e]/95 backdrop-blur-xl border-b border-white/8 shadow-2xl shadow-black/40'
+            : 'bg-[#0a0f1e]/70 backdrop-blur-md border-b border-white/5'
         }`}
       >
         {/* Subtle top gradient line */}
@@ -183,7 +168,7 @@ export default function Landing() {
                 Equi<span className="text-blue-400">mon</span>
               </span>
               <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-[0.18em] mt-0.5">
-                {t('labManagement')}
+                Lab Management
               </span>
             </div>
           </a>
@@ -211,7 +196,7 @@ export default function Landing() {
             <button
               onClick={toggleLang}
               className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-white px-3 py-2 rounded-lg border border-white/10 hover:border-white/20 transition-all"
-              title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+              title={lang === 'en' ? t('switchToIndonesian') : t('switchToEnglish')}
             >
               <Globe className="w-4 h-4" />
               <span className="text-xs font-bold">{lang.toUpperCase()}</span>
@@ -270,7 +255,7 @@ export default function Landing() {
               >
                 <Globe className="w-4 h-4" />
                 <span className="font-bold">{lang.toUpperCase()}</span>
-                <span className="text-xs opacity-70">({lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'})</span>
+                <span className="text-xs opacity-70">({lang === 'en' ? t('switchToIndonesian') : t('switchToEnglish')})</span>
               </button>
               
               <button
@@ -285,23 +270,19 @@ export default function Landing() {
       </header>
 
       {/* ── Hero Section ── */}
-      <section className="relative z-10 px-4 sm:px-6 lg:px-12 pt-24 pb-20 text-center max-w-5xl mx-auto">
+      <section className="relative z-10 px-4 sm:px-6 lg:px-12 pt-32 pb-20 text-center max-w-5xl mx-auto">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs sm:text-sm font-semibold px-4 py-2 rounded-full mb-8 border border-blue-500/20 backdrop-blur-sm">
           <Zap className="w-3.5 h-3.5" />
-          {t('labInventoryBorrowing')}
+          {t('landingTagline')}
         </div>
 
         {/* Headline */}
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight mb-6">
-          {t('manageLabGear')}
-          <br />
-          <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-            {t('withEquimon')}
-          </span>
+          {t('labInventoryBorrowing')}
         </h1>
 
-        <p className="text-slate-400 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+        <p className="text-slate-400 text-base sm:text-lg lg:text-xl max-w-3xl mx-auto mb-10 leading-relaxed">
           {t('modernPlatformDesc')}
         </p>
 
@@ -319,30 +300,38 @@ export default function Landing() {
             {t('exploreFeatures')}
           </a>
         </div>
-      </section>
 
-      {/* ── Stats Bar ── */}
-      <section id="stats" className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 mb-16">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-          {stats.map(({ value, label }) => (
-            <div key={label} className="bg-[#0d1526]/80 backdrop-blur-sm p-6 text-center">
-              <p className="text-3xl font-extrabold text-white mb-1">{value}</p>
-              <p className="text-slate-500 text-sm font-medium">{label}</p>
-            </div>
-          ))}
+        {/* Key Benefits */}
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+          <div className="bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 rounded-xl p-5">
+            <Database className="w-8 h-8 text-blue-400 mb-3" />
+            <h3 className="text-white font-bold mb-2">{t('featureCatalogTitle')}</h3>
+            <p className="text-slate-400 text-sm">{t('featureCatalogDesc')}</p>
+          </div>
+          <div className="bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 rounded-xl p-5">
+            <FileCheck className="w-8 h-8 text-indigo-400 mb-3" />
+            <h3 className="text-white font-bold mb-2">{t('featureApprovalTitle')}</h3>
+            <p className="text-slate-400 text-sm">{t('featureApprovalDesc')}</p>
+          </div>
+          <div className="bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 rounded-xl p-5">
+            <Shield className="w-8 h-8 text-cyan-400 mb-3" />
+            <h3 className="text-white font-bold mb-2">{t('featureStatusTitle')}</h3>
+            <p className="text-slate-400 text-sm">{t('featureStatusDesc')}</p>
+          </div>
         </div>
       </section>
 
       {/* ── Features Grid ── */}
-      <section id="features" className="relative z-10 px-4 sm:px-6 lg:px-12 py-16 max-w-7xl mx-auto">
+      <section id="features" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-12">
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('features')}</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
             {t('everythingYouNeedToRunLab')}{' '}
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
               {t('runTheLab')}
             </span>
           </h2>
-          <p className="text-slate-400 text-base max-w-xl mx-auto">
+          <p className="text-slate-400 text-base max-w-2xl mx-auto">
             {t('equimonCoversLifecycle')}
           </p>
         </div>
@@ -363,16 +352,14 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── How It Works ── */}
-      <section id="how-it-works" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
+      {/* ── How It Works / Workflow ── */}
+      <section id="workflow" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-14">
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('processLabel')}</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            {t('howItWorks')}{' '}
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Equimon</span>
-            {' '}{t('howEquimonWorks')}
+            {t('howEquimonWorks')}
           </h2>
-          <p className="text-slate-400 text-base max-w-xl mx-auto">
+          <p className="text-slate-400 text-base max-w-2xl mx-auto">
             {t('requestToReturn')}
           </p>
         </div>
@@ -382,7 +369,7 @@ export default function Landing() {
           <div className="hidden lg:block absolute top-10 left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {steps.map(({ icon: Icon, step, title, desc }) => (
+            {workflow.map(({ icon: Icon, step, title, desc }) => (
               <div key={step} className="relative bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 hover:border-blue-500/20 rounded-2xl p-6 transition-all group">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
@@ -398,45 +385,14 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Roles ── */}
-      <section id="roles" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
-        <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('whoItsFor')}</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            {t('builtForEvery')}{' '}
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">{t('stakeholder')}</span>
-          </h2>
-          <p className="text-slate-400 text-base max-w-xl mx-auto">
-            {t('equimonAdapts')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {roles.map(({ icon: Icon, role, color, border, iconColor, perks }) => (
-            <div key={role} className={`relative bg-gradient-to-b ${color} backdrop-blur-sm border ${border} rounded-2xl p-6 transition-all hover:-translate-y-1`}>
-              <div className={`w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-4`}>
-                <Icon className={`w-5 h-5 ${iconColor}`} />
-              </div>
-              <h3 className="font-extrabold text-white text-lg mb-4">{role}</h3>
-              <ul className="space-y-2">
-                {perks.map(p => (
-                  <li key={p} className="flex items-start gap-2 text-sm text-slate-400">
-                    <ChevronRight className={`w-4 h-4 mt-0.5 shrink-0 ${iconColor}`} />
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ── Equipment Categories ── */}
-      <section className="relative z-10 px-4 sm:px-6 lg:px-12 py-16 max-w-5xl mx-auto">
+      <section className="relative z-10 px-4 sm:px-6 lg:px-12 py-16 max-w-6xl mx-auto">
         <div className="text-center mb-10">
           <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('inventoryLabel')}</span>
           <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">{t('whatsInCatalog')}</h2>
-          <p className="text-slate-400 text-sm max-w-md mx-auto">{t('manageBroadRange')}</p>
+          <p className="text-slate-400 text-sm max-w-2xl mx-auto">
+            {t('manageBroadRange')}
+          </p>
         </div>
         <div className="flex flex-wrap justify-center gap-4">
           {equipmentCategories.map(({ icon: Icon, label }) => (
@@ -448,31 +404,29 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
+      {/* ── System Capabilities ── */}
+      <section id="capabilities" className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-7xl mx-auto">
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('testimonialsLabel')}</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">{t('lovedByLabUsers')}</h2>
-          <p className="text-slate-400 text-base max-w-xl mx-auto">{t('communityFeedback')}</p>
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-400 mb-3">{t('capabilities')}</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
+            {t('builtForEvery')}{' '}
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              {t('stakeholder')}
+            </span>
+          </h2>
+          <p className="text-slate-400 text-base max-w-2xl mx-auto">
+            {t('equimonAdapts')}
+          </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map(({ name, role, text }) => (
-            <div key={name} className="bg-[#0d1526]/60 backdrop-blur-sm border border-white/5 hover:border-blue-500/20 rounded-2xl p-6 transition-all hover:-translate-y-1">
-              <div className="flex gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-blue-400 text-blue-400" />
-                ))}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {capabilities.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="relative bg-gradient-to-b from-blue-500/10 to-transparent backdrop-blur-sm border border-blue-500/20 rounded-2xl p-6 transition-all hover:-translate-y-1 hover:border-blue-400/40">
+              <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
+                <Icon className="w-5 h-5 text-blue-400" />
               </div>
-              <p className="text-slate-300 text-sm leading-relaxed mb-6">"{text}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-black">
-                  {name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-white text-sm font-semibold">{name}</p>
-                  <p className="text-slate-500 text-xs">{role}</p>
-                </div>
-              </div>
+              <h3 className="font-extrabold text-white text-base mb-3">{title}</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
@@ -520,13 +474,10 @@ export default function Landing() {
           <div>
             <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('navigationLabel')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
-              {['#features', '#how-it-works', '#roles', '#stats', '#cta'].map(href => (
-                <li key={href}>
-                  <a href={href} className="hover:text-blue-400 transition-colors capitalize">
-                    {href.replace('#', '').replace(/-/g, ' ')}
-                  </a>
-                </li>
-              ))}
+              <li><a href="#features" className="hover:text-blue-400 transition-colors">{t('features')}</a></li>
+              <li><a href="#workflow" className="hover:text-blue-400 transition-colors">{t('howItWorks')}</a></li>
+              <li><a href="#capabilities" className="hover:text-blue-400 transition-colors">{t('capabilities')}</a></li>
+              <li><a href="#cta" className="hover:text-blue-400 transition-colors">{t('getStarted')}</a></li>
             </ul>
           </div>
 
