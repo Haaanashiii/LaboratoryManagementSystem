@@ -13,14 +13,14 @@ const {
   deleteBorrowRequest
 } = require('../controllers/borrowRequestController');
 const { protect, authorize } = require('../middleware/auth');
-const { borrowRequestValidation } = require('../middleware/validator');
+const { borrowRequestValidation, validate } = require('../middleware/validator');
 
 // All routes are protected
 router.use(protect);
 
 // Student routes
 router.get('/my-requests', authorize('student'), getMyRequests);
-router.post('/', authorize('student'), borrowRequestValidation, createBorrowRequest);
+router.post('/', authorize('student'), borrowRequestValidation, validate, createBorrowRequest);
 
 // General routes (all authenticated users can view based on role filtering in controller)
 router.get('/', getBorrowRequests);

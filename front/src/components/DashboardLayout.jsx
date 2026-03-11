@@ -80,7 +80,7 @@ const navigationConfig = {
 };
 
 const roleColors = {
-  student: 'bg-emerald-100 text-emerald-800',
+  student: 'bg-blue-100 text-blue-800',
   lecturer: 'bg-blue-100 text-blue-800',
   head_of_lab: 'bg-purple-100 text-purple-800',
   lab_assistant: 'bg-amber-100 text-amber-800',
@@ -168,14 +168,14 @@ export default function DashboardLayout() {
                 {/* Notification Bell */}
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="w-5 h-5 text-slate-600" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
                 </Button>
 
                 {/* User Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center gap-2 hover:bg-slate-100">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
                         {user?.name?.charAt(0).toUpperCase() || 'U'}
                       </div>
                       <span className="hidden md:inline text-sm font-medium text-slate-900">{user?.name}</span>
@@ -185,7 +185,7 @@ export default function DashboardLayout() {
                   <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-slate-50">
                       <div className="flex items-center gap-3 py-2 w-full">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
                           {user?.name?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -319,14 +319,14 @@ export default function DashboardLayout() {
             {/* Notification Bell */}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5 text-slate-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
             </Button>
 
             {/* User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 hover:bg-slate-100">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
                     {user?.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <span className="hidden md:inline text-sm font-medium text-slate-900">{user?.name}</span>
@@ -337,7 +337,7 @@ export default function DashboardLayout() {
                 {/* User Info Section - Clickable to navigate to profile */}
                 <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-slate-50">
                   <div className="flex items-center gap-3 py-2 w-full">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
                       {user?.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">

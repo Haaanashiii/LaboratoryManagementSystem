@@ -78,13 +78,13 @@ export default function TopNav({ user, onMenuClick, title }) {
 
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5 text-slate-600" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
                   {user?.full_name?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <span className="hidden md:inline text-sm font-medium">{user?.full_name}</span>
@@ -115,7 +115,7 @@ export default function TopNav({ user, onMenuClick, title }) {
           <div className="py-4 space-y-6">
             {/* User Info */}
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
                 {user?.full_name?.[0]?.toUpperCase() || 'U'}
               </div>
               <div>
@@ -148,7 +148,7 @@ export default function TopNav({ user, onMenuClick, title }) {
             <Button
               onClick={() => updateRoleMutation.mutate(selectedRole)}
               disabled={updateRoleMutation.isPending || selectedRole === user?.role}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-blue-600 hover:bg-blue-700"
             >
               {updateRoleMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('saving')}</>

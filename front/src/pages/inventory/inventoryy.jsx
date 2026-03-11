@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Pencil, Trash2, Package, Loader2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Package, Loader2, Upload, Link } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const categories = ['Electronics', 'Glassware', 'Measuring', 'Safety', 'Computing', 'Chemicals', 'Tools', 'Other'];
@@ -21,6 +21,10 @@ export default function Inventory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
+  const [imageMode, setImageMode] = useState('url'); // 'url' or 'file'
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -77,6 +81,9 @@ export default function Inventory() {
 
   const openAddDialog = () => {
     setEditingItem(null);
+    setImageMode('url');
+    setImageFile(null);
+    setImagePreview(null);
     setFormData({
       name: '',
       description: '',
@@ -93,6 +100,9 @@ export default function Inventory() {
 
   const openEditDialog = (item) => {
     setEditingItem(item);
+    setImageMode(item.image_url && !item.image_url.startsWith('/uploads') ? 'url' : 'url');
+    setImageFile(null);
+    setImagePreview(item.image_url || null);
     setFormData({
       name: item.name,
       description: item.description || '',
@@ -110,13 +120,40 @@ export default function Inventory() {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setEditingItem(null);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
-  const handleSubmit = () => {
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      setFormData({ ...formData, image_url: '' });
+    }
+  };
+
+  const handleSubmit = async () => {
+    let submitData = { ...formData };
+
+    // If a file was selected, upload it first
+    if (imageFile) {
+      try {
+        setUploading(true);
+        const uploadedUrl = await api.entities.Equipment.uploadImage(imageFile);
+        submitData.image_url = uploadedUrl;
+      } catch (err) {
+        console.error('Image upload failed:', err);
+        setUploading(false);
+        return;
+      }
+      setUploading(false);
+    }
+
     if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, data: formData });
+      updateMutation.mutate({ id: editingItem.id, data: submitData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(submitData);
     }
   };
 
@@ -136,7 +173,7 @@ export default function Inventory() {
           />
         </div>
         {canEdit && (
-          <Button onClick={openAddDialog} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={openAddDialog} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
             Add Equipment
           </Button>
@@ -148,7 +185,7 @@ export default function Inventory() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -190,13 +227,13 @@ export default function Inventory() {
                       <TableCell className="text-slate-600">{item.location || '-'}</TableCell>
                       <TableCell className="text-center font-medium">{item.total_quantity}</TableCell>
                       <TableCell className="text-center">
-                        <span className={item.available_quantity > 0 ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>
+                        <span className={item.available_quantity > 0 ? 'text-blue-600 font-medium' : 'text-red-600 font-medium'}>
                           {item.available_quantity}
                         </span>
                       </TableCell>
                       <TableCell>
                         <Badge className={
-                          item.condition === 'Excellent' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                          item.condition === 'Excellent' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                           item.condition === 'Good' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                           item.condition === 'Fair' ? 'bg-amber-100 text-amber-800 border-amber-200' :
                           'bg-red-100 text-red-800 border-red-200'
@@ -312,12 +349,72 @@ export default function Inventory() {
             </div>
 
             <div className="space-y-2">
-              <Label>Image URL</Label>
-              <Input
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                placeholder="https://..."
-              />
+              <Label>Image</Label>
+              <div className="flex gap-2 mb-2">
+                <Button
+                  type="button"
+                  variant={imageMode === 'url' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => { setImageMode('url'); setImageFile(null); }}
+                  className={imageMode === 'url' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                >
+                  <Link className="w-3 h-3 mr-1" /> URL
+                </Button>
+                <Button
+                  type="button"
+                  variant={imageMode === 'file' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => { setImageMode('file'); setFormData({ ...formData, image_url: '' }); }}
+                  className={imageMode === 'file' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                >
+                  <Upload className="w-3 h-3 mr-1" /> Upload File
+                </Button>
+              </div>
+
+              {imageMode === 'url' ? (
+                <Input
+                  value={formData.image_url}
+                  onChange={(e) => { setFormData({ ...formData, image_url: e.target.value }); setImagePreview(e.target.value); }}
+                  placeholder="https://..."
+                />
+              ) : (
+                <div>
+                  <label className="relative flex items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors overflow-hidden">
+                    {uploading ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                        <span className="text-sm text-slate-500">Uploading...</span>
+                      </div>
+                    ) : imagePreview ? (
+                      <div className="relative w-full h-full">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full h-full object-contain rounded-lg"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-all">
+                          <span className="text-white text-sm font-medium">Change image</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="w-6 h-6 mx-auto text-slate-400" />
+                        <span className="text-sm text-slate-500 mt-1 block">Click to select image</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                  {imageFile && (
+                    <p className="text-xs text-slate-400 mt-1 truncate">{imageFile.name}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -325,10 +422,12 @@ export default function Inventory() {
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
             <Button 
               onClick={handleSubmit}
-              disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={!formData.name || createMutation.isPending || updateMutation.isPending || uploading}
+              className="bg-blue-600 hover:bg-blue-700"
             >
-              {(createMutation.isPending || updateMutation.isPending) ? (
+              {uploading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
+              ) : (createMutation.isPending || updateMutation.isPending) ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
               ) : (
                 editingItem ? 'Update' : 'Add Equipment'

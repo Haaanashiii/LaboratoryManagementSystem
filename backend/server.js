@@ -28,6 +28,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
 
+// Serve uploaded files
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 

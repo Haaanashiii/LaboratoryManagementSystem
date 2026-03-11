@@ -160,7 +160,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
         {!collapsed && (
           <div className="p-4 border-t border-slate-200">
             <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50/50">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
                 {user?.full_name?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
@@ -173,7 +173,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
 
         {collapsed && (
           <div className="p-4 border-t border-slate-200 flex justify-center">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
               {user?.full_name?.[0]?.toUpperCase() || 'U'}
             </div>
           </div>

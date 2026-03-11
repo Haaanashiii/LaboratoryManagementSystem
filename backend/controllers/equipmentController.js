@@ -1,4 +1,6 @@
 const Equipment = require('../models/Equipment');
+const path = require('path');
+const fs = require('fs');
 
 // @desc    Get all equipment
 // @route   GET /api/equipment
@@ -165,6 +167,30 @@ exports.updateQuantity = async (req, res, next) => {
     res.json({
       success: true,
       data: equipment
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Upload equipment image
+// @route   POST /api/equipment/upload-image
+// @access  Private (Admin, Head of Lab)
+exports.uploadImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please upload a file'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        filename: req.file.filename,
+        path: `/uploads/${req.file.filename}`
+      }
     });
   } catch (error) {
     next(error);

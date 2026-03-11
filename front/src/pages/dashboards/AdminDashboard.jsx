@@ -59,7 +59,7 @@ export default function AdminDashboard() {
       name: t('totalEquipment'), 
       value: totalEquipment, 
       icon: Package,
-      color: 'bg-emerald-50 text-emerald-600',
+Hey, Cortana.       color: 'bg-blue-50 text-blue-600',
       action: () => navigate('/inventory')
     },
     { 

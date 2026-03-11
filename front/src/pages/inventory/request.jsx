@@ -38,7 +38,7 @@ export default function MyRequests() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -71,8 +71,8 @@ export default function MyRequests() {
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                      <Package className="w-6 h-6 text-emerald-600" />
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <Package className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-900">{request.equipment_name}</h3>
@@ -94,7 +94,7 @@ export default function MyRequests() {
                     <div className="flex items-center justify-between relative">
                       <div className="absolute top-3 left-0 right-0 h-0.5 bg-slate-200">
                         <div 
-                          className="h-full bg-emerald-500 transition-all"
+                          className="h-full bg-blue-500 transition-all"
                           style={{ width: `${(getStatusStep(request.status) / 6) * 100}%` }}
                         />
                       </div>
@@ -102,7 +102,7 @@ export default function MyRequests() {
                         <div key={step} className="relative z-10 flex flex-col items-center">
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                             getStatusStep(request.status) > i 
-                              ? 'bg-emerald-500 text-white' 
+                              ? 'bg-blue-500 text-white' 
                               : 'bg-slate-200 text-slate-400'
                           }`}>
                             {i + 1}

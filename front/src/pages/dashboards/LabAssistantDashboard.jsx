@@ -59,7 +59,7 @@ export default function LabAssistantDashboard() {
       name: t('currentlyBorrowed'), 
       value: borrowed.length, 
       icon: Clock,
-      color: 'bg-emerald-50 text-emerald-600',
+      color: 'bg-blue-50 text-blue-600',
       action: () => navigate('/returns')
     },
     { 

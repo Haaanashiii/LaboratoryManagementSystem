@@ -126,7 +126,7 @@ export default function ProfilePage() {
 
             {/* Avatar */}
             <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div>
@@ -135,7 +135,7 @@ export default function ProfilePage() {
                   {user?.role?.replace(/_/g, ' ') || 'Student'}
                 </span>
               </div>
-            </div>
+            </div>Tapas. Push. It up. 
 
             <form onSubmit={handleProfileUpdate} className="space-y-4">
               <div className="space-y-1.5">
@@ -173,7 +173,7 @@ export default function ProfilePage() {
               </div>
 
               {profileSuccess && (
-                <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg text-sm">
+                <div className="flex items-center gap-2 text-blue-700 bg-blue-50 border border-blue-100 px-3 py-2 rounded-lg text-sm">
                   <CheckCircle className="w-4 h-4 shrink-0" />
                   {t('profileUpdatedSuccess') || 'Profile updated successfully.'}
                 </div>
@@ -273,7 +273,7 @@ export default function ProfilePage() {
               )}
 
               {passwordSuccess && (
-                <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg text-sm">
+                <div className="flex items-center gap-2 text-blue-700 bg-blue-50 border border-blue-100 px-3 py-2 rounded-lg text-sm">
                   <CheckCircle className="w-4 h-4 shrink-0" />
                   {t('passwordChangedSuccess') || 'Password changed successfully.'}
                 </div>

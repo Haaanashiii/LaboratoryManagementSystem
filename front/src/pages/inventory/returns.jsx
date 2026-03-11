@@ -61,7 +61,7 @@ export default function Returns() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -92,9 +92,9 @@ export default function Returns() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      overdue ? 'bg-red-100' : 'bg-emerald-100'
+                      overdue ? 'bg-red-100' : 'bg-blue-100'
                     }`}>
-                      <Package className={`w-5 h-5 ${overdue ? 'text-red-600' : 'text-emerald-600'}`} />
+                      <Package className={`w-5 h-5 ${overdue ? 'text-red-600' : 'text-blue-600'}`} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function Returns() {
                 <SelectContent>
                   <SelectItem value="Good">
                     <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                       Good
                     </span>
                   </SelectItem>
@@ -201,7 +201,7 @@ export default function Returns() {
             <Button 
               onClick={handleReturn}
               disabled={updateMutation.isPending || (returnCondition !== 'Good' && !returnRemarks)}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-blue-600 hover:bg-blue-700"
             >
               {updateMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>

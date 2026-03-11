@@ -26,8 +26,8 @@ export default function Settings() {
     },
     {
       icon: Bell,
-      iconBg: 'bg-emerald-50',
-      iconColor: 'text-emerald-600',
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
       label: t('notifications') || 'Notifications',
       description: t('notificationsDescription') || 'Control how you receive notifications.',
     },

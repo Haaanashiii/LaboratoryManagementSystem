@@ -16,7 +16,7 @@ const roles = [
   { value: 'lecturer', label: 'Lecturer', color: 'bg-blue-100 text-blue-800' },
   { value: 'head_of_lab', label: 'Head of Lab', color: 'bg-purple-100 text-purple-800' },
   { value: 'lab_assistant', label: 'Lab Assistant', color: 'bg-amber-100 text-amber-800' },
-  { value: 'student', label: 'Student', color: 'bg-emerald-100 text-emerald-800' }
+  { value: 'student', label: 'Student', color: 'bg-blue-100 text-blue-800' }
 ];
 
 export default function Users() {
@@ -92,7 +92,7 @@ export default function Users() {
             className="pl-10 h-11 bg-white"
           />
         </div>
-        <Button onClick={() => setIsInviteOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button onClick={() => setIsInviteOpen(true)} className="bg-blue-600 hover:bg-blue-700">
           <UserPlus className="w-4 h-4 mr-2" />
           Invite User
         </Button>
@@ -103,7 +103,7 @@ export default function Users() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -124,7 +124,7 @@ export default function Users() {
                       <TableRow key={user.id} className="hover:bg-slate-50/50">
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
                               {user.full_name?.[0]?.toUpperCase() || 'U'}
                             </div>
                             <span className="font-medium text-slate-900">{user.full_name}</span>
@@ -192,7 +192,7 @@ export default function Users() {
             <Button 
               onClick={handleInvite}
               disabled={!inviteEmail || inviteMutation.isPending}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-blue-600 hover:bg-blue-700"
             >
               {inviteMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
@@ -213,7 +213,7 @@ export default function Users() {
           
           <div className="py-4">
             <div className="flex items-center gap-3 mb-6 p-3 bg-slate-50 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
                 {editingUser?.full_name?.[0]?.toUpperCase() || 'U'}
               </div>
               <div>
@@ -244,7 +244,7 @@ export default function Users() {
             <Button 
               onClick={handleUpdateRole}
               disabled={updateMutation.isPending}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-blue-600 hover:bg-blue-700"
             >
               {updateMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...</>

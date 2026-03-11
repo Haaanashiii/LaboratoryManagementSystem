@@ -485,10 +485,10 @@ export default function Landing() {
           <div>
             <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('systemLabel')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('roleBasedAuth')}</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('auditTrailHistory')}</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('multiStepApprovals')}</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> {t('realTimeStatusTracking')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('roleBasedAuth')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('auditTrailHistory')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('multiStepApprovals')}</li>
+              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('realTimeStatusTracking')}</li>
             </ul>
           </div>
         </div>

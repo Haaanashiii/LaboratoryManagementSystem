@@ -79,14 +79,18 @@ export default function LoginPage() {
         }
       } else {
         // Handle sign up logic
-        console.log('Sign up:', { 
-          name: formData.name, 
-          email: formData.email, 
-          password: formData.password 
-        });
-        // For now, just switch to login mode after signup
-        setIsLogin(true);
-        setErrors({});
+        try {
+          const user = await api.auth.register({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+          });
+          console.log('Registration successful:', user);
+          navigate('/dashboard');
+        } catch (error) {
+          console.error('Registration failed:', error);
+          setErrors({ email: error.message || 'Registration failed' });
+        }
       }
     }
   };
@@ -135,35 +139,35 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, email: 'student@its.ac.id', password: 'test' })}
+                  onClick={() => setFormData({ ...formData, email: 'student@its.ac.id', password: 'Student123!' })}
                   className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
                 >
                   {t('student')}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, email: 'lecturer@its.ac.id', password: 'test' })}
+                  onClick={() => setFormData({ ...formData, email: 'lecturer@its.ac.id', password: 'Lecturer123!' })}
                   className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
                 >
                   {t('lecturer')}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, email: 'head@its.ac.id', password: 'test' })}
+                  onClick={() => setFormData({ ...formData, email: 'head@its.ac.id', password: 'Head123!' })}
                   className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
                 >
                   {t('headoflab')}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, email: 'assistant@its.ac.id', password: 'test' })}
+                  onClick={() => setFormData({ ...formData, email: 'assistant@its.ac.id', password: 'Assistant123!' })}
                   className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
                 >
                   {t('labassistant')}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, email: 'admin@its.ac.id', password: 'test' })}
+                  onClick={() => setFormData({ ...formData, email: 'admin@its.ac.id', password: 'Admin123!' })}
                   className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200 col-span-2"
                 >
                   {t('admin')}

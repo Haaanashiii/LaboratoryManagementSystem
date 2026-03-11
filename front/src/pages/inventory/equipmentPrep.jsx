@@ -48,7 +48,7 @@ export default function EquipmentPrep() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -155,7 +155,7 @@ export default function EquipmentPrep() {
                       <Button 
                         onClick={() => handleConfirmPickup(request)}
                         disabled={updateMutation.isPending}
-                        className="bg-emerald-600 hover:bg-emerald-700"
+                        className="bg-blue-600 hover:bg-blue-700"
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Confirm Pickup
