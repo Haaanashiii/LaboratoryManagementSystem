@@ -8,11 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckSquare, Clock, CheckCircle, History, AlertCircle, Package, ArrowRight } from 'lucide-react';
 import { EquipmentStatsChart } from '@/components/layouts/Charts';
-<<<<<<< HEAD
 import { useLang } from '@/components/i18n/LangContext';
-=======
 import StatusBadge from '@/components/ui/StatusBadge';
->>>>>>> e8975475614e32cc988ae12cc76aaf9e03285a04
 
 export default function LecturerDashboard() {
   const navigate = useNavigate();
@@ -58,34 +55,34 @@ export default function LecturerDashboard() {
   };
 
   const stats = [
-<<<<<<< HEAD
     { 
       name: t('pendingApprovals'), 
       value: pendingApprovals.length, 
       icon: Clock,
-      color: 'bg-amber-50 text-amber-600',
+      sub: `${recentRequests.filter(r => r.status === 'pending_lecturer').length} new this week`,
       action: () => navigate('/lecturer-approvals')
     },
     { 
       name: t('approvedByMe'), 
       value: approvedByMe.length, 
       icon: CheckCircle,
-      color: 'bg-emerald-50 text-emerald-600',
+      sub: `${Math.round((approvedByMe.length / totalRequests) * 100) || 0}% approval rate`,
       action: () => navigate('/approval-history')
     },
     { 
       name: t('totalRequests'), 
       value: totalRequests, 
       icon: CheckSquare,
-      color: 'bg-blue-50 text-blue-600',
+      sub: `${recentRequests.length} in last 7 days`,
       action: () => navigate('/all-approval-history')
     },
-=======
-    { name: 'Pending Approvals', value: pendingApprovals.length, icon: Clock, sub: `${recentRequests.filter(r => r.status === 'pending_lecturer').length} new this week`, action: () => navigate('/lecturer-approvals') },
-    { name: 'Approved by Me', value: approvedByMe.length, icon: CheckCircle, sub: `${Math.round((approvedByMe.length / totalRequests) * 100) || 0}% approval rate`, action: () => navigate('/approval-history') },
-    { name: 'Total Requests', value: totalRequests, icon: CheckSquare, sub: `${recentRequests.length} in last 7 days`, action: () => navigate('/all-approval-history') },
-    { name: 'Rejected', value: rejectedByMe.length, icon: AlertCircle, sub: `${Math.round((rejectedByMe.length / totalRequests) * 100) || 0}% rejection rate`, action: () => navigate('/all-approval-history') },
->>>>>>> e8975475614e32cc988ae12cc76aaf9e03285a04
+    { 
+      name: t('rejected'), 
+      value: rejectedByMe.length, 
+      icon: AlertCircle,
+      sub: `${Math.round((rejectedByMe.length / totalRequests) * 100) || 0}% rejection rate`,
+      action: () => navigate('/all-approval-history')
+    },
   ];
 
   return (
@@ -93,15 +90,10 @@ export default function LecturerDashboard() {
 
       {/* Header */}
       <div>
-<<<<<<< HEAD
         <h1 className="text-3xl font-bold text-slate-900">
           {getTimeGreeting()}, {user?.full_name || 'User'}
         </h1>
         <p className="mt-2 text-slate-600">{t('lecturerDailyReport')}</p>
-=======
-        <h1 className="text-2xl font-semibold text-slate-900">Welcome back, {user?.name}.</h1>
-        <p className="mt-0.5 text-sm text-slate-500">Review and approve student equipment borrowing requests.</p>
->>>>>>> e8975475614e32cc988ae12cc76aaf9e03285a04
       </div>
 
       <hr className="border-slate-200" />

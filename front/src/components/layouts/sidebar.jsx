@@ -1,22 +1,10 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ClipboardList, 
-  Users, 
-  BarChart3, 
-=======
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Menu as AntMenu, ConfigProvider, Tooltip } from 'antd';
 import {
   Package,
   ClipboardList,
   Users,
   BarChart3,
->>>>>>> e8975475614e32cc988ae12cc76aaf9e03285a04
   CheckSquare,
   Settings,
   FlaskConical,
@@ -24,12 +12,10 @@ import {
   Home,
   History,
   CheckCircle,
-<<<<<<< HEAD
   Calendar,
   Clock
-=======
->>>>>>> e8975475614e32cc988ae12cc76aaf9e03285a04
 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 import { useLang } from '@/components/i18n/LangContext';
 
 const menuConfig = {
@@ -72,8 +58,7 @@ const menuConfig = {
   ],
 };
 
-export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed }) {
-  const navigate = useNavigate();
+export default function Sidebar({ user, currentPage, isOpen, onClose }) {
   const userRole = user?.role || 'student';
   const menu = menuConfig[userRole] || menuConfig.student;
   const { t, lang } = useLang();
@@ -99,12 +84,6 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
     return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
-  const items = menu.map((item) => ({
-    key: item.href,
-    icon: <item.icon size={17} />,
-    label: t(item.label),
-  }));
-
   return (
     <>
       {/* Mobile overlay */}
@@ -118,104 +97,73 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          h-screen bg-white border-r border-slate-200
-          transform transition-all duration-300 ease-in-out
+          w-72 h-screen bg-white border-r border-slate-200
+          transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          ${collapsed ? 'w-[72px]' : 'w-64'}
-          flex flex-col overflow-hidden
-          font-poppins
+          flex flex-col shadow-sm overflow-hidden
         `}
-        style={{ fontFamily: 'Poppins, sans-serif' }}
       >
         {/* Header */}
-        <div className={`flex items-center border-b border-slate-200 h-16 shrink-0 ${collapsed ? 'justify-center px-3' : 'justify-between px-5'}`}>
-          {collapsed ? (
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
-              <FlaskConical className="w-5 h-5 text-white" />
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
-                  <FlaskConical className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="font-bold text-base text-slate-900 leading-tight">EquiMon</h1>
-                  <p className="text-xs text-slate-500">{t('appSubtitle')}</p>
-                </div>
+        <div className="p-6 border-b border-slate-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                <FlaskConical className="w-6 h-6 text-white" />
               </div>
-              <button
-                className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                onClick={onClose}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </>
-          )}
+              <div>
+                <h1 className="font-bold text-lg text-slate-900">LabEquip</h1>
+                <p className="text-xs text-slate-500">{t('appSubtitle')}</p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="lg:hidden text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              onClick={onClose}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 pt-2">
-          <ConfigProvider
-            theme={{
-              components: {
-                Menu: {
-                  itemBg: 'transparent',
-                  itemColor: '#475569',
-                  itemHoverBg: '#f1f5f9',
-                  itemHoverColor: '#0f172a',
-                  itemSelectedBg: '#eff6ff',
-                  itemSelectedColor: '#2563eb',
-                  itemActiveBg: '#eff6ff',
-                  iconSize: 17,
-                  collapsedWidth: 72,
-                  itemPaddingInline: 0,
-                },
-              },
-              token: {
-                borderRadius: 8,
-                colorPrimary: '#2563eb',
-                fontFamily: "'Poppins', sans-serif",
-              },
-            }}
-          >
-            <AntMenu
-              mode="inline"
-              selectedKeys={[currentPage]}
-              inlineCollapsed={collapsed}
-              items={items}
-              style={{ border: 'none', background: 'transparent', width: collapsed ? 72 : 256 }}
-              onClick={({ key }) => {
-                navigate(key);
-                onClose();
-              }}
-            />
-          </ConfigProvider>
-        </div>
+        <nav className="p-4 space-y-1">
+          {menu.map((item) => {
+            const isActive = currentPage === item.href;
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={onClose}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                  ${isActive 
+                    ? 'bg-blue-50 text-blue-600 font-medium' 
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                  }
+                `}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{t(item.label)}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Spacer to push user info to bottom */}
+        <div className="flex-1"></div>
 
         {/* User Info */}
-        <div className="shrink-0 border-t border-slate-200">
-          {collapsed ? (
-            <div className="flex justify-center py-3">
-              <Tooltip title={user?.full_name || 'User'} placement="right">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm cursor-default">
-                  {user?.full_name?.[0]?.toUpperCase() || 'U'}
-                </div>
-              </Tooltip>
+        <div className="p-4 border-t border-slate-200">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50/50">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
+              {user?.full_name?.[0]?.toUpperCase() || 'U'}
             </div>
-          ) : (
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-50">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
-                  {user?.full_name?.[0]?.toUpperCase() || 'U'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-slate-900 truncate">{user?.full_name || 'User'}</p>
-                  <p className="text-xs text-slate-500 capitalize">{t(userRole.replace('_', ''))}</p>
-                </div>
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm text-slate-900 truncate">{user?.full_name || 'User'}</p>
+              <p className="text-xs text-slate-500 capitalize">{t(userRole.replace('_', ''))}</p>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Date and Time */}
