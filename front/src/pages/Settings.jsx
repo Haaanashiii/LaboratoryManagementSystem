@@ -2,10 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
-import { Settings as SettingsIcon, Bell, Lock, Database, Globe, Edit, User, ChevronRight } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Lock, Database, Globe, Edit, ChevronRight } from 'lucide-react';
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
-import ReflectiveCard from '@/components/ui/ReflectiveCard';
+import ProfileCard from '@/components/ui/ProfileCard';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -84,39 +84,12 @@ export default function Settings() {
           </div>
 
           <div className="flex justify-center">
-            <ReflectiveCard
-              overlayColor="rgba(15, 23, 42, 0.3)"
-              blurStrength={12}
-              glassDistortion={30}
-              metalness={1}
-              roughness={0.75}
-              displacementStrength={20}
-              noiseScale={1}
-              specularConstant={5}
-              grayscale={0.15}
-              color="#ffffff"
-              userName={user?.name || 'User'}
-              userRole={user?.role || 'Student'}
-              userId={user?.id || '0000-0000-0000'}
-              userAvatar={user?.avatar || null}
-              style={{ width: '100%', maxWidth: '280px' }}
+            <ProfileCard
+              name={user?.name || 'User'}
+              role={user?.role?.replace(/_/g, ' ') || 'Student'}
+              avatar={user?.name?.[0]?.toUpperCase() || 'U'}
+              showBadge={true}
             />
-          </div>
-
-          {/* User info below card */}
-          <div className="pt-1 border-t border-slate-100 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <User className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-sm text-slate-700 font-medium">{user?.name || '—'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 ml-5">{user?.email || '—'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 capitalize ml-5">
-                {user?.role?.replace(/_/g, ' ') || 'Student'}
-              </span>
-            </div>
           </div>
         </div>
 
