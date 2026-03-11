@@ -268,7 +268,7 @@ export default function DashboardLayout() {
               <FlaskConical className="w-5 h-5 text-white" />
             </div>
             <div className="hidden sm:block">
-              <span className="text-lg font-bold text-slate-900">LabEquip</span>
+              <span className="text-lg font-bold text-slate-900">Equimon</span>
               <p className="text-xs text-slate-500 leading-none">{t('appSubtitle')}</p>
             </div>
           </div>

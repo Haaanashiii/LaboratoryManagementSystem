@@ -112,7 +112,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
               </div>
               {!collapsed && (
                 <div>
-                  <h1 className="font-bold text-lg text-slate-900">LabEquip</h1>
+                  <h1 className="font-bold text-lg text-slate-900">EquiMon</h1>
                   <p className="text-xs text-slate-500">{t('appSubtitle')}</p>
                 </div>
               )}

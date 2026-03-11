@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Lock, Save, Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { User, Lock, Save, Loader2, Eye, EyeOff, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 
 export default function ProfilePage() {
   const { t } = useLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -108,8 +110,18 @@ export default function ProfilePage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{t('myProfile') || 'My Profile'}</h1>
-        <p className="mt-0.5 text-sm text-slate-500">{t('profileSubtitle') || 'Manage your personal information and account security.'}</p>
+        <div className="flex items-center gap-3 mb-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-500 hover:text-slate-900"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('myProfile') || 'My Profile'}</h1>
+        </div>
+        <p className="mt-0.5 text-sm text-slate-500 pl-11">{t('profileSubtitle') || 'Manage your personal information and account security.'}</p>
       </div>
 
       <hr className="border-slate-200" />
