@@ -6,7 +6,7 @@ import LecturerDashboard from './dashboards/LecturerDashboard';
 import HeadDashboard from './dashboards/HeadDashboard';
 import LabAssistantDashboard from './dashboards/LabAssistantDashboard';
 import AdminDashboard from './dashboards/AdminDashboard';
-import { Loader2 } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 
 export default function Dashboard() {
   const { data: user, isLoading } = useQuery({
@@ -16,8 +16,8 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center h-64 relative">
+        <BanterLoader />
       </div>
     );
   }

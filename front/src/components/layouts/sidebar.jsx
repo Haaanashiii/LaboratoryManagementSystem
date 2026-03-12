@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useLang } from '@/components/i18n/LangContext';
+import equimonLogo from '@/assets/images/Equimon Logo.png';
 
 const menuConfig = {
   admin: [
@@ -107,8 +108,8 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
         <div className="p-6 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <FlaskConical className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0">
+                <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
               </div>
               {!collapsed && (
                 <div>
@@ -161,10 +162,10 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
           <div className="p-4 border-t border-slate-200">
             <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50/50">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
-                {user?.full_name?.[0]?.toUpperCase() || 'U'}
+                {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-slate-900 truncate">{user?.full_name || 'User'}</p>
+                <p className="font-medium text-sm text-slate-900 truncate">{user?.name || 'User'}</p>
                 <p className="text-xs text-slate-500 capitalize">{t(userRole.replace('_', ''))}</p>
               </div>
             </div>
@@ -174,7 +175,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
         {collapsed && (
           <div className="p-4 border-t border-slate-200 flex justify-center">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
-              {user?.full_name?.[0]?.toUpperCase() || 'U'}
+              {user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
           </div>
         )}

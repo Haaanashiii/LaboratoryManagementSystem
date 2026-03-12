@@ -85,9 +85,9 @@ export default function TopNav({ user, onMenuClick, title }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
-                  {user?.full_name?.[0]?.toUpperCase() || 'U'}
+We put on the Ponti boy. Hello. Hello. Cortana, what's up? Hey, Cortana. No. Hey, Cortana. Hey, Cortana. Hey, Cortana. Sorry. Hey, Cortana. Hey, Cortana. Telo. Hey, Cortana. Hey, Cortana. Hey, Cortana. Play. Hey, Cortana. Hey, Cortana. Hey, Cortana play. Binah. £10 by. Hey, Cortana, Philippine time. I can.                   {user?.name?.[0]?.toUpperCase() || 'U'}
                 </div>
-                <span className="hidden md:inline text-sm font-medium">{user?.full_name}</span>
+                <span className="hidden md:inline text-sm font-medium">{user?.name}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
 import LandingBG from '@/components/layouts/LandingBG';
+import equimonLogo from '@/assets/images/Equimon Logo.png';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -121,8 +122,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Logo and Title */}
           <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-slate-900 mb-4">
-              <FlaskConical className="w-7 h-7 text-white" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-xl mb-4">
+              <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
               {isLogin ? t('signIn') : t('signUp')}
@@ -344,8 +345,8 @@ export default function LoginPage() {
         <div className="relative z-10 max-w-md text-center">
           {/* Large Logo */}
           <div className="mb-8 flex items-center justify-center">
-            <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-600/50">
-              <FlaskConical className="w-16 h-16 text-white" />
+            <div className="w-40 h-40 rounded-3xl flex items-center justify-center">
+              <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
             </div>
           </div>
 
@@ -353,29 +354,9 @@ export default function LoginPage() {
           <h2 className="text-4xl font-bold text-white mb-4">
             {t('welcomeToEquimon')}
           </h2>
-          <p className="text-slate-300 text-lg mb-8">
+          <p className="text-slate-300 text-lg">
             {t('equimonHelps')}
           </p>
-
-          {/* Card */}
-          <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
-            <h3 className="text-2xl font-bold text-white mb-3">
-              {t('joinEquimon')}
-            </h3>
-            <p className="text-slate-300 mb-6">
-              {t('moreThanUsers')}
-            </p>
-            
-            {/* Avatar Stack */}
-            <div className="flex items-center justify-center gap-2">
-              <div className="flex -space-x-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white shadow-lg"></div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 border-2 border-white shadow-lg"></div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white shadow-lg"></div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 border-2 border-white shadow-lg"></div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

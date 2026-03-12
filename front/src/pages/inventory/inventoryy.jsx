@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Pencil, Trash2, Package, Loader2, Upload, Link } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Package, Upload, Link } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const categories = ['Electronics', 'Glassware', 'Measuring', 'Safety', 'Computing', 'Chemicals', 'Tools', 'Other'];
@@ -44,7 +45,7 @@ export default function Inventory() {
     queryFn: () => api.auth.me(),
   });
 
-  const { data: equipment = [], isLoading } = useQuery({
+  const { data: equipment = [], isLoading, isError, error } = useQuery({
     queryKey: ['equipment'],
     queryFn: () => api.entities.Equipment.list(),
   });
@@ -184,8 +185,20 @@ export default function Inventory() {
       <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <div className="flex items-center justify-center py-20 relative">
+              <BanterLoader />
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+                  <Package className="w-6 h-6 text-red-500" />
+                </div>
+                <p className="text-sm font-medium text-slate-900">Unable to load equipment</p>
+                <p className="text-xs text-slate-500 max-w-sm">
+                  {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">

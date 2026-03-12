@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Filter, Loader2, Package } from 'lucide-react';
+import { Search, Filter, Package } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 import { format, addDays } from 'date-fns';
 
 export default function Catalog() {
@@ -29,7 +30,7 @@ export default function Catalog() {
     queryFn: () => api.auth.me(),
   });
 
-  const { data: equipment = [], isLoading } = useQuery({
+  const { data: equipment = [], isLoading, isError, error } = useQuery({
     queryKey: ['equipment'],
     queryFn: () => api.entities.Equipment.list(),
   });
@@ -62,7 +63,7 @@ export default function Catalog() {
       equipment_id: selectedEquipment.id,
       equipment_name: selectedEquipment.name,
       borrower_email: user?.email,
-      borrower_name: user?.full_name,
+      borrower_name: user?.name,
       ...borrowForm
     });
   };
@@ -105,8 +106,20 @@ export default function Catalog() {
 
       {/* Equipment Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        <div className="flex items-center justify-center py-20 relative">
+          <BanterLoader />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <Package className="w-6 h-6 text-red-500" />
+            </div>
+            <p className="text-sm font-medium text-slate-900">Unable to load equipment</p>
+            <p className="text-xs text-slate-500 max-w-sm">
+              {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+            </p>
+          </div>
         </div>
       ) : filteredEquipment.length === 0 ? (
         <div className="text-center py-20">

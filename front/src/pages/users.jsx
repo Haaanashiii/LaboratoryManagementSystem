@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil, Loader2 } from 'lucide-react';
+import { Search, UserPlus, Pencil } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 
 const roles = [
   { value: 'admin', label: 'Admin', color: 'bg-red-100 text-red-800' },
@@ -29,7 +30,7 @@ export default function Users() {
 
   const queryClient = useQueryClient();
 
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading, isError, error } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.entities.User.list(),
   });
@@ -55,7 +56,7 @@ export default function Users() {
   });
 
   const filteredUsers = users.filter(user =>
-    user.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    user.name?.toLowerCase().includes(search.toLowerCase()) ||
     user.email?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -102,8 +103,20 @@ export default function Users() {
       <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <div className="flex items-center justify-center py-20 relative">
+              <BanterLoader />
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+                  <UserPlus className="w-6 h-6 text-red-500" />
+                </div>
+                <p className="text-sm font-medium text-slate-900">Unable to load users</p>
+                <p className="text-xs text-slate-500 max-w-sm">
+                  {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -125,9 +138,9 @@ export default function Users() {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
-                              {user.full_name?.[0]?.toUpperCase() || 'U'}
+                              {user.name?.[0]?.toUpperCase() || 'U'}
                             </div>
-                            <span className="font-medium text-slate-900">{user.full_name}</span>
+                            <span className="font-medium text-slate-900">{user.name}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-slate-600">{user.email}</TableCell>
@@ -214,10 +227,10 @@ export default function Users() {
           <div className="py-4">
             <div className="flex items-center gap-3 mb-6 p-3 bg-slate-50 rounded-lg">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
-                {editingUser?.full_name?.[0]?.toUpperCase() || 'U'}
+                {editingUser?.name?.[0]?.toUpperCase() || 'U'}
               </div>
               <div>
-                <p className="font-medium">{editingUser?.full_name}</p>
+                <p className="font-medium">{editingUser?.name}</p>
                 <p className="text-sm text-slate-500">{editingUser?.email}</p>
               </div>
             </div>

@@ -53,7 +53,7 @@ export default function StudentDashboard() {
     });
   };
 
-  const initials = (user?.full_name || 'U')
+  const initials = (user?.name || 'U')
     .split(' ')
     .map(w => w[0])
     .slice(0, 2)
@@ -133,7 +133,7 @@ export default function StudentDashboard() {
           <div>
             <p className="text-blue-100 text-sm font-medium mb-1">{getTodayDate()}</p>
             <h1 className="text-2xl md:text-3xl font-bold">
-              {getTimeGreeting()}, {user?.full_name?.split(' ')[0] || 'Student'}
+              {getTimeGreeting()}, {user?.name?.split(' ')[0] || 'Student'}
             </h1>
             <p className="mt-1 text-blue-100 text-sm">
               You have <span className="font-semibold text-white">{pendingRequests.length}</span> pending request{pendingRequests.length !== 1 ? 's' : ''} awaiting approval.

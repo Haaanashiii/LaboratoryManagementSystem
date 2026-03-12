@@ -4,18 +4,19 @@ import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, Calendar, User, CheckCircle, Loader2 } from 'lucide-react';
+import { Package, Calendar, User, CheckCircle } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
 export default function EquipmentPrep() {
   const queryClient = useQueryClient();
 
-  const { data: approvedRequests = [], isLoading: loadingApproved } = useQuery({
+  const { data: approvedRequests = [], isLoading: loadingApproved, isError: errorApproved, error: errorMsgApproved } = useQuery({
     queryKey: ['approvedRequests'],
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'approved' }, '-created_date'),
   });
 
-  const { data: readyRequests = [], isLoading: loadingReady } = useQuery({
+  const { data: readyRequests = [], isLoading: loadingReady, isError: errorReady, error: errorMsgReady } = useQuery({
     queryKey: ['readyRequests'],
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'ready_pickup' }, '-created_date'),
   });
@@ -44,11 +45,29 @@ export default function EquipmentPrep() {
   };
 
   const isLoading = loadingApproved || loadingReady;
+  const isError = errorApproved || errorReady;
+  const error = errorMsgApproved || errorMsgReady;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center py-20 relative">
+        <BanterLoader />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg mx-4">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+            <Package className="w-6 h-6 text-red-500" />
+          </div>
+          <p className="text-sm font-medium text-slate-900">Unable to load equipment requests</p>
+          <p className="text-xs text-slate-500 max-w-sm">
+            {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+          </p>
+        </div>
       </div>
     );
   }

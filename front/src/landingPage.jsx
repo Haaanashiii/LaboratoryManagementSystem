@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import LandingBG from '@/components/layouts/LandingBG';
 import { useLang } from '@/components/i18n/LangContext';
+import equimonLogo from '@/assets/images/Equimon Logo.png';
 
 export default function Landing() {
   const { t, lang, toggleLang } = useLang();
@@ -157,10 +158,10 @@ export default function Landing() {
 
           {/* ── Brand ── */}
           <a href="#" className="flex items-center gap-3 group select-none">
-            <div className="relative w-9 h-9">
+            <div className="relative w-11 h-11">
               <div className="absolute inset-0 rounded-xl bg-blue-500/30 blur-md group-hover:bg-blue-400/40 transition-all" />
-              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <FlaskConical className="w-5 h-5 text-white" />
+              <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shadow-lg">
+                <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
               </div>
             </div>
             <div className="flex flex-col leading-none">
@@ -460,8 +461,8 @@ export default function Landing() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <FlaskConical className="w-4 h-4 text-white" />
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center">
+                <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
               </div>
               <span className="text-lg font-extrabold">Equi<span className="text-blue-400">mon</span></span>
             </div>
