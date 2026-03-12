@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
+import equimonLogo from '@/assets/images/Equimon Logo.png';
 import { 
   FlaskConical, 
   Package, 
@@ -264,9 +265,7 @@ export default function DashboardLayout() {
         <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <FlaskConical className="w-5 h-5 text-white" />
-            </div>
+            <img src={equimonLogo} alt="Equimon Logo" className="w-12 h-12 object-contain" />
             <div className="hidden sm:block">
               <span className="text-lg font-bold text-slate-900">Equimon</span>
               <p className="text-xs text-slate-500 leading-none">{t('appSubtitle')}</p>

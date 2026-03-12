@@ -5,7 +5,8 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Package, Calendar, FileText, Loader2 } from 'lucide-react';
+import { Package, Calendar, FileText } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
 export default function MyRequests() {
@@ -17,7 +18,7 @@ export default function MyRequests() {
     queryFn: () => api.auth.me(),
   });
 
-  const { data: requests = [], isLoading } = useQuery({
+  const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['myRequests', user?.email],
     queryFn: () => api.entities.BorrowRequest.filter({ student_email: user?.email }, '-created_date'),
     enabled: !!user?.email
@@ -37,8 +38,24 @@ export default function MyRequests() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center py-20 relative">
+        <BanterLoader />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg mx-4">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+            <Package className="w-6 h-6 text-red-500" />
+          </div>
+          <p className="text-sm font-medium text-slate-900">Unable to load your requests</p>
+          <p className="text-xs text-slate-500 max-w-sm">
+            {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+          </p>
+        </div>
       </div>
     );
   }

@@ -5,7 +5,8 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Package, Calendar, User, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Package, Calendar, User, FileText, CheckCircle, XCircle } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
 export default function LecturerApprovals() {
@@ -20,7 +21,7 @@ export default function LecturerApprovals() {
     queryFn: () => api.auth.me(),
   });
 
-  const { data: requests = [], isLoading } = useQuery({
+  const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['pendingLecturerRequests'],
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'pending_lecturer' }, '-created_date'),
   });
@@ -65,8 +66,31 @@ export default function LecturerApprovals() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="flex items-center justify-center py-20 relative">
+        <BanterLoader />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Pending Lecturer Approvals</h1>
+          <p className="mt-0.5 text-sm text-slate-500">Requests awaiting your review</p>
+        </div>
+        <hr className="border-slate-200" />
+        <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <XCircle className="w-6 h-6 text-red-500" />
+            </div>
+            <p className="text-sm font-medium text-slate-900">Unable to load requests</p>
+            <p className="text-xs text-slate-500 max-w-sm">
+              {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

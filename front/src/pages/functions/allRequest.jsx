@@ -5,14 +5,15 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Filter, Loader2, FileText } from 'lucide-react';
+import { Search, Filter, FileText } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
 export default function AllRequests() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const { data: requests = [], isLoading } = useQuery({
+  const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['allRequests'],
     queryFn: () => api.entities.BorrowRequest.list('-created_date'),
   });
@@ -28,8 +29,31 @@ export default function AllRequests() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="flex items-center justify-center py-20 relative">
+        <BanterLoader />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">All Requests</h1>
+          <p className="mt-0.5 text-sm text-slate-500">Complete list of all equipment borrowing requests.</p>
+        </div>
+        <hr className="border-slate-200" />
+        <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <FileText className="w-6 h-6 text-red-500" />
+            </div>
+            <p className="text-sm font-medium text-slate-900">Unable to load requests</p>
+            <p className="text-xs text-slate-500 max-w-sm">
+              {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

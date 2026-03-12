@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Package, Clock, History } from 'lucide-react';
+import { CheckCircle, Package, Clock, History, FileText } from 'lucide-react';
 import { EquipmentStatsChart } from '@/components/layouts/Charts';
 import { useLang } from '@/components/i18n/LangContext';
 
@@ -72,113 +72,152 @@ export default function LabAssistantDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">
-          {getTimeGreeting()}, {user?.full_name || 'User'}
+          {getTimeGreeting()}, {user?.name?.split(' ')[0] || 'User'}
         </h1>
-        <p className="mt-2 text-slate-600">{t('labAssistantDailyReport')}</p>
+        <p className="mt-2 text-slate-600">{t('dailyReport')}</p>
       </div>
 
+      <hr className="border-slate-200" />
+
       {/* Stats Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.name} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={stat.action}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{stat.name}</p>
-                  <p className="mt-2 text-3xl font-bold text-slate-900">{stat.value}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${stat.color}`}>
-                  <stat.icon className="w-6 h-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <button
+            key={stat.name}
+            onClick={stat.action}
+            className="text-left p-4 rounded-lg border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <stat.icon className="w-4 h-4 text-slate-400" />
+            </div>
+            <p className="text-2xl font-semibold text-slate-900">{stat.value}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{stat.name}</p>
+          </button>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardContent className="p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Button onClick={() => navigate('/equipment-prep')} className="h-auto py-4 flex flex-col gap-2">
-              <Package className="w-6 h-6" />
-              <span>Prepare Equipment</span>
-            </Button>
-            <Button onClick={() => navigate('/returns')} variant="outline" className="h-auto py-4 flex flex-col gap-2">
-              <History className="w-6 h-6" />
-              <span>Process Returns</span>
-            </Button>
-            <Button onClick={() => navigate('/catalog')} variant="outline" className="h-auto py-4 flex flex-col gap-2">
-              <CheckCircle className="w-6 h-6" />
-              <span>View Catalog</span>
+      {/* Main two-column row */}
+      <div className="grid lg:grid-cols-5 gap-6 items-start">
+
+        {/* Left — Equipment Overview chart */}
+        <div className="lg:col-span-3 space-y-3">
+          <h2 className="text-sm font-medium text-slate-700">{t('equipmentOverview')}</h2>
+          <EquipmentStatsChart equipment={equipment} requests={allRequests} />
+        </div>
+
+        {/* Right — Quick Actions */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-3">
+            <h2 className="text-sm font-medium text-slate-700">{t('quickActions')}</h2>
+            <div className="space-y-2">
+              {[
+                { label: t('prepareEquipment'), sub: `${readyForPrep.length} ${t('readyForPrep')}`, icon: Package, path: '/equipment-prep' },
+                { label: t('processReturns'), sub: `${toReturn} ${t('pendingReturns')}`, icon: History, path: '/returns' },
+                { label: t('viewCatalog'), sub: `${equipment.length} ${t('items')}`, icon: CheckCircle, path: '/catalog' },
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => navigate(action.path)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <action.icon className="w-4 h-4 text-slate-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{action.label}</p>
+                      <p className="text-xs text-slate-400">{action.sub}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom row — Equipment Prep Queue + Pending Returns */}
+      <div className="grid lg:grid-cols-5 gap-6 items-start">
+
+        {/* Equipment Prep Queue */}
+        <div className="lg:col-span-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-slate-700">{t('equipmentPrepQueue')}</h2>
+            <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => navigate('/equipment-prep')}>
+              {t('viewAll')}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Equipment Statistics */}
-      <EquipmentStatsChart equipment={equipment} requests={allRequests} />
-
-      {/* Equipment Prep Queue */}
-      {readyForPrep.length > 0 && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">Equipment Preparation Queue</h2>
-              <Button onClick={() => navigate('/equipment-prep')} variant="link" size="sm">
-                View All
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {readyForPrep.slice(0, 5).map((request) => (
-                <div key={request.id} className="flex items-center justify-between py-3 border-b last:border-0">
-                  <div>
-                    <p className="font-medium text-slate-900">{request.equipment_name}</p>
-                    <p className="text-sm text-slate-500">Student: {request.student_email}</p>
-                    <p className="text-sm text-slate-500">Quantity: {request.quantity}</p>
-                  </div>
-                  <Button onClick={() => navigate('/equipment-prep')} size="sm">
-                    Prepare
-                  </Button>
+          <Card className="border-slate-200 shadow-none">
+            <CardContent className="p-0">
+              {readyForPrep.length > 0 ? (
+                <div className="space-y-0">
+                  {readyForPrep.slice(0, 5).map((request, i, arr) => (
+                    <div key={request.id}>
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div>
+                          <p className="font-medium text-sm text-slate-900">{request.equipment_name}</p>
+                          <p className="text-xs text-slate-500">{t('student_label')}: {request.student_email}</p>
+                        </div>
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                          READY
+                        </span>
+                      </div>
+                      {i < arr.length - 1 && <hr className="border-slate-100 mx-4" />}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Pending Returns */}
-      {borrowed.length > 0 && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">Equipment Currently Out</h2>
-              <Button onClick={() => navigate('/returns')} variant="link" size="sm">
-                View All
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {borrowed.slice(0, 5).map((request) => (
-                <div key={request.id} className="flex items-center justify-between py-3 border-b last:border-0">
-                  <div>
-                    <p className="font-medium text-slate-900">{request.equipment_name}</p>
-                    <p className="text-sm text-slate-500">Student: {request.student_email}</p>
-                    <p className="text-sm text-slate-500">Return Due: {request.return_date}</p>
-                  </div>
-                  <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                    BORROWED
-                  </span>
+              ) : (
+                <div className="py-10 text-center">
+                  <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-slate-600">{t('noPrepQueue')}</p>
+                  <p className="text-xs text-slate-400">{t('noPrepQueueDesc')}</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Equipment Currently Out */}
+        <div className="lg:col-span-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-slate-700">{t('equipmentCurrentlyOut')}</h2>
+            <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => navigate('/returns')}>
+              {t('viewAll')}
+            </Button>
+          </div>
+          <Card className="border-slate-200 shadow-none">
+            <CardContent className="p-0">
+              {borrowed.length > 0 ? (
+                <div className="space-y-0">
+                  {borrowed.slice(0, 5).map((request, i, arr) => (
+                    <div key={request.id}>
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div>
+                          <p className="font-medium text-sm text-slate-900">{request.equipment_name}</p>
+                          <p className="text-xs text-slate-500">{t('student_label')}: {request.student_email}</p>
+                        </div>
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                          BORROWED
+                        </span>
+                      </div>
+                      {i < arr.length - 1 && <hr className="border-slate-100 mx-4" />}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-10 text-center">
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-slate-600">{t('noBorrowed')}</p>
+                  <p className="text-xs text-slate-400">{t('noBorrowedDesc')}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Package, Calendar, User, RotateCcw, Loader2, AlertTriangle } from 'lucide-react';
+import { Package, Calendar, User, RotateCcw, AlertTriangle } from 'lucide-react';
+import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
 export default function Returns() {
@@ -17,7 +18,7 @@ export default function Returns() {
 
   const queryClient = useQueryClient();
 
-  const { data: borrowedRequests = [], isLoading } = useQuery({
+  const { data: borrowedRequests = [], isLoading, isError, error } = useQuery({
     queryKey: ['borrowedRequests'],
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'borrowed' }, '-created_date'),
   });
@@ -60,8 +61,24 @@ export default function Returns() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center py-20 relative">
+        <BanterLoader />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg mx-4">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+            <RotateCcw className="w-6 h-6 text-red-500" />
+          </div>
+          <p className="text-sm font-medium text-slate-900">Unable to load borrowed items</p>
+          <p className="text-xs text-slate-500 max-w-sm">
+            {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+          </p>
+        </div>
       </div>
     );
   }
