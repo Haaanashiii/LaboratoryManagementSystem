@@ -1,6 +1,7 @@
 const Equipment = require('../models/Equipment');
 const path = require('path');
 const fs = require('fs');
+const { uploadToGridFS, downloadFromGridFS, deleteFromGridFS, getFileMetadata } = require('../config/gridfs');
 
 // @desc    Get all equipment
 // @route   GET /api/equipment
@@ -61,7 +62,11 @@ exports.getEquipmentById = async (req, res, next) => {
 // @access  Private (Admin)
 exports.createEquipment = async (req, res, next) => {
   try {
+    console.log('Creating equipment with data:', req.body);
+    
     const equipment = await Equipment.create(req.body);
+    
+    console.log('Equipment created successfully:', equipment._id);
 
     res.status(201).json({
       success: true,
@@ -185,12 +190,55 @@ exports.uploadImage = async (req, res, next) => {
       });
     }
 
+    // Upload to GridFS
+    const fileId = await uploadToGridFS(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+
     res.json({
       success: true,
       data: {
-        filename: req.file.filename,
-        path: `/uploads/${req.file.filename}`
+        fileId: fileId,
+        path: `/api/equipment/image/${fileId}`
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get equipment image from GridFS
+// @route   GET /api/equipment/image/:fileId
+// @access  Public
+exports.getImage = async (req, res, next) => {
+  try {
+    const { fileId } = req.params;
+
+    // Get file metadata
+    const metadata = await getFileMetadata(fileId);
+    
+    if (!metadata) {
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found'
+      });
+    }
+
+    // Set content type
+    res.set('Content-Type', metadata.metadata.contentType || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+
+    // Stream the file
+    const downloadStream = downloadFromGridFS(fileId);
+    downloadStream.pipe(res);
+
+    downloadStream.on('error', (error) => {
+      res.status(404).json({
+        success: false,
+        message: 'Error retrieving image'
+      });
     });
   } catch (error) {
     next(error);

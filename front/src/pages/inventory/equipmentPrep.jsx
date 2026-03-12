@@ -1,19 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, Calendar, User, CheckCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Package, Calendar, User, CheckCircle, Loader2 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
 export default function EquipmentPrep() {
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [dialogAction, setDialogAction] = useState(null); // 'prepare' or 'release'
   const queryClient = useQueryClient();
 
   const { data: approvedRequests = [], isLoading: loadingApproved, isError: errorApproved, error: errorMsgApproved } = useQuery({
     queryKey: ['approvedRequests'],
-    queryFn: () => api.entities.BorrowRequest.filter({ status: 'approved' }, '-created_date'),
+    queryFn: () => api.entities.BorrowRequest.filter({ status: 'head_approved' }, '-created_date'),
   });
 
   const { data: readyRequests = [], isLoading: loadingReady, isError: errorReady, error: errorMsgReady } = useQuery({
@@ -21,28 +24,49 @@ export default function EquipmentPrep() {
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'ready_pickup' }, '-created_date'),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.entities.BorrowRequest.update(id, data),
+  const prepareMutation = useMutation({
+    mutationFn: (id) => api.entities.BorrowRequest.prepare(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['approvedRequests'] });
       queryClient.invalidateQueries({ queryKey: ['readyRequests'] });
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
+      closeDialog();
     }
   });
 
-  const handleMarkReady = (request) => {
-    updateMutation.mutate({
-      id: request.id,
-      data: { status: 'ready_pickup' }
-    });
+  const releaseMutation = useMutation({
+    mutationFn: (id) => api.entities.BorrowRequest.release(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['readyRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
+      closeDialog();
+    }
+  });
+
+  const openPrepareDialog = (request) => {
+    setSelectedRequest(request);
+    setDialogAction('prepare');
   };
 
-  const handleConfirmPickup = (request) => {
-    updateMutation.mutate({
-      id: request.id,
-      data: { status: 'borrowed' }
-    });
+  const openReleaseDialog = (request) => {
+    setSelectedRequest(request);
+    setDialogAction('release');
   };
+
+  const closeDialog = () => {
+    setSelectedRequest(null);
+    setDialogAction(null);
+  };
+
+  const handleConfirm = () => {
+    if (dialogAction === 'prepare') {
+      prepareMutation.mutate(selectedRequest.id);
+    } else {
+      releaseMutation.mutate(selectedRequest.id);
+    }
+  };
+
+  const isPending = prepareMutation.isPending || releaseMutation.isPending;
 
   const isLoading = loadingApproved || loadingReady;
   const isError = errorApproved || errorReady;
@@ -122,8 +146,8 @@ export default function EquipmentPrep() {
                     <div className="flex items-center gap-3">
                       <StatusBadge status={request.status} />
                       <Button 
-                        onClick={() => handleMarkReady(request)}
-                        disabled={updateMutation.isPending}
+                        onClick={() => openPrepareDialog(request)}
+                        disabled={isPending}
                         className="bg-indigo-600 hover:bg-indigo-700"
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
@@ -172,8 +196,8 @@ export default function EquipmentPrep() {
                     <div className="flex items-center gap-3">
                       <StatusBadge status={request.status} />
                       <Button 
-                        onClick={() => handleConfirmPickup(request)}
-                        disabled={updateMutation.isPending}
+                        onClick={() => openReleaseDialog(request)}
+                        disabled={isPending}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
@@ -187,6 +211,48 @@ export default function EquipmentPrep() {
           </div>
         </div>
       )}
+      {/* Confirmation Dialog */}
+      <Dialog open={!!selectedRequest} onOpenChange={closeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogAction === 'prepare' ? 'Mark Equipment Ready' : 'Confirm Pickup'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="bg-slate-50 rounded-lg p-4 mb-4">
+              <p className="text-sm text-slate-500">Equipment</p>
+              <p className="font-medium">{selectedRequest?.equipment_name}</p>
+              <p className="text-sm text-slate-500 mt-2">Borrower</p>
+              <p className="font-medium">{selectedRequest?.borrower_name}</p>
+              <p className="text-sm text-slate-500 mt-2">Quantity</p>
+              <p className="font-medium">{selectedRequest?.quantity}</p>
+            </div>
+            <p className="text-sm text-slate-600">
+              {dialogAction === 'prepare'
+                ? 'This will reserve the equipment and mark it as ready for pickup. The borrower will be notified.'
+                : 'Confirm that the borrower has picked up the equipment. This will mark the request as actively borrowed.'
+              }
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={isPending}
+              className={dialogAction === 'prepare' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'}
+            >
+              {isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+              ) : dialogAction === 'prepare' ? (
+                'Mark as Ready'
+              ) : (
+                'Confirm Pickup'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

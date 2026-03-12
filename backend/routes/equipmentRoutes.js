@@ -8,13 +8,17 @@ const {
   deleteEquipment,
   getCategories,
   updateQuantity,
-  uploadImage
+  uploadImage,
+  getImage
 } = require('../controllers/equipmentController');
 const { protect, authorize } = require('../middleware/auth');
 const { equipmentValidation, validate } = require('../middleware/validator');
 const upload = require('../middleware/upload');
 
-// All routes are protected
+// Public image route (no auth required for viewing images)
+router.get('/image/:fileId', getImage);
+
+// All other routes are protected
 router.use(protect);
 
 // Public equipment routes (all authenticated users)

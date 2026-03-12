@@ -5,10 +5,11 @@ import EquipmentCard from '@/components/equipment/EquipmentCard';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Filter, Package } from 'lucide-react';
+import { Search, Filter, Package, Loader2, CheckCircle } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format, addDays } from 'date-fns';
 
@@ -16,6 +17,7 @@ export default function Catalog() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [borrowForm, setBorrowForm] = useState({
     quantity: 1,
     purpose: '',
@@ -40,6 +42,7 @@ export default function Catalog() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       setSelectedEquipment(null);
+      setShowSuccessModal(true);
       setBorrowForm({
         quantity: 1,
         purpose: '',
@@ -60,10 +63,7 @@ export default function Catalog() {
 
   const handleBorrowSubmit = () => {
     createRequestMutation.mutate({
-      equipment_id: selectedEquipment.id,
-      equipment_name: selectedEquipment.name,
-      borrower_email: user?.email,
-      borrower_name: user?.name,
+      equipment: selectedEquipment.id,
       ...borrowForm
     });
   };
@@ -133,13 +133,15 @@ export default function Catalog() {
             <EquipmentCard
               key={item.id}
               equipment={item}
-              onBorrow={setSelectedEquipment}
+              onBorrow={user?.role === 'student' ? setSelectedEquipment : null}
+              userRole={user?.role}
             />
           ))}
         </div>
       )}
 
-      {/* Borrow Dialog */}
+      {/* Borrow Dialog - Only for students */}
+      {user?.role === 'student' && (
       <Dialog open={!!selectedEquipment} onOpenChange={() => setSelectedEquipment(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -206,6 +208,33 @@ export default function Catalog() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
+
+      {/* Success Modal */}
+      <AlertDialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+            <AlertDialogTitle className="text-center">Request Submitted Successfully!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              Your borrow request has been submitted and is pending lecturer approval. 
+              You can track the status in your requests page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button 
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-slate-900 hover:bg-slate-700"
+            >
+              Got it
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

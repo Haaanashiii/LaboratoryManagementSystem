@@ -29,8 +29,8 @@ exports.loginValidation = [
 exports.equipmentValidation = [
   body('name').trim().notEmpty().withMessage('Equipment name is required'),
   body('category').trim().notEmpty().withMessage('Category is required'),
-  body('quantity').isInt({ min: 0 }).withMessage('Quantity must be a positive number'),
-  body('available').isInt({ min: 0 }).withMessage('Available quantity must be a positive number'),
+  body('quantity').optional().isInt({ min: 0 }).withMessage('Quantity must be a positive number'),
+  body('available').optional().isInt({ min: 0 }).withMessage('Available quantity must be a positive number'),
   body('location').trim().notEmpty().withMessage('Location is required')
 ];
 

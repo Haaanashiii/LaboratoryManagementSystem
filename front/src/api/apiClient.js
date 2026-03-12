@@ -217,7 +217,7 @@ export const api = {
           throw new Error(err.message || 'Image upload failed');
         }
         const data = await res.json();
-        return data.data.url;
+        return data.data.path || data.data.filename;
       },
     },
 
@@ -225,6 +225,10 @@ export const api = {
     BorrowRequest: {
       list: async () => {
         const data = await request('/borrow-requests');
+        return data.data.map(item => ({ ...item, id: item._id || item.id }));
+      },
+      myRequests: async () => {
+        const data = await request('/borrow-requests/my-requests');
         return data.data.map(item => ({ ...item, id: item._id || item.id }));
       },
       filter: async (filters) => {
@@ -244,6 +248,54 @@ export const api = {
           method: 'PUT',
           body: JSON.stringify(updateData),
         });
+        return data.data;
+      },
+      lecturerAction: async (id, action, remarks) => {
+        const data = await request(`/borrow-requests/${id}/lecturer-action`, {
+          method: 'PUT',
+          body: JSON.stringify({ action, remarks }),
+        });
+        return data.data;
+      },
+      headAction: async (id, action, remarks) => {
+        const data = await request(`/borrow-requests/${id}/head-action`, {
+          method: 'PUT',
+          body: JSON.stringify({ action, remarks }),
+        });
+        return data.data;
+      },
+      prepare: async (id) => {
+        const data = await request(`/borrow-requests/${id}/prepare`, {
+          method: 'PUT',
+        });
+        return data.data;
+      },
+      release: async (id) => {
+        const data = await request(`/borrow-requests/${id}/release`, {
+          method: 'PUT',
+        });
+        return data.data;
+      },
+      return: async (id, return_condition, return_remarks) => {
+        const data = await request(`/borrow-requests/${id}/return`, {
+          method: 'PUT',
+          body: JSON.stringify({ return_condition, return_remarks }),
+        });
+        return data.data;
+      },
+      delete: async (id) => {
+        return await request(`/borrow-requests/${id}`, { method: 'DELETE' });
+      },
+    },
+
+    // Stats
+    Stats: {
+      dashboard: async () => {
+        const data = await request('/stats/dashboard');
+        return data.data;
+      },
+      trends: async (period = '30') => {
+        const data = await request(`/stats/trends?period=${period}`);
         return data.data;
       },
     },

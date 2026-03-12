@@ -18,10 +18,16 @@ export default function StudentDashboard() {
     queryFn: () => api.auth.me(),
   });
 
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: () => api.entities.Stats.dashboard(),
+    enabled: !!user,
+  });
+
   const { data: myRequests = [] } = useQuery({
-    queryKey: ['myRequests', user?.email],
-    queryFn: () => api.entities.BorrowRequest.filter({ student_email: user?.email }),
-    enabled: !!user?.email,
+    queryKey: ['myRequests'],
+    queryFn: () => api.entities.BorrowRequest.myRequests(),
+    enabled: !!user,
   });
 
   const { data: equipment = [] } = useQuery({

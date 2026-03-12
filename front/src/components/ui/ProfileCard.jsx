@@ -1,7 +1,7 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
 import './ProfileCard.css';
-import backgroundImg from '@/assets/images/Equimon Logo.png';
+import backgroundImg from '@/assets/images/logo-its-l-min.jpg';
 
 /**
  * ProfileCard - User profile card component with image background

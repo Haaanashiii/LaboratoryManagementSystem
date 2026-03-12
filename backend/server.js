@@ -16,6 +16,7 @@ const statsRoutes = require('./routes/statsRoutes');
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./middleware/logger');
+const { initGridFS } = require('./config/gridfs');
 
 const app = express();
 
@@ -55,6 +56,9 @@ app.use(errorHandler);
 mongoose.connect(process.env.MONGODB_URI)
 .then(() => {
   console.log('✅ MongoDB connected successfully');
+  
+  // Initialize GridFS after MongoDB connection
+  initGridFS();
   
   // Start server
   const PORT = process.env.PORT || 3000;

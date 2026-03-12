@@ -9,6 +9,11 @@ exports.getBorrowRequests = async (req, res, next) => {
   try {
     const { status, student_email, lecturer_email, equipment_id } = req.query;
     
+    console.log('=== getBorrowRequests DEBUG ===');
+    console.log('User role:', req.user.role);
+    console.log('User id:', req.user.id);
+    console.log('Query params:', req.query);
+    
     // Build query
     const query = {};
     
@@ -16,26 +21,34 @@ exports.getBorrowRequests = async (req, res, next) => {
     if (req.user.role === 'student') {
       query.student = req.user.id;
     } else if (req.user.role === 'lecturer') {
-      if (status === 'pending_lecturer') {
-        query.lecturer = req.user.id;
+      // If no status or pending_lecturer status, show all pending_lecturer requests
+      if (!status || status === 'pending_lecturer') {
         query.status = 'pending_lecturer';
       } else {
+        // For other statuses, show requests assigned to this lecturer
         query.lecturer = req.user.id;
+        if (status) {
+          query.status = status;
+        }
       }
     }
     
     // Additional filters
     if (status && req.user.role !== 'lecturer') query.status = status;
     if (student_email) query.student_email = student_email;
-    if (lecturer_email) query.lecturer_email = lecturer_email;
     if (equipment_id) query.equipment = equipment_id;
 
+    console.log('Final query:', JSON.stringify(query));
+    
     const requests = await BorrowRequest.find(query)
       .populate('student', 'name email')
       .populate('equipment', 'name category')
       .populate('lecturer', 'name email')
       .sort('-createdAt');
 
+    console.log('Results count:', requests.length);
+    console.log('=== END DEBUG ===');
+    
     res.json({
       success: true,
       count: requests.length,
@@ -107,7 +120,7 @@ exports.createBorrowRequest = async (req, res, next) => {
       });
     }
 
-    // Find lecturer
+    // Find lecturer if email provided (optional)
     let lecturer = null;
     if (lecturer_email) {
       lecturer = await User.findOne({ email: lecturer_email, role: 'lecturer' });
@@ -125,7 +138,7 @@ exports.createBorrowRequest = async (req, res, next) => {
       borrow_date,
       return_date,
       lecturer: lecturer?._id,
-      lecturer_email: lecturer_email,
+      lecturer_email: lecturer?.email,
       status: 'pending_lecturer'
     });
 

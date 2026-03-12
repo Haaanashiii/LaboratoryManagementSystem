@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Package, Calendar, User, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Package, Calendar, User, RotateCcw, AlertTriangle, Loader2 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
@@ -23,8 +23,8 @@ export default function Returns() {
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'borrowed' }, '-created_date'),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.entities.BorrowRequest.update(id, data),
+  const returnMutation = useMutation({
+    mutationFn: ({ id, condition, remarks }) => api.entities.BorrowRequest.return(id, condition, remarks),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['borrowedRequests'] });
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
@@ -44,14 +44,10 @@ export default function Returns() {
   };
 
   const handleReturn = () => {
-    updateMutation.mutate({
+    returnMutation.mutate({
       id: selectedRequest.id,
-      data: {
-        status: 'returned',
-        return_condition: returnCondition,
-        return_remarks: returnRemarks,
-        actual_return_date: format(new Date(), 'yyyy-MM-dd')
-      }
+      condition: returnCondition,
+      remarks: returnRemarks
     });
   };
 
@@ -217,10 +213,10 @@ export default function Returns() {
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
             <Button 
               onClick={handleReturn}
-              disabled={updateMutation.isPending || (returnCondition !== 'Good' && !returnRemarks)}
+              disabled={returnMutation.isPending || (returnCondition !== 'Good' && !returnRemarks)}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {updateMutation.isPending ? (
+              {returnMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
               ) : (
                 'Confirm Return'

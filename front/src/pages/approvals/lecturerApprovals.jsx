@@ -5,7 +5,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Package, Calendar, User, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Package, Calendar, User, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
@@ -16,20 +16,16 @@ export default function LecturerApprovals() {
 
   const queryClient = useQueryClient();
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => api.auth.me(),
-  });
-
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['pendingLecturerRequests'],
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'pending_lecturer' }, '-created_date'),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.entities.BorrowRequest.update(id, data),
+  const actionMutation = useMutation({
+    mutationFn: ({ id, action, remarks }) => api.entities.BorrowRequest.lecturerAction(id, action, remarks),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingLecturerRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['lecturerRequests'] });
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       closeDialog();
     }
@@ -54,13 +50,10 @@ export default function LecturerApprovals() {
   };
 
   const handleSubmit = () => {
-    updateMutation.mutate({
+    actionMutation.mutate({
       id: selectedRequest.id,
-      data: {
-        status: action === 'approve' ? 'pending_head' : 'rejected',
-        lecturer_remarks: remarks,
-        lecturer_email: user?.email
-      }
+      action: action,
+      remarks: remarks
     });
   };
 
@@ -209,13 +202,13 @@ export default function LecturerApprovals() {
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
             <Button
               onClick={handleSubmit}
-              disabled={updateMutation.isPending || (action === 'reject' && !remarks)}
+              disabled={actionMutation.isPending || (action === 'reject' && !remarks)}
               className={action === 'approve'
                 ? 'bg-slate-900 hover:bg-slate-700'
                 : 'bg-red-600 hover:bg-red-700'
               }
             >
-              {updateMutation.isPending ? (
+              {actionMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
               ) : action === 'approve' ? (
                 'Verify & Forward'

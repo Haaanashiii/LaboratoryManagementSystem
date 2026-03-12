@@ -17,13 +17,11 @@ const equipmentSchema = new mongoose.Schema({
   },
   quantity: {
     type: Number,
-    required: [true, 'Quantity is required'],
     min: [0, 'Quantity cannot be negative'],
     default: 0
   },
   available: {
     type: Number,
-    required: [true, 'Available quantity is required'],
     min: [0, 'Available quantity cannot be negative'],
     default: 0
   },

@@ -2,11 +2,14 @@ import React from 'react';
 import { Button } from '../ui/button';
 import { Package } from 'lucide-react';
 
-export default function EquipmentCard({ equipment, onBorrow, onSelect }) {
+export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole }) {
   const handleClick = () => {
     if (onBorrow) onBorrow(equipment);
     else if (onSelect) onSelect(equipment);
   };
+
+  // Only students can borrow equipment
+  const canBorrow = userRole === 'student';
 
   const available = equipment.available_quantity ?? 0;
   const total = equipment.total_quantity ?? 0;
@@ -44,14 +47,16 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect }) {
             </span>
             /{total} available
           </span>
-          <Button
-            size="sm"
-            onClick={handleClick}
-            disabled={available === 0}
-            className="h-7 text-xs bg-slate-900 hover:bg-slate-700 text-white disabled:opacity-40"
-          >
-            Borrow
-          </Button>
+          {canBorrow && (
+            <Button
+              size="sm"
+              onClick={handleClick}
+              disabled={available === 0}
+              className="h-7 text-xs bg-slate-900 hover:bg-slate-700 text-white disabled:opacity-40"
+            >
+              Borrow
+            </Button>
+          )}
         </div>
       </div>
     </div>
