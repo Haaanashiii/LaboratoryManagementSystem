@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
-import { Settings as SettingsIcon, Bell, Lock, Database, Globe, Edit, ChevronRight } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Lock, Edit, ChevronRight } from 'lucide-react';
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
 import ProfileCard from '@/components/ui/ProfileCard';
@@ -37,20 +37,6 @@ export default function Settings() {
       iconColor: 'text-purple-600',
       label: t('security') || 'Security',
       description: t('securityDescription') || 'Password, 2FA, and account security.',
-    },
-    {
-      icon: Database,
-      iconBg: 'bg-amber-50',
-      iconColor: 'text-amber-600',
-      label: t('database') || 'Database',
-      description: t('databaseDescription') || 'Data storage and backup settings.',
-    },
-    {
-      icon: Globe,
-      iconBg: 'bg-red-50',
-      iconColor: 'text-red-600',
-      label: t('integrations') || 'Integrations',
-      description: t('integrationsDescription') || 'Connect with external services.',
     },
   ];
 
