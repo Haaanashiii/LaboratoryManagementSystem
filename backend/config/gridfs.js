@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { GridFSBucket } = require('mongodb');
 
 let bucket;
 
@@ -16,7 +15,7 @@ const initGridFS = () => {
       return null;
     }
     
-    bucket = new GridFSBucket(db, {
+    bucket = new mongoose.mongo.GridFSBucket(db, {
       bucketName: 'equipmentImages'
     });
     console.log('✅ GridFS initialized');
@@ -64,7 +63,14 @@ const uploadToGridFS = (buffer, filename, mimetype) => {
     });
 
     uploadStream.on('finish', (file) => {
-      resolve(file._id.toString());
+      const uploadedId = file?._id || uploadStream.id;
+
+      if (!uploadedId) {
+        reject(new Error('GridFS upload finished but file id is unavailable'));
+        return;
+      }
+
+      resolve(uploadedId.toString());
     });
 
     uploadStream.end(buffer);

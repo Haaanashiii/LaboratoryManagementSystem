@@ -2,11 +2,104 @@ const BorrowRequest = require('../models/BorrowRequest');
 const Equipment = require('../models/Equipment');
 const User = require('../models/User');
 
+let stockReconcilePromise = null;
+let lastStockReconcileAt = 0;
+const STOCK_RECONCILE_INTERVAL_MS = 60 * 1000;
+
+const reconcileLegacyStockReservations = async () => {
+  const now = Date.now();
+  if (now - lastStockReconcileAt < STOCK_RECONCILE_INTERVAL_MS) {
+    return;
+  }
+
+  if (stockReconcilePromise) {
+    await stockReconcilePromise;
+    return;
+  }
+
+  stockReconcilePromise = (async () => {
+    try {
+      const requests = await BorrowRequest.find({
+        status: { $in: ['pending_head', 'head_approved', 'ready_pickup', 'borrowed', 'returned', 'rejected'] }
+      }).select('_id equipment quantity status stock_reserved released_at');
+
+      for (const request of requests) {
+        if (['pending_head', 'head_approved', 'ready_pickup'].includes(request.status) && !request.stock_reserved) {
+          const reserved = await Equipment.findOneAndUpdate(
+            {
+              _id: request.equipment,
+              available: { $gte: request.quantity }
+            },
+            {
+              $inc: { available: -request.quantity }
+            },
+            { new: true }
+          );
+
+          if (reserved) {
+            request.stock_reserved = true;
+            await request.save();
+          }
+
+          continue;
+        }
+
+        if (request.status === 'borrowed' && !request.stock_reserved) {
+          if (request.released_at) {
+            request.stock_reserved = true;
+            await request.save();
+            continue;
+          }
+
+          const reserved = await Equipment.findOneAndUpdate(
+            {
+              _id: request.equipment,
+              available: { $gte: request.quantity }
+            },
+            {
+              $inc: { available: -request.quantity }
+            },
+            { new: true }
+          );
+
+          if (reserved) {
+            request.stock_reserved = true;
+            await request.save();
+          }
+
+          continue;
+        }
+
+        if (request.status === 'rejected' && request.stock_reserved) {
+          await Equipment.findByIdAndUpdate(request.equipment, {
+            $inc: { available: request.quantity }
+          });
+          request.stock_reserved = false;
+          await request.save();
+          continue;
+        }
+
+        if (request.status === 'returned' && request.stock_reserved) {
+          request.stock_reserved = false;
+          await request.save();
+        }
+      }
+    } finally {
+      lastStockReconcileAt = Date.now();
+      stockReconcilePromise = null;
+    }
+  })();
+
+  await stockReconcilePromise;
+};
+
 // @desc    Get all borrow requests
 // @route   GET /api/borrow-requests
 // @access  Private
 exports.getBorrowRequests = async (req, res, next) => {
   try {
+    await reconcileLegacyStockReservations();
+
     const { status, student_email, lecturer_email, equipment_id } = req.query;
     
     console.log('=== getBorrowRequests DEBUG ===');
@@ -102,7 +195,14 @@ exports.getBorrowRequest = async (req, res, next) => {
 // @access  Private (Student)
 exports.createBorrowRequest = async (req, res, next) => {
   try {
-    const { equipment, quantity, purpose, borrow_date, return_date, lecturer_email } = req.body;
+    const { equipment, quantity, purpose, borrow_date, return_date, lecturer_email, agree_policy } = req.body;
+
+    if (agree_policy !== true) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must agree to the replacement policy before submitting a request'
+      });
+    }
 
     // Check if equipment exists and has enough quantity
     const equipmentItem = await Equipment.findById(equipment);
@@ -137,6 +237,8 @@ exports.createBorrowRequest = async (req, res, next) => {
       purpose,
       borrow_date,
       return_date,
+      agreed_replacement_policy: true,
+      agreed_replacement_policy_at: Date.now(),
       lecturer: lecturer?._id,
       lecturer_email: lecturer?.email,
       status: 'pending_lecturer'
@@ -178,10 +280,31 @@ exports.lecturerAction = async (req, res, next) => {
     }
 
     if (action === 'approve') {
+      const updatedEquipment = await Equipment.findOneAndUpdate(
+        {
+          _id: request.equipment,
+          available: { $gte: request.quantity }
+        },
+        {
+          $inc: { available: -request.quantity }
+        },
+        {
+          new: true
+        }
+      );
+
+      if (!updatedEquipment) {
+        return res.status(400).json({
+          success: false,
+          message: 'Equipment no longer available in requested quantity'
+        });
+      }
+
       request.status = 'pending_head';
       request.lecturer = req.user.id;
       request.lecturer_approved_at = Date.now();
       request.lecturer_remarks = remarks;
+      request.stock_reserved = true;
     } else if (action === 'reject') {
       request.status = 'rejected';
       request.rejected_by = req.user.id;
@@ -224,8 +347,9 @@ exports.headAction = async (req, res, next) => {
     }
 
     if (action === 'approve') {
-      // Check equipment availability again
-      if (request.equipment.available < request.quantity) {
+      // Fallback for legacy requests that were approved by lecturer
+      // before stock reservation was introduced.
+      if (!request.stock_reserved && request.equipment.available < request.quantity) {
         return res.status(400).json({
           success: false,
           message: 'Equipment no longer available in requested quantity'
@@ -237,6 +361,12 @@ exports.headAction = async (req, res, next) => {
       request.head_approved_at = Date.now();
       request.head_remarks = remarks;
     } else if (action === 'reject') {
+      if (request.stock_reserved) {
+        request.equipment.available += request.quantity;
+        await request.equipment.save();
+        request.stock_reserved = false;
+      }
+
       request.status = 'rejected';
       request.rejected_by = req.user.id;
       request.rejected_at = Date.now();
@@ -275,10 +405,13 @@ exports.prepareEquipment = async (req, res, next) => {
       });
     }
 
-    // Reserve equipment
-    const equipment = request.equipment;
-    equipment.available -= request.quantity;
-    await equipment.save();
+    // Validate availability before marking ready for pickup.
+    if (request.equipment.available < request.quantity) {
+      return res.status(400).json({
+        success: false,
+        message: 'Equipment no longer available in requested quantity'
+      });
+    }
 
     request.status = 'ready_pickup';
     request.prepared_by = req.user.id;
@@ -315,6 +448,32 @@ exports.releaseEquipment = async (req, res, next) => {
       });
     }
 
+    // Backward compatibility: if this request predates stock reservation,
+    // reserve it at release time.
+    if (!request.stock_reserved) {
+      const updatedEquipment = await Equipment.findOneAndUpdate(
+        {
+          _id: request.equipment,
+          available: { $gte: request.quantity }
+        },
+        {
+          $inc: { available: -request.quantity }
+        },
+        {
+          new: true
+        }
+      );
+
+      if (!updatedEquipment) {
+        return res.status(400).json({
+          success: false,
+          message: 'Equipment no longer available in requested quantity'
+        });
+      }
+
+      request.stock_reserved = true;
+    }
+
     request.status = 'borrowed';
     request.released_by = req.user.id;
     request.released_at = Date.now();
@@ -334,7 +493,59 @@ exports.releaseEquipment = async (req, res, next) => {
 // @access  Private (Lab Assistant)
 exports.returnEquipment = async (req, res, next) => {
   try {
-    const { return_condition, return_remarks } = req.body;
+    const {
+      return_condition,
+      return_remarks,
+      damage_details,
+      student_will_replace,
+      replacement_completed
+    } = req.body;
+
+    const allowedConditions = ['Good', 'Damaged', 'Lost'];
+    if (!allowedConditions.includes(return_condition)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Return condition must be Good, Damaged, or Lost'
+      });
+    }
+
+    if (return_condition !== 'Good' && (!return_remarks || !return_remarks.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Return remarks are required for damaged or lost items'
+      });
+    }
+
+    if (return_condition === 'Damaged' && (!damage_details || !damage_details.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please specify what part is damaged'
+      });
+    }
+
+    if (return_condition === 'Damaged' && typeof student_will_replace !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please specify whether the borrower will replace the damaged item'
+      });
+    }
+
+    const normalizedWillReplace =
+      return_condition === 'Lost' ? true : Boolean(student_will_replace);
+
+    const mustTrackReplacement =
+      return_condition === 'Lost' || (return_condition === 'Damaged' && normalizedWillReplace);
+
+    if (mustTrackReplacement && typeof replacement_completed !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please specify whether replacement has been completed'
+      });
+    }
+
+    const normalizedReplacementCompleted = mustTrackReplacement
+      ? replacement_completed
+      : false;
 
     const request = await BorrowRequest.findById(req.params.id).populate('equipment');
 
@@ -352,13 +563,21 @@ exports.returnEquipment = async (req, res, next) => {
       });
     }
 
-    // Return equipment to inventory
+    const isLost = return_condition === 'Lost';
+
+    // Return equipment to inventory only when item is physically returned,
+    // or when a replacement has already been completed.
     const equipment = request.equipment;
-    equipment.available += request.quantity;
+    if (!isLost || normalizedReplacementCompleted) {
+      equipment.available += request.quantity;
+    }
     
     // Update equipment condition if returned condition is worse
     const conditionOrder = ['Excellent', 'Good', 'Fair', 'Poor', 'Damaged'];
-    if (conditionOrder.indexOf(return_condition) > conditionOrder.indexOf(equipment.condition)) {
+    if (
+      return_condition === 'Damaged' &&
+      conditionOrder.indexOf(return_condition) > conditionOrder.indexOf(equipment.condition)
+    ) {
       equipment.condition = return_condition;
     }
     
@@ -367,7 +586,12 @@ exports.returnEquipment = async (req, res, next) => {
     request.status = 'returned';
     request.actual_return_date = Date.now();
     request.return_condition = return_condition;
-    request.return_remarks = return_remarks;
+    request.return_remarks = return_remarks ? return_remarks.trim() : '';
+    request.damage_details = return_condition === 'Damaged' ? damage_details.trim() : '';
+    request.student_will_replace = return_condition === 'Good' ? false : normalizedWillReplace;
+    request.replacement_completed = normalizedReplacementCompleted;
+    request.replacement_completed_at = normalizedReplacementCompleted ? Date.now() : null;
+    request.stock_reserved = false;
     request.returned_to = req.user.id;
     await request.save();
 
@@ -385,6 +609,8 @@ exports.returnEquipment = async (req, res, next) => {
 // @access  Private (Student)
 exports.getMyRequests = async (req, res, next) => {
   try {
+    await reconcileLegacyStockReservations();
+
     const requests = await BorrowRequest.find({ student: req.user.id })
       .populate('equipment', 'name category')
       .sort('-createdAt');
@@ -426,6 +652,12 @@ exports.deleteBorrowRequest = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this request'
+      });
+    }
+
+    if (request.stock_reserved) {
+      await Equipment.findByIdAndUpdate(request.equipment, {
+        $inc: { available: request.quantity }
       });
     }
 

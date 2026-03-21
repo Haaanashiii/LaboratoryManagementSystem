@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
@@ -91,6 +91,8 @@ const roleColors = {
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [readSignaturesOverride, setReadSignaturesOverride] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
   const { t, lang, toggleLang } = useLang();
@@ -100,6 +102,153 @@ export default function DashboardLayout() {
     queryKey: ['currentUser'],
     queryFn: () => api.auth.me(),
   });
+
+  const { data: notificationSource = [] } = useQuery({
+    queryKey: ['notifications', user?.id, user?.role],
+    enabled: !!user,
+    refetchInterval: 20000,
+    queryFn: async () => {
+      if (!user) return [];
+      if (user.role === 'student') {
+        return api.entities.BorrowRequest.myRequests();
+      }
+      return api.entities.BorrowRequest.list();
+    },
+  });
+
+  const storedReadSignatures = user?.id
+    ? JSON.parse(sessionStorage.getItem(`notifRead:${user.id}`) || '[]')
+    : [];
+
+  const readSignatures = new Set([...storedReadSignatures, ...readSignaturesOverride]);
+
+  const notifications = useMemo(() => {
+    if (!user || !Array.isArray(notificationSource)) return [];
+
+    const source = [...notificationSource]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+
+    return source
+      .map((request) => {
+        const equipmentName = request.equipment_name || request.equipment?.name || 'Equipment';
+        const eventTime = request.released_at || request.updatedAt || request.createdAt;
+
+        if (user.role === 'student') {
+          const studentMessages = {
+            pending_lecturer: `Request submitted for ${equipmentName}`,
+            pending_head: `${equipmentName} approved by lecturer and waiting head approval`,
+            head_approved: `${equipmentName} approved by head of lab`,
+            ready_pickup: `${equipmentName} is ready for pickup`,
+            borrowed: `${equipmentName} has been marked as borrowed`,
+            returned: `${equipmentName} has been marked as returned`,
+            rejected: `Request for ${equipmentName} was rejected`,
+          };
+
+          const message = studentMessages[request.status];
+          if (!message) return null;
+
+          return {
+            id: request.id,
+            time: eventTime,
+            signature: `${request.id}:${request.status}:${eventTime || ''}`,
+            message,
+          };
+        }
+
+        if (user.role === 'lecturer' && request.status === 'pending_lecturer') {
+          return {
+            id: request.id,
+            time: eventTime,
+            signature: `${request.id}:${request.status}:${eventTime || ''}`,
+            message: `${request.borrower_name || 'A student'} requested ${equipmentName}`,
+          };
+        }
+
+        if (user.role === 'head_of_lab' && request.status === 'pending_head') {
+          return {
+            id: request.id,
+            time: eventTime,
+            signature: `${request.id}:${request.status}:${eventTime || ''}`,
+            message: `${request.borrower_name || 'A student'} request is waiting final approval`,
+          };
+        }
+
+        if (user.role === 'lab_assistant' && (request.status === 'head_approved' || request.status === 'ready_pickup')) {
+          return {
+            id: request.id,
+            time: eventTime,
+            signature: `${request.id}:${request.status}:${eventTime || ''}`,
+            message: request.status === 'head_approved'
+              ? `${equipmentName} is approved and needs preparation`
+              : `${equipmentName} is ready and waiting pickup confirmation`,
+          };
+        }
+
+        if (user.role === 'admin' && ['borrowed', 'returned', 'rejected'].includes(request.status)) {
+          return {
+            id: request.id,
+            time: eventTime,
+            signature: `${request.id}:${request.status}:${eventTime || ''}`,
+            message: `${equipmentName} status changed to ${request.status.replace('_', ' ')}`,
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean)
+      .slice(0, 8);
+  }, [notificationSource, user]);
+
+  const unreadCount = notifications.filter((item) => !readSignatures.has(item.signature)).length;
+
+  const handleNotificationsOpenChange = (open) => {
+    setNotificationsOpen(open);
+
+    if (open && user?.id) {
+      const currentSignatures = notifications.map((item) => item.signature);
+      const merged = Array.from(new Set([...storedReadSignatures, ...readSignaturesOverride, ...currentSignatures]));
+      setReadSignaturesOverride(merged);
+      sessionStorage.setItem(`notifRead:${user.id}`, JSON.stringify(merged));
+    }
+  };
+
+  const notificationsBell = (
+    <DropdownMenu open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="w-5 h-5 text-slate-600" />
+          {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>{t('notifications') || 'Notifications'}</span>
+          <span className="text-xs font-normal text-slate-500">{notifications.length} items</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
+        {notifications.length === 0 ? (
+          <div className="px-3 py-4 text-sm text-slate-500">No notifications yet.</div>
+        ) : (
+          notifications.map((item) => {
+            const isUnread = !readSignatures.has(item.signature);
+
+            return (
+              <DropdownMenuItem key={item.signature} className="items-start gap-2 py-3 cursor-default focus:bg-slate-50">
+                <span className={`mt-1 h-2 w-2 rounded-full ${isUnread ? 'bg-blue-500' : 'bg-slate-300'}`} />
+                <div className="flex flex-col">
+                  <span className="text-sm text-slate-800 leading-snug">{item.message}</span>
+                  <span className="text-xs text-slate-500 mt-1">
+                    {item.time ? new Date(item.time).toLocaleString() : 'Just now'}
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            );
+          })
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   // Get navigation items for current user's role
   const navigation = navigationConfig[user?.role] || navigationConfig.student;
@@ -167,10 +316,7 @@ export default function DashboardLayout() {
                 </Button>
 
                 {/* Notification Bell */}
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="w-5 h-5 text-slate-600" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
-                </Button>
+                {notificationsBell}
 
                 {/* User Dropdown */}
                 <DropdownMenu>
@@ -316,10 +462,7 @@ export default function DashboardLayout() {
             </Button>
 
             {/* Notification Bell */}
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5 text-slate-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
-            </Button>
+            {notificationsBell}
 
             {/* User Dropdown */}
             <DropdownMenu>

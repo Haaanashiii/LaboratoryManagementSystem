@@ -1,14 +1,17 @@
 // Laboratory Management System API client
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-// Hardcoded users for development (no seeder needed)
-const MOCK_USERS = [
-  { id: '1', email: 'admin@its.ac.id', name: 'System Admin', role: 'admin', department: 'IT', created_date: '2024-01-01' },
-  { id: '2', email: 'head@its.ac.id', name: 'Dr. Head Lab', role: 'head_of_lab', department: 'Chemistry', created_date: '2024-01-01' },
-  { id: '3', email: 'lecturer@its.ac.id', name: 'Prof. Lecturer', role: 'lecturer', department: 'Physics', created_date: '2024-01-01' },
-  { id: '4', email: 'assistant@its.ac.id', name: 'Lab Assistant', role: 'lab_assistant', department: 'Chemistry', created_date: '2024-01-01' },
-  { id: '5', email: 'student@its.ac.id', name: 'Student User', role: 'student', department: 'Chemistry', created_date: '2024-01-01' },
-];
+const resolveApiAssetUrl = (value) => {
+  if (!value) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
+  if (value.startsWith('/')) {
+    return `${apiOrigin}${value}`;
+  }
+
+  return `${apiOrigin}/${value}`;
+};
 
 // Helper for making authenticated requests to the real backend
 const request = async (endpoint, options = {}) => {
@@ -19,14 +22,27 @@ const request = async (endpoint, options = {}) => {
     ...options.headers,
   };
 
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch {
+    throw new Error('Cannot connect to backend API. Make sure backend is running and reachable at http://localhost:3000.');
+  }
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Your session is not authenticated. Please log in again.');
+    }
+
+    if (res.status === 403) {
+      throw new Error('You do not have permission to access this resource with the current account.');
+    }
+
     throw new Error(data.message || `Request failed with status ${res.status}`);
   }
 
@@ -102,7 +118,7 @@ export const api = {
           method: 'PUT',
           body: JSON.stringify(data),
         });
-      } catch (e) {
+      } catch {
         // Mock fallback
         return { success: true, message: 'Password changed successfully' };
       }
@@ -113,31 +129,60 @@ export const api = {
     },
   },
 
-  // Users (hardcoded for dev)
+  // Users
   users: {
     inviteUser: async (email, role) => {
-      const newUser = {
-        id: Date.now().toString(),
-        email,
-        name: email.split('@')[0],
-        role,
-        created_date: new Date().toISOString(),
+      const data = await request('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          role,
+          name: email.split('@')[0]
+        }),
+      });
+
+      const user = data.data;
+      return {
+        ...user,
+        id: user._id || user.id,
+        created_date: user.createdAt || user.created_date
       };
-      MOCK_USERS.push(newUser);
-      return newUser;
     },
   },
 
   // Entities
   entities: {
-    // Users - hardcoded
+    // Users - REAL BACKEND
     User: {
-      list: async () => MOCK_USERS,
-      filter: async (filters) => MOCK_USERS.filter(u => Object.keys(filters).every(k => u[k] === filters[k])),
+      list: async () => {
+        const data = await request('/users');
+        return data.data.map(user => ({
+          ...user,
+          id: user._id || user.id,
+          created_date: user.createdAt || user.created_date
+        }));
+      },
+      filter: async (filters) => {
+        const params = new URLSearchParams(filters).toString();
+        const data = await request(`/users?${params}`);
+        return data.data.map(user => ({
+          ...user,
+          id: user._id || user.id,
+          created_date: user.createdAt || user.created_date
+        }));
+      },
       update: async (id, data) => {
-        const i = MOCK_USERS.findIndex(u => u.id === id);
-        if (i !== -1) { MOCK_USERS[i] = { ...MOCK_USERS[i], ...data }; return MOCK_USERS[i]; }
-        throw new Error('User not found');
+        const response = await request(`/users/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        });
+
+        const user = response.data;
+        return {
+          ...user,
+          id: user._id || user.id,
+          created_date: user.createdAt || user.created_date
+        };
       },
     },
 
@@ -148,7 +193,7 @@ export const api = {
         return data.data.map(item => ({
           ...item,
           id: item._id || item.id,
-          image_url: item.image,
+          image_url: resolveApiAssetUrl(item.image),
           total_quantity: item.quantity,
           available_quantity: item.available,
         }));
@@ -159,7 +204,7 @@ export const api = {
         return data.data.map(item => ({
           ...item,
           id: item._id || item.id,
-          image_url: item.image,
+          image_url: resolveApiAssetUrl(item.image),
           total_quantity: item.quantity,
           available_quantity: item.available,
         }));
@@ -207,17 +252,22 @@ export const api = {
         const formData = new FormData();
         formData.append('image', file);
         const token = sessionStorage.getItem('token');
-        const res = await fetch(`${API_BASE_URL}/equipment/upload-image`, {
-          method: 'POST',
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-          body: formData,
-        });
+        let res;
+        try {
+          res = await fetch(`${API_BASE_URL}/equipment/upload-image`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: formData,
+          });
+        } catch {
+          throw new Error('Cannot connect to backend API. Make sure backend server is running on http://localhost:3000.');
+        }
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.message || 'Image upload failed');
         }
         const data = await res.json();
-        return data.data.path || data.data.filename;
+        return resolveApiAssetUrl(data.data.path || data.data.filename);
       },
     },
 
@@ -276,10 +326,10 @@ export const api = {
         });
         return data.data;
       },
-      return: async (id, return_condition, return_remarks) => {
+      return: async (id, returnData) => {
         const data = await request(`/borrow-requests/${id}/return`, {
           method: 'PUT',
-          body: JSON.stringify({ return_condition, return_remarks }),
+          body: JSON.stringify(returnData),
         });
         return data.data;
       },

@@ -15,6 +15,9 @@ export default function Returns() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [returnCondition, setReturnCondition] = useState('Good');
   const [returnRemarks, setReturnRemarks] = useState('');
+  const [damageDetails, setDamageDetails] = useState('');
+  const [studentWillReplace, setStudentWillReplace] = useState('');
+  const [replacementCompleted, setReplacementCompleted] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -24,7 +27,7 @@ export default function Returns() {
   });
 
   const returnMutation = useMutation({
-    mutationFn: ({ id, condition, remarks }) => api.entities.BorrowRequest.return(id, condition, remarks),
+    mutationFn: ({ id, returnData }) => api.entities.BorrowRequest.return(id, returnData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['borrowedRequests'] });
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
@@ -37,19 +40,71 @@ export default function Returns() {
     setSelectedRequest(request);
     setReturnCondition('Good');
     setReturnRemarks('');
+    setDamageDetails('');
+    setStudentWillReplace('');
+    setReplacementCompleted('');
   };
 
   const closeDialog = () => {
     setSelectedRequest(null);
   };
 
+  const handleConditionChange = (value) => {
+    setReturnCondition(value);
+
+    if (value === 'Good') {
+      setDamageDetails('');
+      setStudentWillReplace('');
+      setReplacementCompleted('');
+      return;
+    }
+
+    if (value === 'Damaged') {
+      setStudentWillReplace('');
+      setReplacementCompleted('');
+      return;
+    }
+
+    if (value === 'Lost') {
+      setDamageDetails('');
+      setStudentWillReplace('yes');
+      setReplacementCompleted('');
+    }
+  };
+
+  const handleStudentReplacementChange = (value) => {
+    setStudentWillReplace(value);
+    if (value !== 'yes') {
+      setReplacementCompleted('');
+    }
+  };
+
   const handleReturn = () => {
+    const willReplace = returnCondition === 'Lost' ? true : studentWillReplace === 'yes';
+    const hasReplacementTracking = returnCondition === 'Lost' || willReplace;
+
     returnMutation.mutate({
       id: selectedRequest.id,
-      condition: returnCondition,
-      remarks: returnRemarks
+      returnData: {
+        return_condition: returnCondition,
+        return_remarks: returnRemarks,
+        damage_details: returnCondition === 'Damaged' ? damageDetails : '',
+        student_will_replace: returnCondition === 'Good' ? false : willReplace,
+        replacement_completed: hasReplacementTracking ? replacementCompleted === 'yes' : false
+      }
     });
   };
+
+  const shouldRequireRemarks = returnCondition !== 'Good';
+  const shouldRequireDamageDetails = returnCondition === 'Damaged';
+  const shouldRequireReplacementDecision = returnCondition === 'Damaged';
+  const shouldTrackReplacement = returnCondition === 'Lost' || (returnCondition === 'Damaged' && studentWillReplace === 'yes');
+
+  const isFormInvalid =
+    (shouldRequireRemarks && !returnRemarks.trim()) ||
+    (shouldRequireDamageDetails && !damageDetails.trim()) ||
+    (shouldRequireReplacementDecision && studentWillReplace === '') ||
+    (shouldTrackReplacement && replacementCompleted === '');
 
   const isOverdue = (returnDate) => {
     return new Date(returnDate) < new Date();
@@ -166,7 +221,7 @@ export default function Returns() {
             
             <div className="space-y-2">
               <label className="text-sm font-medium">Equipment Condition</label>
-              <Select value={returnCondition} onValueChange={setReturnCondition}>
+              <Select value={returnCondition} onValueChange={handleConditionChange}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -193,6 +248,63 @@ export default function Returns() {
               </Select>
             </div>
 
+            {returnCondition === 'Damaged' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  What is damaged? <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  value={damageDetails}
+                  onChange={(e) => setDamageDetails(e.target.value)}
+                  placeholder="Example: cracked screen, broken cable, missing charger tip..."
+                  rows={3}
+                />
+              </div>
+            )}
+
+            {returnCondition === 'Damaged' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Will the borrower replace it? <span className="text-red-500">*</span>
+                </label>
+                <Select value={studentWillReplace} onValueChange={handleStudentReplacementChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select replacement responsibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes, borrower will replace it</SelectItem>
+                    <SelectItem value="no">No, replacement is not required</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {returnCondition === 'Lost' && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <p className="font-medium">Lost item policy</p>
+                <p>
+                  {selectedRequest?.borrower_name} must replace this lost item.
+                </p>
+              </div>
+            )}
+
+            {shouldTrackReplacement && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Has the replacement already been completed? <span className="text-red-500">*</span>
+                </label>
+                <Select value={replacementCompleted} onValueChange={setReplacementCompleted}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select replacement status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes, already replaced</SelectItem>
+                    <SelectItem value="no">No, still pending replacement</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 Remarks {returnCondition !== 'Good' && <span className="text-red-500">*</span>}
@@ -213,7 +325,7 @@ export default function Returns() {
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
             <Button 
               onClick={handleReturn}
-              disabled={returnMutation.isPending || (returnCondition !== 'Good' && !returnRemarks)}
+              disabled={returnMutation.isPending || isFormInvalid}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {returnMutation.isPending ? (

@@ -46,6 +46,13 @@ const borrowRequestSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'Return date is required']
   },
+  agreed_replacement_policy: {
+    type: Boolean,
+    default: false
+  },
+  agreed_replacement_policy_at: {
+    type: Date
+  },
   
   // Approvals
   lecturer: {
@@ -90,6 +97,10 @@ const borrowRequestSchema = new mongoose.Schema({
   released_at: {
     type: Date
   },
+  stock_reserved: {
+    type: Boolean,
+    default: false
+  },
   
   // Return Information
   actual_return_date: {
@@ -97,11 +108,26 @@ const borrowRequestSchema = new mongoose.Schema({
   },
   return_condition: {
     type: String,
-    enum: ['Excellent', 'Good', 'Fair', 'Poor', 'Damaged']
+    enum: ['Excellent', 'Good', 'Fair', 'Poor', 'Damaged', 'Lost']
   },
   return_remarks: {
     type: String,
     trim: true
+  },
+  damage_details: {
+    type: String,
+    trim: true
+  },
+  student_will_replace: {
+    type: Boolean,
+    default: false
+  },
+  replacement_completed: {
+    type: Boolean,
+    default: false
+  },
+  replacement_completed_at: {
+    type: Date
   },
   returned_to: {
     type: mongoose.Schema.Types.ObjectId,

@@ -22,7 +22,16 @@ export default function Catalog() {
     quantity: 1,
     purpose: '',
     borrow_date: format(new Date(), 'yyyy-MM-dd'),
-    return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd')
+    return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+    agree_policy: false
+  });
+
+  const getDefaultBorrowForm = () => ({
+    quantity: 1,
+    purpose: '',
+    borrow_date: format(new Date(), 'yyyy-MM-dd'),
+    return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+    agree_policy: false
   });
 
   const queryClient = useQueryClient();
@@ -43,12 +52,7 @@ export default function Catalog() {
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       setSelectedEquipment(null);
       setShowSuccessModal(true);
-      setBorrowForm({
-        quantity: 1,
-        purpose: '',
-        borrow_date: format(new Date(), 'yyyy-MM-dd'),
-        return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd')
-      });
+      setBorrowForm(getDefaultBorrowForm());
     }
   });
 
@@ -66,6 +70,11 @@ export default function Catalog() {
       equipment: selectedEquipment.id,
       ...borrowForm
     });
+  };
+
+  const closeBorrowDialog = () => {
+    setSelectedEquipment(null);
+    setBorrowForm(getDefaultBorrowForm());
   };
 
   return (
@@ -142,7 +151,7 @@ export default function Catalog() {
 
       {/* Borrow Dialog - Only for students */}
       {user?.role === 'student' && (
-      <Dialog open={!!selectedEquipment} onOpenChange={() => setSelectedEquipment(null)}>
+      <Dialog open={!!selectedEquipment} onOpenChange={closeBorrowDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Borrow {selectedEquipment?.name}</DialogTitle>
@@ -188,15 +197,33 @@ export default function Catalog() {
                 />
               </div>
             </div>
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+              <p className="text-sm font-medium text-amber-900">Borrower Agreement Policy</p>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Damaged items may be subject to replacement depending on the damage and severity. Lost items must be replaced by the borrower.
+              </p>
+              <label className="flex items-start gap-2 text-xs text-amber-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                  checked={borrowForm.agree_policy}
+                  onChange={(e) => setBorrowForm({ ...borrowForm, agree_policy: e.target.checked })}
+                />
+                <span>
+                  I understand and agree to this policy, including replacement responsibility when applicable.
+                </span>
+              </label>
+            </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedEquipment(null)}>
+            <Button variant="outline" onClick={closeBorrowDialog}>
               Cancel
             </Button>
             <Button 
               onClick={handleBorrowSubmit}
-              disabled={createRequestMutation.isPending || !borrowForm.purpose}
+              disabled={createRequestMutation.isPending || !borrowForm.purpose || !borrowForm.agree_policy}
               className="bg-slate-900 hover:bg-slate-700"
             >
               {createRequestMutation.isPending ? (

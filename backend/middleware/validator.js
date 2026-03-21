@@ -41,5 +41,7 @@ exports.borrowRequestValidation = [
   body('purpose').trim().notEmpty().withMessage('Purpose is required'),
   body('borrow_date').isISO8601().withMessage('Valid borrow date is required'),
   body('return_date').isISO8601().withMessage('Valid return date is required'),
+  body('agree_policy').isBoolean().withMessage('Agreement confirmation is required'),
+  body('agree_policy').custom((value) => value === true).withMessage('You must agree to the replacement policy before submitting'),
   body('lecturer_email').optional().isEmail().withMessage('Valid lecturer email is required')
 ];

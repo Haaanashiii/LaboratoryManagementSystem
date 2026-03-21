@@ -30,6 +30,7 @@ export default function EquipmentPrep() {
       queryClient.invalidateQueries({ queryKey: ['approvedRequests'] });
       queryClient.invalidateQueries({ queryKey: ['readyRequests'] });
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
       closeDialog();
     }
   });
@@ -39,6 +40,7 @@ export default function EquipmentPrep() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['readyRequests'] });
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
       closeDialog();
     }
   });

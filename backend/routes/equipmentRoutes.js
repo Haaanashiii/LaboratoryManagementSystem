@@ -27,12 +27,12 @@ router.get('/categories', getCategories);
 router.get('/:id', getEquipmentById);
 
 // Image upload
-router.post('/upload-image', authorize('admin', 'head_of_lab'), upload.single('image'), uploadImage);
+router.post('/upload-image', authorize('admin', 'head_of_lab', 'lab_assistant'), upload.single('image'), uploadImage);
 
-// Admin and Head of Lab can manage equipment
-router.post('/', authorize('admin', 'head_of_lab'), equipmentValidation, validate, createEquipment);
-router.put('/:id', authorize('admin', 'head_of_lab'), updateEquipment);
-router.delete('/:id', authorize('admin', 'head_of_lab'), deleteEquipment);
+// Admin, Head of Lab, and Lab Assistant can manage equipment
+router.post('/', authorize('admin', 'head_of_lab', 'lab_assistant'), equipmentValidation, validate, createEquipment);
+router.put('/:id', authorize('admin', 'head_of_lab', 'lab_assistant'), updateEquipment);
+router.delete('/:id', authorize('admin', 'head_of_lab', 'lab_assistant'), deleteEquipment);
 
 // Lab assistant can update quantities
 router.patch('/:id/quantity', authorize('admin', 'head_of_lab', 'lab_assistant'), updateQuantity);

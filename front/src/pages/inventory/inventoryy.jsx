@@ -145,6 +145,7 @@ export default function Inventory() {
         submitData.image_url = uploadedUrl;
       } catch (err) {
         console.error('Image upload failed:', err);
+        window.alert(err.message || 'Image upload failed. Please try again.');
         setUploading(false);
         return;
       }
@@ -418,7 +419,7 @@ export default function Inventory() {
                     )}
                     <input
                       type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/avif,image/svg+xml"
                       onChange={handleFileSelect}
                       className="hidden"
                     />
