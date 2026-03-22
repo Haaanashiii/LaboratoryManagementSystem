@@ -4,7 +4,10 @@ const {
   getDashboardStats,
   getBorrowingTrends,
   getEquipmentUsage,
-  getOverdueReturns
+  getOverdueReturns,
+  getMostBorrowedItems,
+  getUsersWithMostLateReturns,
+  getAdminBorrowingTrends
 } = require('../controllers/statsController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -17,6 +20,9 @@ router.get('/dashboard', getDashboardStats);
 // Admin and Head of Lab only
 router.get('/trends', authorize('admin', 'head_of_lab'), getBorrowingTrends);
 router.get('/equipment-usage', authorize('admin', 'head_of_lab'), getEquipmentUsage);
+router.get('/admin/most-borrowed', authorize('admin'), getMostBorrowedItems);
+router.get('/admin/late-return-users', authorize('admin'), getUsersWithMostLateReturns);
+router.get('/admin/borrowing-trends', authorize('admin'), getAdminBorrowingTrends);
 
 // Lab Assistant, Admin, and Head of Lab can view overdue
 router.get('/overdue', authorize('admin', 'head_of_lab', 'lab_assistant'), getOverdueReturns);

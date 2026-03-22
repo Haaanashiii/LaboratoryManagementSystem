@@ -118,6 +118,30 @@ const borrowRequestSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  damage_image_url: {
+    type: String,
+    trim: true
+  },
+  damage_reported_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  damage_status: {
+    type: String,
+    enum: ['none', 'pending_verification', 'verified', 'rejected'],
+    default: 'none'
+  },
+  damage_verified_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  damage_verified_at: {
+    type: Date
+  },
+  damage_verification_remarks: {
+    type: String,
+    trim: true
+  },
   student_will_replace: {
     type: Boolean,
     default: false

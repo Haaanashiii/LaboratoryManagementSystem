@@ -16,6 +16,7 @@ export default function Returns() {
   const [returnCondition, setReturnCondition] = useState('Good');
   const [returnRemarks, setReturnRemarks] = useState('');
   const [damageDetails, setDamageDetails] = useState('');
+  const [damageImage, setDamageImage] = useState(null);
   const [studentWillReplace, setStudentWillReplace] = useState('');
   const [replacementCompleted, setReplacementCompleted] = useState('');
 
@@ -41,6 +42,7 @@ export default function Returns() {
     setReturnCondition('Good');
     setReturnRemarks('');
     setDamageDetails('');
+    setDamageImage(null);
     setStudentWillReplace('');
     setReplacementCompleted('');
   };
@@ -54,6 +56,7 @@ export default function Returns() {
 
     if (value === 'Good') {
       setDamageDetails('');
+      setDamageImage(null);
       setStudentWillReplace('');
       setReplacementCompleted('');
       return;
@@ -70,6 +73,11 @@ export default function Returns() {
       setStudentWillReplace('yes');
       setReplacementCompleted('');
     }
+  };
+
+  const handleDamageImageChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    setDamageImage(file);
   };
 
   const handleStudentReplacementChange = (value) => {
@@ -89,6 +97,7 @@ export default function Returns() {
         return_condition: returnCondition,
         return_remarks: returnRemarks,
         damage_details: returnCondition === 'Damaged' ? damageDetails : '',
+          damage_image: returnCondition === 'Damaged' ? damageImage : null,
         student_will_replace: returnCondition === 'Good' ? false : willReplace,
         replacement_completed: hasReplacementTracking ? replacementCompleted === 'yes' : false
       }
@@ -259,6 +268,21 @@ export default function Returns() {
                   placeholder="Example: cracked screen, broken cable, missing charger tip..."
                   rows={3}
                 />
+              </div>
+            )}
+
+            {returnCondition === 'Damaged' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Damage image (optional but recommended)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleDamageImageChange}
+                  className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+                {damageImage && (
+                  <p className="text-xs text-slate-500">Selected: {damageImage.name}</p>
+                )}
               </div>
             )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useNavigationType } from 'react-router-dom';
 import {
   FlaskConical, CheckCircle, Package, Shield, ClipboardList, ArrowRight, 
   Zap, Microscope, Cpu, MousePointerClick, FileBadge, RotateCcw, 
@@ -7,11 +7,13 @@ import {
 } from 'lucide-react';
 import LandingBG from '@/components/layouts/LandingBG';
 import { useLang } from '@/components/i18n/LangContext';
+import { clearStoredAuth, getStoredToken } from '@/api/apiClient';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 
 export default function Landing() {
   const { t, lang, toggleLang } = useLang();
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -113,6 +115,18 @@ export default function Landing() {
     { label: 'How It Works', href: '#workflow', id: 'workflow' },
     { label: 'Capabilities', href: '#capabilities', id: 'capabilities' },
   ];
+
+  useEffect(() => {
+    if (navigationType === 'POP') {
+      const hasToken = !!getStoredToken();
+      const hasUser = !!localStorage.getItem('currentUser');
+
+      if (hasToken || hasUser) {
+        clearStoredAuth();
+        navigate('/login', { replace: true });
+      }
+    }
+  }, [navigationType, navigate]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);

@@ -12,6 +12,7 @@ const userRoutes = require('./routes/userRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const borrowRequestRoutes = require('./routes/borrowRequestRoutes');
 const statsRoutes = require('./routes/statsRoutes');
+const auditLogRoutes = require('./routes/auditLogRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -58,6 +59,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/borrow-requests', borrowRequestRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/admin/audit-logs', auditLogRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

@@ -1,6 +1,8 @@
 const BorrowRequest = require('../models/BorrowRequest');
 const Equipment = require('../models/Equipment');
 const User = require('../models/User');
+const { uploadToGridFS, getFileMetadata, downloadFromGridFS } = require('../config/gridfs');
+const { logAuditEvent } = require('../utils/auditLogger');
 
 let stockReconcilePromise = null;
 let lastStockReconcileAt = 0;
@@ -251,6 +253,20 @@ exports.createBorrowRequest = async (req, res, next) => {
       success: true,
       data: request
     });
+
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: 'borrow_created',
+      entityType: 'borrow_request',
+      entityId: request._id,
+      status: 'success',
+      details: {
+        equipment: request.equipment_name,
+        quantity: request.quantity
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -479,6 +495,20 @@ exports.releaseEquipment = async (req, res, next) => {
     request.released_at = Date.now();
     await request.save();
 
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: 'borrow_released',
+      entityType: 'borrow_request',
+      entityId: request._id,
+      status: 'success',
+      details: {
+        equipment: request.equipment_name,
+        quantity: request.quantity
+      }
+    });
+
     res.json({
       success: true,
       data: request
@@ -493,6 +523,16 @@ exports.releaseEquipment = async (req, res, next) => {
 // @access  Private (Lab Assistant)
 exports.returnEquipment = async (req, res, next) => {
   try {
+    const toBoolean = (value) => {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        if (normalized === 'true') return true;
+        if (normalized === 'false') return false;
+      }
+      return value;
+    };
+
     const {
       return_condition,
       return_remarks,
@@ -523,7 +563,10 @@ exports.returnEquipment = async (req, res, next) => {
       });
     }
 
-    if (return_condition === 'Damaged' && typeof student_will_replace !== 'boolean') {
+    const normalizedStudentWillReplaceInput = toBoolean(student_will_replace);
+    const normalizedReplacementCompletedInput = toBoolean(replacement_completed);
+
+    if (return_condition === 'Damaged' && typeof normalizedStudentWillReplaceInput !== 'boolean') {
       return res.status(400).json({
         success: false,
         message: 'Please specify whether the borrower will replace the damaged item'
@@ -531,12 +574,12 @@ exports.returnEquipment = async (req, res, next) => {
     }
 
     const normalizedWillReplace =
-      return_condition === 'Lost' ? true : Boolean(student_will_replace);
+      return_condition === 'Lost' ? true : Boolean(normalizedStudentWillReplaceInput);
 
     const mustTrackReplacement =
       return_condition === 'Lost' || (return_condition === 'Damaged' && normalizedWillReplace);
 
-    if (mustTrackReplacement && typeof replacement_completed !== 'boolean') {
+    if (mustTrackReplacement && typeof normalizedReplacementCompletedInput !== 'boolean') {
       return res.status(400).json({
         success: false,
         message: 'Please specify whether replacement has been completed'
@@ -544,7 +587,7 @@ exports.returnEquipment = async (req, res, next) => {
     }
 
     const normalizedReplacementCompleted = mustTrackReplacement
-      ? replacement_completed
+      ? normalizedReplacementCompletedInput
       : false;
 
     const request = await BorrowRequest.findById(req.params.id).populate('equipment');
@@ -588,12 +631,131 @@ exports.returnEquipment = async (req, res, next) => {
     request.return_condition = return_condition;
     request.return_remarks = return_remarks ? return_remarks.trim() : '';
     request.damage_details = return_condition === 'Damaged' ? damage_details.trim() : '';
+    if (return_condition === 'Damaged' && req.file) {
+      const fileId = await uploadToGridFS(req.file.buffer, req.file.originalname, req.file.mimetype);
+      request.damage_image_url = `/api/borrow-requests/damage-image/${fileId}`;
+      request.damage_reported_by = req.user.id;
+      request.damage_status = 'pending_verification';
+      request.damage_verified_by = null;
+      request.damage_verified_at = null;
+      request.damage_verification_remarks = '';
+    } else if (return_condition !== 'Damaged') {
+      request.damage_image_url = '';
+      request.damage_reported_by = null;
+      request.damage_status = 'none';
+      request.damage_verified_by = null;
+      request.damage_verified_at = null;
+      request.damage_verification_remarks = '';
+    }
     request.student_will_replace = return_condition === 'Good' ? false : normalizedWillReplace;
     request.replacement_completed = normalizedReplacementCompleted;
     request.replacement_completed_at = normalizedReplacementCompleted ? Date.now() : null;
     request.stock_reserved = false;
     request.returned_to = req.user.id;
     await request.save();
+
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: 'borrow_returned',
+      entityType: 'borrow_request',
+      entityId: request._id,
+      status: 'success',
+      details: {
+        condition: return_condition,
+        damage_status: request.damage_status
+      }
+    });
+
+    res.json({
+      success: true,
+      data: request
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get damage image stream
+// @route   GET /api/borrow-requests/damage-image/:fileId
+// @access  Private
+exports.getDamageImage = async (req, res, next) => {
+  try {
+    const metadata = await getFileMetadata(req.params.fileId);
+
+    if (!metadata) {
+      return res.status(404).json({
+        success: false,
+        message: 'Damage image not found'
+      });
+    }
+
+    res.set('Content-Type', metadata.metadata.contentType || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
+
+    const downloadStream = downloadFromGridFS(req.params.fileId);
+    downloadStream.pipe(res);
+
+    downloadStream.on('error', () => {
+      res.status(404).json({
+        success: false,
+        message: 'Error retrieving damage image'
+      });
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verify or reject damage report
+// @route   PUT /api/borrow-requests/:id/damage-verify
+// @access  Private (Admin)
+exports.verifyDamageReport = async (req, res, next) => {
+  try {
+    const { action, remarks = '' } = req.body;
+
+    if (!['verify', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Action must be verify or reject'
+      });
+    }
+
+    const request = await BorrowRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    if (request.return_condition !== 'Damaged') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only damaged returns can be verified'
+      });
+    }
+
+    request.damage_status = action === 'verify' ? 'verified' : 'rejected';
+    request.damage_verified_by = req.user.id;
+    request.damage_verified_at = Date.now();
+    request.damage_verification_remarks = remarks.trim();
+    await request.save();
+
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: 'damage_verified',
+      entityType: 'borrow_request',
+      entityId: request._id,
+      status: 'success',
+      details: {
+        result: request.damage_status
+      }
+    });
 
     res.json({
       success: true,

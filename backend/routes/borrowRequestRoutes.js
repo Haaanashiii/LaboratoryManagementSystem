@@ -9,10 +9,13 @@ const {
   prepareEquipment,
   releaseEquipment,
   returnEquipment,
+  verifyDamageReport,
+  getDamageImage,
   getMyRequests,
   deleteBorrowRequest
 } = require('../controllers/borrowRequestController');
 const { protect, authorize } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 const { borrowRequestValidation, validate } = require('../middleware/validator');
 
 // All routes are protected
@@ -24,6 +27,7 @@ router.post('/', authorize('student'), borrowRequestValidation, validate, create
 
 // General routes (all authenticated users can view based on role filtering in controller)
 router.get('/', getBorrowRequests);
+router.get('/damage-image/:fileId', getDamageImage);
 router.get('/:id', getBorrowRequest);
 
 // Lecturer routes
@@ -35,7 +39,8 @@ router.put('/:id/head-action', authorize('head_of_lab'), headAction);
 // Lab Assistant routes
 router.put('/:id/prepare', authorize('lab_assistant'), prepareEquipment);
 router.put('/:id/release', authorize('lab_assistant'), releaseEquipment);
-router.put('/:id/return', authorize('lab_assistant'), returnEquipment);
+router.put('/:id/return', authorize('lab_assistant'), upload.single('damage_image'), returnEquipment);
+router.put('/:id/damage-verify', authorize('admin'), verifyDamageReport);
 
 // Delete route (student can delete own pending requests, admin can delete any pending)
 router.delete('/:id', deleteBorrowRequest);

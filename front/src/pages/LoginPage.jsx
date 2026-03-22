@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { FlaskConical, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { api } from '@/api/apiClient';
+import { api, clearStoredAuth, isTokenExpired } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
 import LandingBG from '@/components/layouts/LandingBG';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const { t } = useLang();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -20,6 +22,38 @@ export default function LoginPage() {
     confirmPassword: ''
   });
   const [errors, setErrors] = useState({});
+  const redirectPath = location.state?.from?.pathname || '/dashboard';
+
+  useEffect(() => {
+    // If user goes back/forward into login page, treat it as an explicit logout entry.
+    if (navigationType === 'POP') {
+      clearStoredAuth();
+      return;
+    }
+
+    // If token already exists, skip login page.
+    const token = localStorage.getItem('token');
+    if (token && !isTokenExpired(token)) {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
+    // Cleanup stale auth data when token is missing or expired.
+    clearStoredAuth();
+  }, [navigate, navigationType]);
+
+  useEffect(() => {
+    // Hidden admin-login shortcut: Ctrl + Shift + A
+    const handleAdminShortcut = (event) => {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        navigate('/admin-login');
+      }
+    };
+
+    window.addEventListener('keydown', handleAdminShortcut);
+    return () => window.removeEventListener('keydown', handleAdminShortcut);
+  }, [navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -72,11 +106,11 @@ export default function LoginPage() {
           // Handle login logic
           const user = await api.auth.login(formData.email, formData.password);
           console.log('Login successful:', user);
-          // Navigate to dashboard page after successful login
-          navigate('/dashboard');
+          // Navigate to requested page or dashboard after successful login.
+          navigate(redirectPath, { replace: true });
         } catch (error) {
           console.error('Login failed:', error);
-          setErrors({ email: t('errorInvalidCredentials') });
+          setErrors({ email: error.message || t('errorInvalidCredentials') });
         }
       } else {
         // Handle sign up logic
@@ -87,7 +121,7 @@ export default function LoginPage() {
             password: formData.password,
           });
           console.log('Registration successful:', user);
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         } catch (error) {
           console.error('Registration failed:', error);
           setErrors({ email: error.message || 'Registration failed' });
@@ -177,7 +211,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
             {/* Name Field (Sign Up Only) */}
             {!isLogin && (
               <div>
@@ -192,10 +226,10 @@ export default function LoginPage() {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
+                    autoComplete="off"
                     className={`w-full pl-11 pr-4 py-3 bg-white border ${
                       errors.name ? 'border-red-500' : 'border-slate-300'
                     } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                    placeholder="John Doe"
                   />
                 </div>
                 {errors.name && (
@@ -217,10 +251,10 @@ export default function LoginPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
+                  autoComplete="off"
                   className={`w-full pl-11 pr-4 py-3 bg-white border ${
                     errors.email ? 'border-red-500' : 'border-slate-300'
                   } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                  placeholder="John@ds@gmail.com"
                 />
               </div>
               {errors.email && (
@@ -241,10 +275,10 @@ export default function LoginPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
+                  autoComplete="new-password"
                   className={`w-full pl-11 pr-12 py-3 bg-white border ${
                     errors.password ? 'border-red-500' : 'border-slate-300'
                   } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                  placeholder="••••••••"
                 />
                 <button
                   type="button"
@@ -277,10 +311,10 @@ export default function LoginPage() {
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
+                    autoComplete="new-password"
                     className={`w-full pl-11 pr-4 py-3 bg-white border ${
                       errors.confirmPassword ? 'border-red-500' : 'border-slate-300'
                     } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                    placeholder="••••••••"
                   />
                 </div>
                 {errors.confirmPassword && (

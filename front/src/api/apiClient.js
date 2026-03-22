@@ -1,5 +1,39 @@
 // Laboratory Management System API client
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const TOKEN_KEY = 'token';
+const USER_KEY = 'currentUser';
+
+const clearAuthStorage = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+};
+
+const decodeJwtPayload = (token) => {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};
+
+export const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
+
+export const isTokenExpired = (token) => {
+  if (!token) return true;
+
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return true;
+
+  return payload.exp * 1000 <= Date.now();
+};
+
+export const clearStoredAuth = clearAuthStorage;
 
 const resolveApiAssetUrl = (value) => {
   if (!value) return value;
@@ -15,7 +49,14 @@ const resolveApiAssetUrl = (value) => {
 
 // Helper for making authenticated requests to the real backend
 const request = async (endpoint, options = {}) => {
-  const token = sessionStorage.getItem('token');
+  const token = getStoredToken();
+
+  // Prevent requests with expired tokens and force re-login.
+  if (token && isTokenExpired(token)) {
+    clearAuthStorage();
+    throw new Error('Your session has expired. Please log in again.');
+  }
+
   const headers = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -36,7 +77,11 @@ const request = async (endpoint, options = {}) => {
 
   if (!res.ok) {
     if (res.status === 401) {
-      throw new Error('Your session is not authenticated. Please log in again.');
+      clearAuthStorage();
+      if ((data.message || '').toLowerCase().includes('expired')) {
+        throw new Error('Your session has expired. Please log in again.');
+      }
+      throw new Error(data.message || 'Your session is not authenticated. Please log in again.');
     }
 
     if (res.status === 403) {
@@ -65,9 +110,40 @@ export const api = {
 
       // Store token and user data
       const { token, ...userData } = data.data;
-      sessionStorage.setItem('token', token);
-      sessionStorage.setItem('currentUser', JSON.stringify(userData));
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
       
+      return userData;
+    },
+
+    adminLogin: async (email, password) => {
+      // Dedicated endpoint for hidden admin-facing login flow.
+      // Fallback keeps compatibility when backend is running an older build.
+      let data;
+      try {
+        data = await request('/auth/admin-login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+      } catch (error) {
+        if ((error.message || '').includes('status 404')) {
+          data = await request('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          });
+        } else {
+          throw error;
+        }
+      }
+
+      if (!data.success || !data.data) {
+        throw new Error(data.message || 'Admin login failed');
+      }
+
+      const { token, ...userData } = data.data;
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+
       return userData;
     },
 
@@ -84,28 +160,33 @@ export const api = {
 
       // Store token and user data
       const { token, ...userData } = data.data;
-      sessionStorage.setItem('token', token);
-      sessionStorage.setItem('currentUser', JSON.stringify(userData));
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
       
       return userData;
     },
 
     logout: async () => {
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('currentUser');
+      clearAuthStorage();
     },
 
     me: async () => {
-      const stored = sessionStorage.getItem('currentUser');
+      const token = getStoredToken();
+      if (!token || isTokenExpired(token)) {
+        clearAuthStorage();
+        return null;
+      }
+
+      const stored = localStorage.getItem(USER_KEY);
       return stored ? JSON.parse(stored) : null;
     },
 
     updateMe: async (data) => {
-      const stored = sessionStorage.getItem('currentUser');
+      const stored = localStorage.getItem(USER_KEY);
       const currentUser = stored ? JSON.parse(stored) : null;
       if (currentUser) {
         const updated = { ...currentUser, ...data };
-        sessionStorage.setItem('currentUser', JSON.stringify(updated));
+        localStorage.setItem(USER_KEY, JSON.stringify(updated));
         return updated;
       }
       return currentUser;
@@ -251,7 +332,11 @@ export const api = {
       uploadImage: async (file) => {
         const formData = new FormData();
         formData.append('image', file);
-        const token = sessionStorage.getItem('token');
+        const token = getStoredToken();
+        if (!token || isTokenExpired(token)) {
+          clearAuthStorage();
+          throw new Error('Your session has expired. Please log in again.');
+        }
         let res;
         try {
           res = await fetch(`${API_BASE_URL}/equipment/upload-image`, {
@@ -327,9 +412,52 @@ export const api = {
         return data.data;
       },
       return: async (id, returnData) => {
+        // Use multipart form only when damage image is provided.
+        if (returnData?.damage_image instanceof File) {
+          const formData = new FormData();
+          Object.entries(returnData).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+              formData.append(key, value);
+            }
+          });
+
+          const token = getStoredToken();
+          if (!token || isTokenExpired(token)) {
+            clearAuthStorage();
+            throw new Error('Your session has expired. Please log in again.');
+          }
+
+          let res;
+          try {
+            res = await fetch(`${API_BASE_URL}/borrow-requests/${id}/return`, {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              body: formData,
+            });
+          } catch {
+            throw new Error('Cannot connect to backend API. Make sure backend is running and reachable at http://localhost:3000.');
+          }
+
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(payload.message || `Request failed with status ${res.status}`);
+          }
+
+          return payload.data;
+        }
+
         const data = await request(`/borrow-requests/${id}/return`, {
           method: 'PUT',
           body: JSON.stringify(returnData),
+        });
+        return data.data;
+      },
+      verifyDamage: async (id, action, remarks = '') => {
+        const data = await request(`/borrow-requests/${id}/damage-verify`, {
+          method: 'PUT',
+          body: JSON.stringify({ action, remarks }),
         });
         return data.data;
       },
@@ -347,6 +475,25 @@ export const api = {
       trends: async (period = '30') => {
         const data = await request(`/stats/trends?period=${period}`);
         return data.data;
+      },
+      adminMostBorrowed: async (limit = 10) => {
+        const data = await request(`/stats/admin/most-borrowed?limit=${limit}`);
+        return data.data;
+      },
+      adminLateReturnUsers: async (limit = 10) => {
+        const data = await request(`/stats/admin/late-return-users?limit=${limit}`);
+        return data.data;
+      },
+      adminBorrowingTrends: async ({ groupBy = 'day', period = 90 } = {}) => {
+        const data = await request(`/stats/admin/borrowing-trends?groupBy=${groupBy}&period=${period}`);
+        return data.data;
+      },
+    },
+    AuditLogs: {
+      list: async (filters = {}) => {
+        const params = new URLSearchParams(filters).toString();
+        const data = await request(`/admin/audit-logs${params ? `?${params}` : ''}`);
+        return data;
       },
     },
   },

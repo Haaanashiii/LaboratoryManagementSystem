@@ -53,7 +53,7 @@ export const SelectContent = ({ children, className = '' }) => {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-      <div className={`absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-white py-1 shadow-lg ${className}`}>
+      <div className={`absolute z-50 mt-1 max-h-60 w-full overflow-y-auto overflow-x-hidden rounded-md border bg-white py-1 shadow-lg ${className}`}>
         {children}
       </div>
     </>
@@ -67,7 +67,7 @@ export const SelectItem = ({ children, value, className = '' }) => {
   return (
     <div
       onClick={() => handleValueChange(value)}
-      className={`relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-slate-100 ${isSelected ? 'bg-slate-100' : ''} ${className}`}
+      className={`relative flex w-full cursor-pointer select-none items-center whitespace-nowrap rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-slate-100 ${isSelected ? 'bg-slate-100' : ''} ${className}`}
     >
       {isSelected && (
         <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">

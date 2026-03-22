@@ -2,6 +2,40 @@ const User = require('../models/User');
 const Equipment = require('../models/Equipment');
 const BorrowRequest = require('../models/BorrowRequest');
 
+const buildTrendGroupId = (groupBy) => {
+  if (groupBy === 'week') {
+    return {
+      year: { $isoWeekYear: '$createdAt' },
+      week: { $isoWeek: '$createdAt' }
+    };
+  }
+
+  if (groupBy === 'month') {
+    return {
+      year: { $year: '$createdAt' },
+      month: { $month: '$createdAt' }
+    };
+  }
+
+  return {
+    year: { $year: '$createdAt' },
+    month: { $month: '$createdAt' },
+    day: { $dayOfMonth: '$createdAt' }
+  };
+};
+
+const buildTrendLabel = (groupBy, point) => {
+  if (groupBy === 'week') {
+    return `${point._id.year}-W${String(point._id.week).padStart(2, '0')}`;
+  }
+
+  if (groupBy === 'month') {
+    return `${point._id.year}-${String(point._id.month).padStart(2, '0')}`;
+  }
+
+  return `${point._id.year}-${String(point._id.month).padStart(2, '0')}-${String(point._id.day).padStart(2, '0')}`;
+};
+
 // @desc    Get dashboard statistics
 // @route   GET /api/stats/dashboard
 // @access  Private
@@ -248,6 +282,138 @@ exports.getOverdueReturns = async (req, res, next) => {
       success: true,
       count: overdue.length,
       data: overdue
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin analytics: most borrowed items
+// @route   GET /api/stats/admin/most-borrowed
+// @access  Private (Admin)
+exports.getMostBorrowedItems = async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
+
+    const data = await BorrowRequest.aggregate([
+      {
+        $match: {
+          status: { $in: ['borrowed', 'returned'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$equipment',
+          item_name: { $first: '$equipment_name' },
+          total_borrow_count: { $sum: 1 },
+          total_quantity_borrowed: { $sum: '$quantity' }
+        }
+      },
+      { $sort: { total_borrow_count: -1, total_quantity_borrowed: -1 } },
+      { $limit: limit }
+    ]);
+
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin analytics: users with most late returns
+// @route   GET /api/stats/admin/late-return-users
+// @access  Private (Admin)
+exports.getUsersWithMostLateReturns = async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
+
+    const data = await BorrowRequest.aggregate([
+      {
+        $match: {
+          actual_return_date: { $type: 'date' },
+          return_date: { $type: 'date' },
+          $expr: { $gt: ['$actual_return_date', '$return_date'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$student',
+          borrower_name: { $first: '$borrower_name' },
+          borrower_email: { $first: '$student_email' },
+          late_return_count: { $sum: 1 },
+          total_late_days: {
+            $sum: {
+              $ceil: {
+                $divide: [
+                  { $subtract: ['$actual_return_date', '$return_date'] },
+                  1000 * 60 * 60 * 24
+                ]
+              }
+            }
+          }
+        }
+      },
+      { $sort: { late_return_count: -1, total_late_days: -1 } },
+      { $limit: limit }
+    ]);
+
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin analytics: borrowing trends by day/week/month
+// @route   GET /api/stats/admin/borrowing-trends
+// @access  Private (Admin)
+exports.getAdminBorrowingTrends = async (req, res, next) => {
+  try {
+    const groupBy = ['day', 'week', 'month'].includes(req.query.groupBy) ? req.query.groupBy : 'day';
+    const periodDays = Math.min(parseInt(req.query.period, 10) || 90, 365);
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - periodDays);
+
+    const groupId = buildTrendGroupId(groupBy);
+
+    const points = await BorrowRequest.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: groupId,
+          total_requests: { $sum: 1 },
+          approved_requests: {
+            $sum: {
+              $cond: [{ $in: ['$status', ['head_approved', 'ready_pickup', 'borrowed', 'returned']] }, 1, 0]
+            }
+          },
+          rejected_requests: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0]
+            }
+          }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.week': 1, '_id.day': 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      data: points.map((point) => ({
+        label: buildTrendLabel(groupBy, point),
+        total_requests: point.total_requests,
+        approved_requests: point.approved_requests,
+        rejected_requests: point.rejected_requests
+      }))
     });
   } catch (error) {
     next(error);

@@ -74,6 +74,7 @@ const navigationConfig = {
     { name: 'inventory', href: '/inventory', icon: Package },
     { name: 'equipmentCatalog', href: '/catalog', icon: Package },
     { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
+    { name: 'auditLogs', href: '/admin-audit-logs', icon: History },
     { name: 'equipmentPrep', href: '/equipment-prep', icon: CheckCircle },
     { name: 'returns', href: '/returns', icon: History },
     { name: 'settings', href: '/settings', icon: Settings },
@@ -255,7 +256,7 @@ export default function DashboardLayout() {
 
   const handleLogout = async () => {
     await api.auth.logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   // Determine if current user should use sidebar (all roles except student)

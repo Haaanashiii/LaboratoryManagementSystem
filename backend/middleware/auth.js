@@ -1,14 +1,17 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Roles that are allowed to access admin-facing login and dashboard endpoints.
+const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
+
 // Protect routes - verify JWT token
 exports.protect = async (req, res, next) => {
   try {
     let token;
 
     // Check for token in headers
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(" ")[1];
     }
 
     if (!token) {
@@ -41,9 +44,23 @@ exports.protect = async (req, res, next) => {
 
       next();
     } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Token expired. Please log in again.'
+        });
+      }
+
+      if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token. Please log in again.'
+        });
+      }
+
       return res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route'
+        message: 'Authentication failed. Please log in again.'
       });
     }
   } catch (error) {
@@ -64,9 +81,13 @@ exports.authorize = (...roles) => {
   };
 };
 
-// Generate JWT Token
-exports.generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '7d'
+exports.ADMIN_ACCESS_ROLES = ADMIN_ACCESS_ROLES;
+
+exports.authorizeAdminAccess = exports.authorize(...ADMIN_ACCESS_ROLES);
+
+// Generate JWT token with user id and role. Token expires in 1 day.
+exports.generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+    expiresIn: '1d'
   });
 };
