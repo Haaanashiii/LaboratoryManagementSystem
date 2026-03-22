@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FlaskConical, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { api, clearStoredAuth, isTokenExpired } from '@/api/apiClient';
+import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
 import LandingBG from '@/components/layouts/LandingBG';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
+import { useAuth } from '@/components/hooks/useAuth.js';
+
+const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const navigationType = useNavigationType();
   const { t } = useLang();
+  const { isAuthenticated, isLoading, user, refreshSession } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -22,28 +25,18 @@ export default function LoginPage() {
     confirmPassword: ''
   });
   const [errors, setErrors] = useState({});
-  const redirectPath = location.state?.from?.pathname || '/dashboard';
 
   useEffect(() => {
-    // If user goes back/forward into login page, treat it as an explicit logout entry.
-    if (navigationType === 'POP') {
-      clearStoredAuth();
-      return;
+    if (!isLoading && isAuthenticated) {
+      const normalizedRole = (user?.role || '').toLowerCase();
+      const destination = ADMIN_ACCESS_ROLES.includes(normalizedRole)
+        ? '/admin-dashboard'
+        : '/dashboard';
+      navigate(destination, { replace: true });
     }
-
-    // If token already exists, skip login page.
-    const token = localStorage.getItem('token');
-    if (token && !isTokenExpired(token)) {
-      navigate('/dashboard', { replace: true });
-      return;
-    }
-
-    // Cleanup stale auth data when token is missing or expired.
-    clearStoredAuth();
-  }, [navigate, navigationType]);
+  }, [isAuthenticated, isLoading, navigate, user]);
 
   useEffect(() => {
-    // Hidden admin-login shortcut: Ctrl + Shift + A
     const handleAdminShortcut = (event) => {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'a') {
         event.preventDefault();
@@ -104,10 +97,22 @@ export default function LoginPage() {
       if (isLogin) {
         try {
           // Handle login logic
-          const user = await api.auth.login(formData.email, formData.password);
+          await api.auth.login(formData.email, formData.password);
+          const user = await refreshSession();
           console.log('Login successful:', user);
-          // Navigate to requested page or dashboard after successful login.
-          navigate(redirectPath, { replace: true });
+
+          if (location.state?.from?.pathname) {
+            navigate(location.state.from.pathname, { replace: true });
+            return;
+          }
+
+          const normalizedRole = (user?.role || '').toLowerCase();
+          const defaultDestination = ADMIN_ACCESS_ROLES.includes(normalizedRole)
+            ? '/admin-dashboard'
+            : '/dashboard';
+
+          // Role-aware default destination after successful login.
+          navigate(defaultDestination, { replace: true });
         } catch (error) {
           console.error('Login failed:', error);
           setErrors({ email: error.message || t('errorInvalidCredentials') });
@@ -166,50 +171,6 @@ export default function LoginPage() {
               {isLogin ? t('loginWelcome') : t('equimonHelps')}
             </p>
           </div>
-
-          {/* Quick Role Selector (Development Mode) - Only in Login */}
-          {isLogin && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <p className="text-xs font-semibold text-blue-900 mb-3">{t('quickLoginDev')}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, email: 'student@its.ac.id', password: 'Student123!' })}
-                  className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
-                >
-                  {t('student')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, email: 'lecturer@its.ac.id', password: 'Lecturer123!' })}
-                  className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
-                >
-                  {t('lecturer')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, email: 'head@its.ac.id', password: 'Head123!' })}
-                  className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
-                >
-                  {t('headoflab')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, email: 'assistant@its.ac.id', password: 'Assistant123!' })}
-                  className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200"
-                >
-                  {t('labassistant')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, email: 'admin@its.ac.id', password: 'Admin123!' })}
-                  className="px-3 py-2 text-xs font-medium bg-white hover:bg-blue-100 text-slate-700 rounded-lg transition-colors border border-blue-200 col-span-2"
-                >
-                  {t('admin')}
-                </button>
-              </div>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
             {/* Name Field (Sign Up Only) */}

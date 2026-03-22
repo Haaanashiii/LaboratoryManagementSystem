@@ -3,7 +3,6 @@ const router = express.Router();
 const {
   register,
   login,
-  adminLogin,
   getMe,
   logout,
   updatePassword
@@ -14,7 +13,6 @@ const { registerValidation, loginValidation, validate } = require('../middleware
 // Public routes
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
-router.post('/admin-login', loginValidation, validate, adminLogin);
 
 // Protected routes
 router.get('/me', protect, getMe);

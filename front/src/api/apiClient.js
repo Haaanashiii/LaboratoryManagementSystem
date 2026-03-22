@@ -117,24 +117,11 @@ export const api = {
     },
 
     adminLogin: async (email, password) => {
-      // Dedicated endpoint for hidden admin-facing login flow.
-      // Fallback keeps compatibility when backend is running an older build.
-      let data;
-      try {
-        data = await request('/auth/admin-login', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
-        });
-      } catch (error) {
-        if ((error.message || '').includes('status 404')) {
-          data = await request('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-          });
-        } else {
-          throw error;
-        }
-      }
+      // Admin portal uses the same backend login endpoint.
+      const data = await request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
 
       if (!data.success || !data.data) {
         throw new Error(data.message || 'Admin login failed');
@@ -167,6 +154,13 @@ export const api = {
     },
 
     logout: async () => {
+      try {
+        await request('/auth/logout', {
+          method: 'POST',
+        });
+      } catch {
+        // Always clear client auth state, even if backend logout fails.
+      }
       clearAuthStorage();
     },
 
@@ -177,8 +171,14 @@ export const api = {
         return null;
       }
 
-      const stored = localStorage.getItem(USER_KEY);
-      return stored ? JSON.parse(stored) : null;
+      const data = await request('/auth/me');
+      if (!data.success || !data.data) {
+        clearAuthStorage();
+        return null;
+      }
+
+      localStorage.setItem(USER_KEY, JSON.stringify(data.data));
+      return data.data;
     },
 
     updateMe: async (data) => {
@@ -193,16 +193,10 @@ export const api = {
     },
 
     changePassword: async (data) => {
-      // Try real backend
-      try {
-        return await request('/auth/update-password', {
-          method: 'PUT',
-          body: JSON.stringify(data),
-        });
-      } catch {
-        // Mock fallback
-        return { success: true, message: 'Password changed successfully' };
-      }
+      return await request('/auth/update-password', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
     },
 
     redirectToLogin: (redirectUrl) => {
@@ -499,14 +493,3 @@ export const api = {
   },
 };
 
-// Development credentials info
-export const DEV_CREDENTIALS = {
-  info: 'Use any of these accounts (password can be anything if backend is off):',
-  accounts: [
-    { email: 'admin@its.ac.id', role: 'admin', desc: 'System Administrator - Full access' },
-    { email: 'head@its.ac.id', role: 'head_of_lab', desc: 'Head of Laboratory - Final approval authority' },
-    { email: 'lecturer@its.ac.id', role: 'lecturer', desc: 'Lecturer - Academic verification' },
-    { email: 'assistant@its.ac.id', role: 'lab_assistant', desc: 'Student Admin - Operational handling' },
-    { email: 'student@its.ac.id', role: 'student', desc: 'Student - Borrow equipment' },
-  ]
-};

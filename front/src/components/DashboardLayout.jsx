@@ -33,6 +33,7 @@ import {
 } from "./ui/dropdown-menu";
 import { useLang } from '@/components/i18n/LangContext';
 import Sidebar from '@/components/layouts/sidebar';
+import { useAuth } from '@/components/hooks/useAuth.js';
 
 // Role-based navigation configuration
 const navigationConfig = {
@@ -97,6 +98,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, lang, toggleLang } = useLang();
+  const { logout } = useAuth();
 
   // Get current user
   const { data: user } = useQuery({
@@ -255,8 +257,7 @@ export default function DashboardLayout() {
   const navigation = navigationConfig[user?.role] || navigationConfig.student;
 
   const handleLogout = async () => {
-    await api.auth.logout();
-    navigate('/login', { replace: true });
+    await logout();
   };
 
   // Determine if current user should use sidebar (all roles except student)

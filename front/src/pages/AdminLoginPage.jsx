@@ -4,14 +4,16 @@ import { Eye, EyeOff, Mail, ShieldCheck, Lock } from 'lucide-react';
 
 import Threads from '@/components/ui/Threads';
 import { Button } from '@/components/ui/button';
-import { api, clearStoredAuth, isTokenExpired } from '@/api/apiClient';
+import { api, clearStoredAuth } from '@/api/apiClient';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 import itsSecondLogo from '@/assets/images/ITSSecond.png';
+import { useAuth } from '@/components/hooks/useAuth.js';
 
 const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading, user, refreshSession } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,14 +23,14 @@ export default function AdminLoginPage() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token && !isTokenExpired(token)) {
-      navigate('/dashboard', { replace: true });
-      return;
+    if (!isLoading && isAuthenticated) {
+      const normalizedRole = (user?.role || '').toLowerCase();
+      const destination = ADMIN_ACCESS_ROLES.includes(normalizedRole)
+        ? '/admin-dashboard'
+        : '/dashboard';
+      navigate(destination, { replace: true });
     }
-
-    clearStoredAuth();
-  }, [navigate]);
+  }, [isAuthenticated, isLoading, navigate, user]);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -48,8 +50,9 @@ export default function AdminLoginPage() {
       setLoading(true);
       setError('');
 
-      const user = await api.auth.adminLogin(formData.email, formData.password);
-      const normalizedRole = (user?.role || '').toLowerCase();
+      await api.auth.adminLogin(formData.email, formData.password);
+      const currentUser = await refreshSession();
+      const normalizedRole = (currentUser?.role || '').toLowerCase();
 
       if (!ADMIN_ACCESS_ROLES.includes(normalizedRole)) {
         clearStoredAuth();

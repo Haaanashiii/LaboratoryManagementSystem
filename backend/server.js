@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const User = require('./models/User');
 
 // Load environment variables
 dotenv.config();
@@ -20,6 +21,43 @@ const logger = require('./middleware/logger');
 const { initGridFS } = require('./config/gridfs');
 
 const app = express();
+
+const ensureAdminAccount = async () => {
+  const existingAdmin = await User.findOne({ role: 'admin' }).select('_id email');
+  if (existingAdmin) {
+    return;
+  }
+
+  const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || '';
+
+  if (!email || !password) {
+    console.warn('⚠️  No admin user exists and ADMIN_EMAIL/ADMIN_PASSWORD are not set.');
+    return;
+  }
+
+  const existingByEmail = await User.findOne({ email }).select('_id role status');
+  if (existingByEmail) {
+    existingByEmail.role = 'admin';
+    if (existingByEmail.status !== 'active') {
+      existingByEmail.status = 'active';
+    }
+    await existingByEmail.save();
+    console.log(`✅ Promoted ${email} to admin role`);
+    return;
+  }
+
+  // Password hashing is handled by the User model pre-save bcrypt hook.
+  await User.create({
+    email,
+    password,
+    name: 'System Administrator',
+    role: 'admin',
+    status: 'active'
+  });
+
+  console.log(`✅ Created default admin account: ${email}`);
+};
 
 // Middleware
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -66,8 +104,10 @@ app.use(errorHandler);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
-.then(() => {
+.then(async () => {
   console.log('✅ MongoDB connected successfully');
+
+  await ensureAdminAccount();
   
   // Initialize GridFS after MongoDB connection
   initGridFS();

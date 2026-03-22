@@ -111,7 +111,6 @@ const translations = {
     continueWithFacebook: 'Continue with Facebook',
     backToHome: 'Back to Home',
     loginWelcome: 'Welcome back! Please sign in to continue.',
-    quickLoginDev: 'Quick Login (Development Mode)',
     fullName: 'Full Name',
     confirmPassword: 'Confirm Password',
     createAccount: 'Create Account',
