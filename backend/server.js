@@ -1,4 +1,5 @@
 const express = require('express');
+const dns = require('dns');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -21,6 +22,21 @@ const logger = require('./middleware/logger');
 const { initGridFS } = require('./config/gridfs');
 
 const app = express();
+let server;
+
+// Optional: Force Node's DNS resolver (useful when SRV lookups fail due to
+// broken/blocked system DNS configuration).
+if (process.env.DNS_SERVERS) {
+  const dnsServers = process.env.DNS_SERVERS
+    .split(',')
+    .map((server) => server.trim())
+    .filter(Boolean);
+
+  if (dnsServers.length > 0) {
+    dns.setServers(dnsServers);
+    console.log(`ℹ️  Using custom DNS servers: ${dns.getServers().join(', ')}`);
+  }
+}
 
 const ensureAdminAccount = async () => {
   const existingAdmin = await User.findOne({ role: 'admin' }).select('_id email');
@@ -113,9 +129,19 @@ mongoose.connect(process.env.MONGODB_URI)
   initGridFS();
   
   // Start server
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
+  const PORT = Number(process.env.PORT) || 3000;
+  server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  });
+
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use.`);
+      console.error('   Close the other process using this port, or set a different PORT in backend/.env.');
+    } else {
+      console.error('❌ Server error:', err);
+    }
+    process.exit(1);
   });
 })
 .catch((err) => {
@@ -126,7 +152,10 @@ mongoose.connect(process.env.MONGODB_URI)
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Promise Rejection:', err);
-  // Close server & exit process
+  if (server) {
+    server.close(() => process.exit(1));
+    return;
+  }
   process.exit(1);
 });
 
