@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -38,7 +38,7 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
 
   const available = equipment.available_quantity ?? 0;
   const total = equipment.total_quantity ?? 1;
-  const availPct = Math.round((available / total) * 100);
+  const availPct = Math.max(0, Math.min(Math.round((available / total) * 100), 100));
 
   const availColor =
     available === 0 ? 'bg-red-400' :
@@ -52,19 +52,19 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl gap-0 p-0 border-0 overflow-hidden max-h-[80vh]">
-        <div className="flex flex-col lg:flex-row h-full">
+      <DialogContent className="w-[92vw] sm:w-[86vw] lg:w-[82vw] max-w-[76rem] gap-0 p-0 border border-slate-200 bg-white shadow-2xl overflow-hidden max-h-[88vh]">
+        <div className="flex flex-col lg:flex-row h-full min-h-0">
           {/* Image Section */}
-          <div className="w-[500px] bg-slate-50 relative flex-shrink-0">
-            <div className="w-[500px] h-[500px] flex items-center justify-center relative">
+          <div className="w-full lg:w-[52%] relative flex-shrink-0 bg-[radial-gradient(circle_at_top,#dbeafe_0%,#eff6ff_35%,#f8fafc_100%)] border-b lg:border-b-0 lg:border-r border-slate-200">
+            <div className="w-full h-[40vh] sm:h-[48vh] lg:h-[560px] flex items-center justify-center relative p-4 sm:p-6">
               {currentImage ? (
                 <img
                   src={currentImage}
                   alt={equipment.name}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain rounded-xl bg-white/65 shadow-sm"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center rounded-xl bg-white/70 border border-slate-200">
                   <Package className="w-24 h-24 text-slate-300" />
                 </div>
               )}
@@ -74,29 +74,42 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
                 <>
                   <button
                     onClick={goToPreviousImage}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                    className="absolute left-5 top-1/2 -translate-y-1/2 bg-slate-900/55 hover:bg-slate-900/75 text-white p-2 rounded-full transition-all"
                     aria-label="Previous image"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
                     onClick={goToNextImage}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                    className="absolute right-5 top-1/2 -translate-y-1/2 bg-slate-900/55 hover:bg-slate-900/75 text-white p-2 rounded-full transition-all"
                     aria-label="Next image"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
 
                   {/* Image counter */}
-                  <div className="absolute bottom-3 right-3 bg-black/60 text-white text-sm px-3 py-1 rounded-full font-medium">
+                  <div className="absolute bottom-5 right-5 bg-slate-900/70 text-white text-sm px-3 py-1 rounded-full font-medium">
                     {currentImageIndex + 1} / {allImages.length}
                   </div>
                 </>
               )}
 
+              {hasMultipleImages && (
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+                  {allImages.map((_, index) => (
+                    <span
+                      key={index}
+                      className={`h-1.5 rounded-full transition-all ${
+                        index === currentImageIndex ? 'w-6 bg-slate-800/85' : 'w-2 bg-slate-400/55'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Category badge */}
               {equipment.category && (
-                <span className="absolute top-3 left-3 text-xs font-semibold text-slate-700 bg-white/95 px-3 py-1.5 rounded-full shadow-sm">
+                <span className="absolute top-5 left-5 text-xs font-semibold text-slate-700 bg-white/95 px-3 py-1.5 rounded-full shadow-sm border border-slate-200">
                   {equipment.category}
                 </span>
               )}
@@ -104,70 +117,80 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
           </div>
 
           {/* Details Section */}
-          <div className="w-full lg:w-2/5 p-8 lg:p-12 flex flex-col overflow-y-auto bg-white">
+          <div className="w-full lg:w-[48%] min-h-0 flex flex-col bg-white">
             {/* Title and description */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                {equipment.name}
-              </h2>
-              {equipment.description && (
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {equipment.description}
-                </p>
-              )}
-            </div>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-200">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Total</p>
-                <p className="text-xl font-bold text-slate-900">{total}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Available</p>
-                <p className={`text-xl font-bold ${availTextColor}`}>
-                  {available}
-                </p>
-              </div>
-              {equipment.location && (
-                <div className="col-span-2">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Location</p>
-                  <p className="text-sm font-medium text-slate-900">{equipment.location}</p>
-                </div>
-              )}
-              {equipment.condition && (
-                <div className="col-span-2">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Condition</p>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full inline-block
-                    ${equipment.condition === 'Excellent' ? 'bg-blue-100 text-blue-800' : ''}
-                    ${equipment.condition === 'Good' ? 'bg-green-100 text-green-800' : ''}
-                    ${equipment.condition === 'Fair' ? 'bg-amber-100 text-amber-800' : ''}
-                    ${equipment.condition === 'Needs Maintenance' ? 'bg-red-100 text-red-800' : ''}
-                  `}>
-                    {equipment.condition}
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-9">
+              <div className="mb-6">
+                <div className="flex items-start justify-between gap-4">
+                  <h2 className="text-2xl sm:text-[1.65rem] font-bold text-slate-900 leading-tight">
+                    {equipment.name}
+                  </h2>
+                  <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${availTextColor} bg-slate-100`}>
+                    {available === 0 ? 'Unavailable' : 'Ready to borrow'}
                   </span>
                 </div>
-              )}
+                {equipment.description && (
+                  <p className="text-slate-600 text-sm leading-relaxed mt-3">
+                    {equipment.description}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5 mb-6">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Units</p>
+                  <p className="text-xl font-bold text-slate-900">{total}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Available</p>
+                  <p className={`text-xl font-bold ${availTextColor}`}>{available}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                {equipment.location && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Location</p>
+                    <p className="text-sm font-medium text-slate-900">{equipment.location}</p>
+                  </div>
+                )}
+
+                {equipment.condition && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Condition</p>
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-full inline-block
+                        ${equipment.condition === 'Excellent' ? 'bg-blue-100 text-blue-800' : ''}
+                        ${equipment.condition === 'Good' ? 'bg-green-100 text-green-800' : ''}
+                        ${equipment.condition === 'Fair' ? 'bg-amber-100 text-amber-800' : ''}
+                        ${equipment.condition === 'Needs Maintenance' ? 'bg-red-100 text-red-800' : ''}
+                        ${!['Excellent', 'Good', 'Fair', 'Needs Maintenance'].includes(equipment.condition) ? 'bg-slate-100 text-slate-700' : ''}
+                      `}
+                    >
+                      {equipment.condition}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-600">Availability</span>
+                  <span className={`text-xs font-bold ${availTextColor}`}>
+                    {available === 0 ? 'Out of stock' : `${availPct}%`}
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${availColor}`}
+                    style={{ width: `${availPct}%` }}
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Availability bar */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-600">Availability</span>
-                <span className={`text-xs font-bold ${availTextColor}`}>
-                  {available === 0 ? 'Out of stock' : `${availPct}%`}
-                </span>
-              </div>
-              <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${availColor}`}
-                  style={{ width: `${availPct}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-3 mt-auto">
+            <div className="border-t border-slate-200 p-4 sm:p-5 bg-white/95">
+              <div className="flex flex-col-reverse sm:flex-row gap-3">
               <Button
                 variant="outline"
                 onClick={onClose}
@@ -185,6 +208,7 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
               >
                 {available === 0 ? 'Unavailable' : 'Borrow'}
               </Button>
+              </div>
             </div>
           </div>
         </div>
