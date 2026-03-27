@@ -269,6 +269,7 @@ export const api = {
           ...item,
           id: item._id || item.id,
           image_url: resolveApiAssetUrl(item.image),
+          images_urls: item.images ? item.images.map(img => resolveApiAssetUrl(img)) : [],
           total_quantity: item.quantity,
           available_quantity: item.available,
         }));
@@ -280,16 +281,19 @@ export const api = {
           ...item,
           id: item._id || item.id,
           image_url: resolveApiAssetUrl(item.image),
+          images_urls: item.images ? item.images.map(img => resolveApiAssetUrl(img)) : [],
           total_quantity: item.quantity,
           available_quantity: item.available,
         }));
       },
       create: async (formData) => {
+        const images = formData.images_urls ? formData.images_urls.filter(Boolean) : [];
         const payload = {
           name: formData.name,
           description: formData.description,
           category: formData.category,
-          image: formData.image_url,
+          image: images.length > 0 ? images[0] : (formData.image_url || ''),
+          images: images,
           quantity: formData.total_quantity,
           available: formData.available_quantity,
           location: formData.location,
@@ -303,11 +307,13 @@ export const api = {
         return data.data;
       },
       update: async (id, formData) => {
+        const images = formData.images_urls ? formData.images_urls.filter(Boolean) : [];
         const payload = {
           name: formData.name,
           description: formData.description,
           category: formData.category,
-          image: formData.image_url,
+          image: images.length > 0 ? images[0] : (formData.image_url || ''),
+          images: images,
           quantity: formData.total_quantity,
           available: formData.available_quantity,
           location: formData.location,

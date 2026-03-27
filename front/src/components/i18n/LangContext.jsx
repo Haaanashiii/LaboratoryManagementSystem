@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState } from 'react';
 
 const translations = {
   en: {
-    appSubtitle: 'Management System',
+    appSubtitle: 'Laboratory Management System',
     settings: 'Settings',
     logout: 'Logout',
     currentRole: 'Current Role',
@@ -305,7 +305,7 @@ const translations = {
     pendingReturns: 'Pending Returns',
   },
   id: {
-    appSubtitle: 'Sistem Manajemen',
+    appSubtitle: 'Sistem Manajemen Laboratorium',
     settings: 'Pengaturan',
     logout: 'Keluar',
     currentRole: 'Peran Saat Ini',

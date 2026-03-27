@@ -56,8 +56,11 @@ const equipmentSchema = new mongoose.Schema({
     min: 0
   },
   image: {
-    type: String // URL or file path
+    type: String // URL or file path (for backward compatibility)
   },
+  images: [{
+    type: String // Array of image URLs or file paths
+  }],
   specifications: {
     type: Map,
     of: String

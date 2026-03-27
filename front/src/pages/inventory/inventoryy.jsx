@@ -22,15 +22,14 @@ export default function Inventory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
-  const [imageMode, setImageMode] = useState('url'); // 'url' or 'file'
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFiles, setImageFiles] = useState([]); // Array of files
+  const [imagePreviews, setImagePreviews] = useState([]); // Array of previews
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: 'Other',
-    image_url: '',
+    images_urls: [], // Array of image URLs
     total_quantity: 1,
     available_quantity: 1,
     location: '',
@@ -82,14 +81,13 @@ export default function Inventory() {
 
   const openAddDialog = () => {
     setEditingItem(null);
-    setImageMode('url');
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFiles([]);
+    setImagePreviews([]);
     setFormData({
       name: '',
       description: '',
       category: 'Other',
-      image_url: '',
+      images_urls: [],
       total_quantity: 1,
       available_quantity: 1,
       location: '',
@@ -101,14 +99,13 @@ export default function Inventory() {
 
   const openEditDialog = (item) => {
     setEditingItem(item);
-    setImageMode(item.image_url && !item.image_url.startsWith('/uploads') ? 'url' : 'url');
-    setImageFile(null);
-    setImagePreview(item.image_url || null);
+    setImageFiles([]);
+    setImagePreviews(item.images_urls || (item.image_url ? [item.image_url] : []));
     setFormData({
       name: item.name,
       description: item.description || '',
       category: item.category || 'Other',
-      image_url: item.image_url || '',
+      images_urls: item.images_urls || (item.image_url ? [item.image_url] : []),
       total_quantity: item.total_quantity,
       available_quantity: item.available_quantity,
       location: item.location || '',
@@ -121,28 +118,45 @@ export default function Inventory() {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setEditingItem(null);
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFiles([]);
+    setImagePreviews([]);
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-      setFormData({ ...formData, image_url: '' });
+    const files = Array.from(e.target.files || []);
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setImageFiles([...imageFiles, ...files]);
+    setImagePreviews([...imagePreviews, ...newPreviews]);
+  };
+
+  const removeImage = (index) => {
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    setImageFiles(newFiles);
+    setImagePreviews(newPreviews);
+    setFormData({ ...formData, images_urls: formData.images_urls.filter((_, i) => i !== index) });
+  };
+
+  const addImageUrl = (url) => {
+    if (url.trim()) {
+      setFormData({ ...formData, images_urls: [...formData.images_urls, url] });
+      setImagePreviews([...imagePreviews, url]);
     }
   };
 
   const handleSubmit = async () => {
     let submitData = { ...formData };
+    const uploadedUrls = [...formData.images_urls];
 
-    // If a file was selected, upload it first
-    if (imageFile) {
+    // Upload any new files
+    if (imageFiles.length > 0) {
       try {
         setUploading(true);
-        const uploadedUrl = await api.entities.Equipment.uploadImage(imageFile);
-        submitData.image_url = uploadedUrl;
+        for (const file of imageFiles) {
+          const uploadedUrl = await api.entities.Equipment.uploadImage(file);
+          uploadedUrls.push(uploadedUrl);
+        }
+        submitData.images_urls = uploadedUrls;
       } catch (err) {
         console.error('Image upload failed:', err);
         window.alert(err.message || 'Image upload failed. Please try again.');
@@ -363,35 +377,9 @@ export default function Inventory() {
             </div>
 
             <div className="space-y-2">
-              <Label>Image</Label>
-              <div className="flex gap-2 mb-2">
-                <Button
-                  type="button"
-                  variant={imageMode === 'url' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => { setImageMode('url'); setImageFile(null); }}
-                  className={imageMode === 'url' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                >
-                  <Link className="w-3 h-3 mr-1" /> URL
-                </Button>
-                <Button
-                  type="button"
-                  variant={imageMode === 'file' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => { setImageMode('file'); setFormData({ ...formData, image_url: '' }); }}
-                  className={imageMode === 'file' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                >
-                  <Upload className="w-3 h-3 mr-1" /> Upload File
-                </Button>
-              </div>
-
-              {imageMode === 'url' ? (
-                <Input
-                  value={formData.image_url}
-                  onChange={(e) => { setFormData({ ...formData, image_url: e.target.value }); setImagePreview(e.target.value); }}
-                  placeholder="https://..."
-                />
-              ) : (
+              <Label>Images (Multiple)</Label>
+              <div className="space-y-3">
+                {/* Upload button */}
                 <div>
                   <label className="relative flex items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors overflow-hidden">
                     {uploading ? (
@@ -399,36 +387,72 @@ export default function Inventory() {
                         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                         <span className="text-sm text-slate-500">Uploading...</span>
                       </div>
-                    ) : imagePreview ? (
-                      <div className="relative w-full h-full">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="w-full h-full object-contain rounded-lg"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                        <div className="absolute inset-0 bg-black/0 hover:bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-all">
-                          <span className="text-white text-sm font-medium">Change image</span>
-                        </div>
-                      </div>
                     ) : (
                       <div className="text-center">
                         <Upload className="w-6 h-6 mx-auto text-slate-400" />
-                        <span className="text-sm text-slate-500 mt-1 block">Click to select image</span>
+                        <span className="text-sm text-slate-500 mt-1 block">Click to add images</span>
                       </div>
                     )}
                     <input
                       type="file"
+                      multiple
                       accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/avif,image/svg+xml"
                       onChange={handleFileSelect}
                       className="hidden"
+                      disabled={uploading}
                     />
                   </label>
-                  {imageFile && (
-                    <p className="text-xs text-slate-400 mt-1 truncate">{imageFile.name}</p>
-                  )}
                 </div>
-              )}
+
+                {/* Image previews grid */}
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border border-slate-200"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* URL input section */}
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-500">Or add image URL:</p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="imageUrlInput"
+                      placeholder="https://..."
+                      className="text-sm"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.getElementById('imageUrlInput');
+                        if (input?.value) {
+                          addImageUrl(input.value);
+                          input.value = '';
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
