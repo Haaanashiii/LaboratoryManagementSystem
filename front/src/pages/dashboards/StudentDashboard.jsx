@@ -7,6 +7,7 @@ import { Package, FileText, Clock, CheckCircle, ArrowRight, FlaskConical, BookOp
 import { useLang } from '@/components/i18n/LangContext';
 import StatusBadge from '@/components/ui/StatusBadge';
 import FeaturedEquipmentCard from '@/components/equipment/FeaturedEquipmentCard';
+import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 
 const dashboardStyles = `
   @keyframes fadeUp {
@@ -117,6 +118,7 @@ const dashboardStyles = `
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { t, lang } = useLang();
+  const catalogRoute = CATALOG_ROUTES_BY_ROLE.student;
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -178,7 +180,7 @@ export default function StudentDashboard() {
       icon: Package,
       iconBg: 'bg-blue-100',
       iconColor: 'text-blue-600',
-      action: () => navigate('/catalog'),
+      action: () => navigate(catalogRoute),
     },
     {
       name: t('myActiveRequests'),
@@ -213,7 +215,7 @@ export default function StudentDashboard() {
       icon: Package,
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
-      action: () => navigate('/catalog'),
+      action: () => navigate(catalogRoute),
     },
     {
       title: t('myRequests'),
@@ -308,7 +310,7 @@ export default function StudentDashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Featured Equipment</h2>
           <button
-            onClick={() => navigate('/catalog')}
+            onClick={() => navigate(catalogRoute)}
             className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1.5 transition-all hover:gap-2"
           >
             View all <ArrowRight className="w-3.5 h-3.5" />
@@ -327,7 +329,7 @@ export default function StudentDashboard() {
               <div key={item._id || item.id} style={{ animationDelay: `${0.35 + idx * 0.06}s` }} className="fade-up">
                 <FeaturedEquipmentCard
                   equipment={item}
-                  onClick={() => navigate('/catalog')}
+                  onClick={() => navigate(catalogRoute)}
                 />
               </div>
             ))}
@@ -359,7 +361,7 @@ export default function StudentDashboard() {
               <p className="text-slate-600 text-sm font-medium">No requests yet.</p>
               <p className="text-xs text-slate-400 mt-1">Start by browsing the equipment catalog.</p>
               <button
-                onClick={() => navigate('/catalog')}
+                onClick={() => navigate(catalogRoute)}
                 className="mt-4 text-sm text-blue-600 hover:text-blue-700 font-semibold transition-colors"
               >
                 Browse Equipment →

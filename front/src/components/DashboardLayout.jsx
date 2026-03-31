@@ -34,19 +34,20 @@ import {
 import { useLang } from '@/components/i18n/LangContext';
 import Sidebar from '@/components/layouts/sidebar';
 import { useAuth } from '@/components/hooks/useAuth.js';
+import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 
 // Role-based navigation configuration
 const navigationConfig = {
   student: [
     { name: 'dashboard', href: '/dashboard', icon: Home },
-    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.student, icon: Package },
     { name: 'myRequests', href: '/requests', icon: FileText },
     { name: 'myHistory', href: '/approval-history', icon: History },
   ],
   
   lecturer: [
     { name: 'dashboard', href: '/dashboard', icon: Home },
-    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.lecturer, icon: Package },
     { name: 'pendingApprovals', href: '/lecturer-approvals', icon: CheckSquare },
     { name: 'approvalHistory', href: '/approval-history', icon: History },
     { name: 'allRequests', href: '/all-approval-history', icon: BarChart3 },
@@ -54,7 +55,7 @@ const navigationConfig = {
   
   head_of_lab: [
     { name: 'dashboard', href: '/dashboard', icon: Home },
-    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.head_of_lab, icon: Package },
     { name: 'finalApprovals', href: '/head-approvals', icon: CheckCircle },
     { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
     { name: 'approvalHistory', href: '/all-approval-history', icon: History },
@@ -63,7 +64,7 @@ const navigationConfig = {
   
   lab_assistant: [
     { name: 'dashboard', href: '/dashboard', icon: Home },
-    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.lab_assistant, icon: Package },
     { name: 'equipmentPrep', href: '/equipment-prep', icon: CheckCircle },
     { name: 'returns', href: '/returns', icon: History },
     { name: 'allRequests', href: '/all-requests', icon: FileText },
@@ -73,7 +74,7 @@ const navigationConfig = {
     { name: 'dashboard', href: '/dashboard', icon: Home },
     { name: 'users', href: '/users', icon: Users },
     { name: 'inventory', href: '/inventory', icon: Package },
-    { name: 'equipmentCatalog', href: '/catalog', icon: Package },
+    { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.admin, icon: Package },
     { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
     { name: 'auditLogs', href: '/admin-audit-logs', icon: History },
     { name: 'equipmentPrep', href: '/equipment-prep', icon: CheckCircle },

@@ -9,10 +9,12 @@ import { CheckCircle, Clock, BarChart3, Package, CheckSquare, History, ArrowRigh
 import { EquipmentStatsChart } from '@/components/layouts/Charts';
 import { useLang } from '@/components/i18n/LangContext';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 
 export default function HeadDashboard() {
   const navigate = useNavigate();
   const { t } = useLang();
+  const catalogRoute = CATALOG_ROUTES_BY_ROLE.head_of_lab;
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -79,7 +81,7 @@ export default function HeadDashboard() {
       value: availableEquipment,
       icon: BarChart3,
       sub: `${totalEquipment - availableEquipment} in use`,
-      action: () => navigate('/catalog'),
+      action: () => navigate(catalogRoute),
     },
   ];
 

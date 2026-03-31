@@ -18,13 +18,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLang } from '@/components/i18n/LangContext';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
+import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 
 const menuConfig = {
   admin: [
     { label: 'dashboard', icon: Home, href: '/dashboard' },
     { label: 'users', icon: Users, href: '/users' },
     { label: 'inventory', icon: Package, href: '/inventory' },
-    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.admin },
     { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
     { label: 'auditLogs', icon: ClipboardList, href: '/admin-audit-logs' },
     { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
@@ -33,14 +34,14 @@ const menuConfig = {
   ],
   lecturer: [
     { label: 'dashboard', icon: Home, href: '/dashboard' },
-    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.lecturer },
     { label: 'pendingApprovals', icon: CheckSquare, href: '/lecturer-approvals' },
     { label: 'approvalHistory', icon: History, href: '/approval-history' },
     { label: 'allRequests', icon: BarChart3, href: '/all-approval-history' },
   ],
   head_of_lab: [
     { label: 'dashboard', icon: Home, href: '/dashboard' },
-    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.head_of_lab },
     { label: 'finalApprovals', icon: CheckCircle, href: '/head-approvals' },
     { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
     { label: 'approvalHistory', icon: History, href: '/all-approval-history' },
@@ -48,14 +49,14 @@ const menuConfig = {
   ],
   lab_assistant: [
     { label: 'dashboard', icon: Home, href: '/dashboard' },
-    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.lab_assistant },
     { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
     { label: 'returns', icon: History, href: '/returns' },
     { label: 'allRequests', icon: ClipboardList, href: '/all-requests' },
   ],
   student: [
     { label: 'dashboard', icon: Home, href: '/dashboard' },
-    { label: 'equipmentCatalog', icon: Package, href: '/catalog' },
+    { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.student },
     { label: 'myRequests', icon: ClipboardList, href: '/requests' },
   ],
 };

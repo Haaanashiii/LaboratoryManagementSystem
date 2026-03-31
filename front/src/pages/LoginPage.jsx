@@ -7,6 +7,7 @@ import { useLang } from '@/components/i18n/LangContext';
 import LandingBG from '@/components/layouts/LandingBG';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
+import BanterLoader from '@/components/ui/BanterLoader';
 
 const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
 
@@ -129,7 +130,7 @@ export default function LoginPage() {
           navigate('/dashboard', { replace: true });
         } catch (error) {
           console.error('Registration failed:', error);
-          setErrors({ email: error.message || 'Registration failed' });
+          setErrors({ email: error.message || t('errorRegistrationFailed') });
         }
       }
     }
@@ -145,6 +146,14 @@ export default function LoginPage() {
       confirmPassword: ''
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center relative bg-white">
+        <BanterLoader />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -187,6 +196,7 @@ export default function LoginPage() {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
+                    placeholder={t('placeholderFullName')}
                     autoComplete="off"
                     className={`w-full pl-11 pr-4 py-3 bg-white border ${
                       errors.name ? 'border-red-500' : 'border-slate-300'
@@ -212,6 +222,7 @@ export default function LoginPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
+                  placeholder={t('placeholderEmail')}
                   autoComplete="off"
                   className={`w-full pl-11 pr-4 py-3 bg-white border ${
                     errors.email ? 'border-red-500' : 'border-slate-300'
@@ -236,6 +247,7 @@ export default function LoginPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
+                  placeholder={t('placeholderPassword')}
                   autoComplete="new-password"
                   className={`w-full pl-11 pr-12 py-3 bg-white border ${
                     errors.password ? 'border-red-500' : 'border-slate-300'
@@ -245,6 +257,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                 >
                   {showPassword ? (
                     <EyeOff className="w-5 h-5" />
@@ -272,6 +285,7 @@ export default function LoginPage() {
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
+                    placeholder={t('placeholderConfirmPassword')}
                     autoComplete="new-password"
                     className={`w-full pl-11 pr-4 py-3 bg-white border ${
                       errors.confirmPassword ? 'border-red-500' : 'border-slate-300'

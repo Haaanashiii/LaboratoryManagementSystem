@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, Package, Clock, History, FileText } from 'lucide-react';
 import { EquipmentStatsChart } from '@/components/layouts/Charts';
 import { useLang } from '@/components/i18n/LangContext';
+import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 
 export default function LabAssistantDashboard() {
   const navigate = useNavigate();
   const { t } = useLang();
+  const catalogRoute = CATALOG_ROUTES_BY_ROLE.lab_assistant;
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -118,7 +120,7 @@ export default function LabAssistantDashboard() {
               {[
                 { label: t('prepareEquipment'), sub: `${readyForPrep.length} ${t('readyForPrep')}`, icon: Package, path: '/equipment-prep' },
                 { label: t('processReturns'), sub: `${toReturn} ${t('pendingReturns')}`, icon: History, path: '/returns' },
-                { label: t('viewCatalog'), sub: `${equipment.length} ${t('items')}`, icon: CheckCircle, path: '/catalog' },
+                { label: t('viewCatalog'), sub: `${equipment.length} ${t('items')}`, icon: CheckCircle, path: catalogRoute },
               ].map((action) => (
                 <button
                   key={action.label}

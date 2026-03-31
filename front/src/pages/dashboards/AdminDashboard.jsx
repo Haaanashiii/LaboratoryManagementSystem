@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, Package, BarChart3, Settings, FileText, CheckCircle, ShieldCheck, Clock } from 'lucide-react';
 import { UserDistributionChart, EquipmentStatsChart } from '@/components/layouts/Charts';
 import { useLang } from '@/components/i18n/LangContext';
+import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 import {
   ResponsiveContainer,
   BarChart,
@@ -72,6 +73,7 @@ const groupClientBorrowingTrends = (requests, groupBy) => {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { t } = useLang();
+  const catalogRoute = CATALOG_ROUTES_BY_ROLE.admin;
   const queryClient = useQueryClient();
   const [trendGroupBy, setTrendGroupBy] = React.useState('day');
 
@@ -164,7 +166,7 @@ export default function AdminDashboard() {
       value: availableEquipment, 
       icon: CheckCircle,
       color: 'bg-purple-50 text-purple-600',
-      action: () => navigate('/catalog')
+      action: () => navigate(catalogRoute)
     },
     { 
       name: t('activeRequests'), 

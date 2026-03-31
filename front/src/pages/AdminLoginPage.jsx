@@ -8,11 +8,13 @@ import { api, clearStoredAuth } from '@/api/apiClient';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 import itsSecondLogo from '@/assets/images/ITSSecond.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
+import { useLang } from '@/components/i18n/LangContext';
 
 const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const { isAuthenticated, isLoading, user, refreshSession } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,7 +44,7 @@ export default function AdminLoginPage() {
     event.preventDefault();
 
     if (!formData.email || !formData.password) {
-      setError('Email and password are required.');
+      setError(t('adminErrorRequired'));
       return;
     }
 
@@ -56,13 +58,13 @@ export default function AdminLoginPage() {
 
       if (!ADMIN_ACCESS_ROLES.includes(normalizedRole)) {
         clearStoredAuth();
-        setError('This account cannot access the admin portal.');
+        setError(t('adminErrorNoAccess'));
         return;
       }
 
       navigate('/admin-dashboard', { replace: true });
     } catch (loginError) {
-      setError(loginError.message || 'Invalid credentials.');
+      setError(loginError.message || t('adminErrorInvalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -83,16 +85,16 @@ export default function AdminLoginPage() {
             </div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold tracking-wider text-cyan-200">
               <ShieldCheck className="h-4 w-4" />
-              ADMIN ACCESS
+              {t('adminAccess')}
             </div>
-            <h1 className="text-3xl font-bold text-white">Admin Login</h1>
-            <p className="mt-2 text-sm text-slate-300">Sign in to manage laboratory operations.</p>
+            <h1 className="text-3xl font-bold text-white">{t('adminLoginTitle')}</h1>
+            <p className="mt-2 text-sm text-slate-300">{t('adminLoginSubtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
             <div>
               <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-200">
-                Email
+                {t('adminEmailLabel')}
               </label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -102,7 +104,8 @@ export default function AdminLoginPage() {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder=""
+                  placeholder={t('adminEmailPlaceholder')}
+                  autoComplete="username"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
                 />
               </div>
@@ -110,7 +113,7 @@ export default function AdminLoginPage() {
 
             <div>
               <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-200">
-                Password
+                {t('adminPasswordLabel')}
               </label>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -120,13 +123,15 @@ export default function AdminLoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleInputChange}
+                  placeholder={t('adminPasswordPlaceholder')}
+                  autoComplete="current-password"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950/70 py-3 pl-11 pr-12 text-sm text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-cyan-200"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -144,7 +149,7 @@ export default function AdminLoginPage() {
               disabled={loading}
               className="h-11 w-full rounded-xl bg-cyan-400 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-900/40 disabled:text-slate-400"
             >
-              {loading ? 'Signing in...' : 'Sign In as Admin'}
+              {loading ? t('adminSigningIn') : t('adminSignInButton')}
             </Button>
           </form>
 
@@ -153,7 +158,7 @@ export default function AdminLoginPage() {
             onClick={() => navigate('/login')}
             className="mt-6 w-full text-sm font-medium text-cyan-200 transition hover:text-cyan-100"
           >
-            Use regular login instead
+            {t('useRegularLoginInstead')}
           </button>
         </div>
       </div>

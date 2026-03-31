@@ -3,7 +3,14 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function EquipmentViewModal({ equipment, open, onClose, onBorrow }) {
+export default function EquipmentViewModal({
+  equipment,
+  open,
+  onClose,
+  onBorrow,
+  primaryActionLabel,
+  onPrimaryAction,
+}) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Get all available images
@@ -49,6 +56,15 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
     available === 0 ? 'text-red-500' :
     availPct <= 30   ? 'text-amber-600' :
                        'text-emerald-600';
+
+  const actionHandler = onPrimaryAction || onBorrow;
+  const isBorrowAction = !onPrimaryAction && typeof onBorrow === 'function';
+  const actionLabel = onPrimaryAction
+    ? (primaryActionLabel || 'Take action')
+    : 'Borrow';
+  const availabilityLabel = available === 0
+    ? 'Unavailable'
+    : (isBorrowAction ? 'Ready to borrow' : 'Available');
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -126,7 +142,7 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
                     {equipment.name}
                   </h2>
                   <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${availTextColor} bg-slate-100`}>
-                    {available === 0 ? 'Unavailable' : 'Ready to borrow'}
+                    {availabilityLabel}
                   </span>
                 </div>
                 {equipment.description && (
@@ -198,16 +214,18 @@ export default function EquipmentViewModal({ equipment, open, onClose, onBorrow 
               >
                 Close
               </Button>
-              <Button
-                onClick={() => {
-                  onBorrow(equipment);
-                  onClose();
-                }}
-                disabled={available === 0}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-300 disabled:cursor-not-allowed"
-              >
-                {available === 0 ? 'Unavailable' : 'Borrow'}
-              </Button>
+              {actionHandler && (
+                <Button
+                  onClick={() => {
+                    actionHandler(equipment);
+                    onClose();
+                  }}
+                  disabled={isBorrowAction && available === 0}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-300 disabled:cursor-not-allowed"
+                >
+                  {isBorrowAction && available === 0 ? 'Unavailable' : actionLabel}
+                </Button>
+              )}
               </div>
             </div>
           </div>
