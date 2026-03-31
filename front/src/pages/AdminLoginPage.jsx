@@ -10,7 +10,7 @@ import itsSecondLogo from '@/assets/images/ITSSecond.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
 import { useLang } from '@/components/i18n/LangContext';
 
-const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
+const ADMIN_ACCESS_ROLES = ['lecturer', 'head', 'head_of_lab', 'lab_assistant', 'admin'];
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();

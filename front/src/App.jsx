@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 import Landing from './landingPage'
 import LoginPage from './pages/LoginPage'
 import AdminLoginPage from './pages/AdminLoginPage'
@@ -19,7 +20,7 @@ import ApprovalHistory from './pages/approvals/approvalHistory'
 import AllApprovalHistory from './pages/approvals/allApprovalHistory'
 
 // Functions
-import Catalog from './pages/functions/catalog'
+import Catalog from './pages/catalogs/CatalogRedirect'
 import AllRequests from './pages/functions/allRequest'
 import FunctionsApprovalHistory from './pages/functions/approvalHistory'
 
@@ -33,17 +34,59 @@ import Returns from './pages/inventory/returns'
 import Settings from './pages/Settings'
 import Profile from './pages/Profile'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
+import Maintenance from './pages/Maintenance'
 
 import './App.css'
+
+const HIDDEN_ADMIN_ROUTE = '/secure-admin-portal-9f3Xk'
+
+function AdminShortcutHandler() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleAdminShortcut = (event) => {
+      if (event.ctrlKey && event.altKey && event.shiftKey && event.key.toLowerCase() === 'l') {
+        event.preventDefault()
+        navigate(HIDDEN_ADMIN_ROUTE)
+      }
+    }
+
+    window.addEventListener('keydown', handleAdminShortcut)
+    return () => window.removeEventListener('keydown', handleAdminShortcut)
+  }, [navigate])
+
+  return null
+}
+
+function MaintenanceRedirectHandler() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleMaintenanceMode = () => {
+      if (window.location.pathname !== '/maintenance') {
+        navigate('/maintenance', { replace: true })
+      }
+    }
+
+    window.addEventListener('app:maintenance-mode', handleMaintenanceMode)
+    return () => window.removeEventListener('app:maintenance-mode', handleMaintenanceMode)
+  }, [navigate])
+
+  return null
+}
 
 function App() {
   return (
     <Router>
+      <AdminShortcutHandler />
+      <MaintenanceRedirectHandler />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/admin-login" element={<AdminLoginPage />} />
+        <Route path={HIDDEN_ADMIN_ROUTE} element={<AdminLoginPage />} />
         
         {/* Protected routes with dashboard layout */}
         <Route element={<ProtectedRoute />}>
