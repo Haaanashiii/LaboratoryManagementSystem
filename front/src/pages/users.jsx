@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil } from 'lucide-react';
+import { Search, UserPlus, Pencil, Loader2, Trash2 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 
 const roles = [
@@ -23,10 +23,27 @@ const roles = [
 export default function Users() {
   const [search, setSearch] = useState('');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    role: 'student',
+    department: '',
+    studentId: '',
+    phone: '',
+    status: 'active',
+    password: ''
+  });
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('student');
-  const [editRole, setEditRole] = useState('');
+  const [addForm, setAddForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'student',
+    department: '',
+    phone: ''
+  });
 
   const queryClient = useQueryClient();
 
@@ -37,7 +54,7 @@ export default function Users() {
 
   const inviteMutation = useMutation({
     mutationFn: ({ email, role }) => api.users.inviteUser(email, role === 'admin' ? 'admin' : 'user'),
-    onSuccess: async (_, { email, role }) => {
+    onSuccess: () => {
       // After invite, we need to update the user's role if it's not admin/user
       // This is a workaround since inviteUser only supports 'admin' and 'user'
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -55,6 +72,29 @@ export default function Users() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.entities.User.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
+  });
+
+  const addUserMutation = useMutation({
+    mutationFn: (data) => api.users.addUser(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsAddOpen(false);
+      setAddForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'student',
+        department: '',
+        phone: ''
+      });
+    }
+  });
+
   const filteredUsers = users.filter(user =>
     user.name?.toLowerCase().includes(search.toLowerCase()) ||
     user.email?.toLowerCase().includes(search.toLowerCase())
@@ -66,18 +106,67 @@ export default function Users() {
 
   const openEditDialog = (user) => {
     setEditingUser(user);
-    setEditRole(user.role || 'student');
+    setEditForm({
+      name: user.name || '',
+      role: user.role || 'student',
+      department: user.department || '',
+      studentId: user.studentId || '',
+      phone: user.phone || '',
+      status: user.status || 'active',
+      password: ''
+    });
   };
 
   const handleUpdateRole = () => {
+    const isEditingAdmin = editingUser?.role === 'admin';
+    const staysAdmin = isEditingAdmin && editForm.role === 'admin';
+    const isStudent = editForm.role === 'student';
+    const payload = {};
+
+    if (staysAdmin) {
+      payload.role = editForm.role;
+      payload.status = editForm.status;
+    } else {
+      payload.name = editForm.name;
+      payload.role = editForm.role;
+      payload.status = editForm.status;
+
+      if (isStudent) {
+        payload.department = editForm.department;
+        payload.studentId = editForm.studentId;
+        payload.phone = editForm.phone;
+      } else {
+        payload.department = '';
+        payload.studentId = '';
+        payload.phone = '';
+      }
+    }
+
+    if (editForm.password.trim()) {
+      payload.password = editForm.password.trim();
+    }
+
     updateMutation.mutate({
       id: editingUser.id,
-      data: { role: editRole }
+      data: payload
     });
+  };
+
+  const handleDeleteUser = (user) => {
+    const confirmed = window.confirm(`Delete user ${user.name || user.email}? This action cannot be undone.`);
+    if (!confirmed) return;
+    deleteMutation.mutate(user.id);
   };
 
   const handleInvite = () => {
     inviteMutation.mutate({ email: inviteEmail, role: inviteRole });
+  };
+
+  const handleAddUser = () => {
+    addUserMutation.mutate({
+      ...addForm,
+      password: addForm.password || 'default123'
+    });
   };
 
   return (
@@ -93,10 +182,16 @@ export default function Users() {
             className="pl-10 h-11 bg-white"
           />
         </div>
-        <Button onClick={() => setIsInviteOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-          <UserPlus className="w-4 h-4 mr-2" />
-          Invite User
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsAddOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add User
+          </Button>
+          <Button onClick={() => setIsInviteOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Invite User
+          </Button>
+        </div>
       </div>
 
       {/* Users Table */}
@@ -151,9 +246,19 @@ export default function Users() {
                         </TableCell>
                         <TableCell className="text-slate-600">{user.department || '-'}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
-                            <Pencil className="w-4 h-4 text-slate-400" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
+                              <Pencil className="w-4 h-4 text-slate-400" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteUser(user)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -167,7 +272,7 @@ export default function Users() {
 
       {/* Invite Dialog */}
       <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Invite New User</DialogTitle>
           </DialogHeader>
@@ -217,11 +322,82 @@ export default function Users() {
         </DialogContent>
       </Dialog>
 
+      {/* Add User Dialog */}
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add User</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={addForm.name}
+                onChange={(event) => setAddForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Email Address</Label>
+              <Input
+                type="email"
+                value={addForm.email}
+                onChange={(event) => setAddForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder="user@example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Password (optional)</Label>
+              <Input
+                type="text"
+                value={addForm.password}
+                onChange={(event) => setAddForm((prev) => ({ ...prev, password: event.target.value }))}
+                placeholder="default123"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={addForm.role} onValueChange={(value) => setAddForm((prev) => ({ ...prev, role: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleAddUser}
+              disabled={!addForm.name || !addForm.email || addUserMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {addUserMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
+              ) : (
+                'Create User'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Role Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit User Role</DialogTitle>
+            <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
           
           <div className="py-4">
@@ -236,8 +412,27 @@ export default function Users() {
             </div>
             
             <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={editingUser?.email || ''} disabled />
+            </div>
+
+            {editForm.role !== 'admin' && (
+              <>
+                <div className="space-y-2 mt-4">
+                  <Label>Name</Label>
+                  <Input
+                    value={editForm.name}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="Full name"
+                  />
+                </div>
+
+              </>
+            )}
+
+            <div className="space-y-2 mt-4">
               <Label>Role</Label>
-              <Select value={editRole} onValueChange={setEditRole}>
+              <Select value={editForm.role} onValueChange={(value) => setEditForm((prev) => ({ ...prev, role: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -249,6 +444,61 @@ export default function Users() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2 mt-4">
+              <Label>Status</Label>
+              <Select value={editForm.status} onValueChange={(value) => setEditForm((prev) => ({ ...prev, status: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {editForm.role === 'student' && (
+              <>
+                <div className="space-y-2 mt-4">
+                  <Label>Department</Label>
+                  <Input
+                    value={editForm.department}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, department: event.target.value }))}
+                    placeholder="Department"
+                  />
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <Label>Student ID</Label>
+                  <Input
+                    value={editForm.studentId}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, studentId: event.target.value }))}
+                    placeholder="Student ID"
+                  />
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <Label>Phone</Label>
+                  <Input
+                    value={editForm.phone}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, phone: event.target.value }))}
+                    placeholder="Phone"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-2 mt-4">
+              <Label>Set New Password</Label>
+              <Input
+                type="text"
+                value={editForm.password}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, password: event.target.value }))}
+                placeholder="Leave blank to keep current password"
+              />
             </div>
           </div>
 
@@ -262,7 +512,7 @@ export default function Users() {
               {updateMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...</>
               ) : (
-                'Update Role'
+                'Update User'
               )}
             </Button>
           </DialogFooter>

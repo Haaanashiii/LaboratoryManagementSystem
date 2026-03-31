@@ -15,11 +15,13 @@ const equipmentRoutes = require('./routes/equipmentRoutes');
 const borrowRequestRoutes = require('./routes/borrowRequestRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./middleware/logger');
 const { initGridFS } = require('./config/gridfs');
+const { maintenanceModeGuard } = require('./middleware/maintenanceMode');
 
 const app = express();
 let server;
@@ -39,6 +41,34 @@ if (process.env.DNS_SERVERS) {
 }
 
 const ensureAdminAccount = async () => {
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+
+  if (isDevelopment) {
+    const devEmail = 'admin@its.ac.id';
+    const devPassword = 'Admin123!';
+
+    const devAdmin = await User.findOne({ email: devEmail }).select('+password role status');
+    if (devAdmin) {
+      devAdmin.role = 'admin';
+      devAdmin.status = 'active';
+      devAdmin.password = devPassword;
+      await devAdmin.save();
+      console.log('✅ Development admin account refreshed: admin@its.ac.id');
+      return;
+    }
+
+    await User.create({
+      email: devEmail,
+      password: devPassword,
+      name: 'Development Admin',
+      role: 'admin',
+      status: 'active'
+    });
+
+    console.log('✅ Development admin account created: admin@its.ac.id');
+    return;
+  }
+
   const existingAdmin = await User.findOne({ role: 'admin' }).select('_id email');
   if (existingAdmin) {
     return;
@@ -93,6 +123,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
+app.use(maintenanceModeGuard);
 
 // Serve uploaded files
 const path = require('path');
@@ -109,6 +140,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/borrow-requests', borrowRequestRoutes);
@@ -136,16 +168,16 @@ mongoose.connect(process.env.MONGODB_URI)
 
   server.on('error', (err) => {
     if (err && err.code === 'EADDRINUSE') {
-      console.error(`❌ Port ${PORT} is already in use.`);
+      console.error(` Port ${PORT} is already in use.`);
       console.error('   Close the other process using this port, or set a different PORT in backend/.env.');
     } else {
-      console.error('❌ Server error:', err);
+      console.error(' Server error:', err);
     }
     process.exit(1);
   });
 })
 .catch((err) => {
-  console.error('❌ MongoDB connection error:', err);
+  console.error(' MongoDB connection error:', err);
   process.exit(1);
 });
 

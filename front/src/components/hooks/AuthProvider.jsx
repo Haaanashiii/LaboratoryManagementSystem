@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, clearStoredAuth, getStoredToken, isTokenExpired } from '@/api/apiClient';
 import { AuthContext } from './authContext';
 
-const PUBLIC_PATHS = new Set(['/', '/login', '/admin-login']);
+const PUBLIC_PATHS = new Set(['/', '/login', '/maintenance', '/admin-login', '/secure-admin-portal-9f3Xk']);
 
 const isPublicPath = (pathname) => PUBLIC_PATHS.has(pathname);
 

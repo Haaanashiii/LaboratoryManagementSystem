@@ -76,6 +76,19 @@ const request = async (endpoint, options = {}) => {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    if (res.status === 503) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app:maintenance-mode', {
+          detail: data
+        }));
+      }
+
+      const error = new Error(data.message || 'System is under maintenance.');
+      error.status = 503;
+      error.payload = data;
+      throw error;
+    }
+
     if (res.status === 401) {
       clearAuthStorage();
       if ((data.message || '').toLowerCase().includes('expired')) {
@@ -117,8 +130,7 @@ export const api = {
     },
 
     adminLogin: async (email, password) => {
-      // Admin portal uses the same backend login endpoint.
-      const data = await request('/auth/login', {
+      const data = await request('/auth/admin/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -223,6 +235,26 @@ export const api = {
         created_date: user.createdAt || user.created_date
       };
     },
+    addUser: async ({ name, email, password, role, department, phone }) => {
+      const data = await request('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role,
+          department,
+          phone
+        }),
+      });
+
+      const user = data.data;
+      return {
+        ...user,
+        id: user._id || user.id,
+        created_date: user.createdAt || user.created_date
+      };
+    },
   },
 
   // Entities
@@ -258,6 +290,11 @@ export const api = {
           id: user._id || user.id,
           created_date: user.createdAt || user.created_date
         };
+      },
+      delete: async (id) => {
+        return await request(`/users/${id}`, {
+          method: 'DELETE',
+        });
       },
     },
 
@@ -494,6 +531,20 @@ export const api = {
         const params = new URLSearchParams(filters).toString();
         const data = await request(`/admin/audit-logs${params ? `?${params}` : ''}`);
         return data;
+      },
+    },
+    AdminMaintenance: {
+      status: async () => {
+        const data = await request('/admin/maintenance-status');
+        return data.data;
+      },
+      toggle: async (enabled) => {
+        const body = typeof enabled === 'boolean' ? { enabled } : {};
+        const data = await request('/admin/toggle-maintenance', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        return data.data;
       },
     },
   },

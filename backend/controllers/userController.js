@@ -94,7 +94,7 @@ exports.createUser = async (req, res, next) => {
 // @access  Private (Admin, Own profile)
 exports.updateUser = async (req, res, next) => {
   try {
-    const { name, role, department, studentId, phone, status } = req.body;
+    const { name, role, department, studentId, phone, status, password } = req.body;
 
     // Check if user can update this record
     if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
@@ -113,6 +113,20 @@ exports.updateUser = async (req, res, next) => {
       });
     }
 
+    // If an admin account remains admin, restrict updates to role/status/password.
+    const nextRole = role || user.role;
+    if (user.role === 'admin' && req.user.role === 'admin' && nextRole === 'admin') {
+      if (role) user.role = role;
+      if (status) user.status = status;
+      if (password) user.password = password;
+      await user.save();
+
+      return res.json({
+        success: true,
+        data: user
+      });
+    }
+
     // Update fields
     if (name) user.name = name;
     if (department) user.department = department;
@@ -123,6 +137,7 @@ exports.updateUser = async (req, res, next) => {
     if (req.user.role === 'admin') {
       if (role) user.role = role;
       if (status) user.status = status;
+      if (password) user.password = password;
     }
 
     await user.save();

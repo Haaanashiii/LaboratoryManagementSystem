@@ -2,6 +2,8 @@ const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
 const { logAuditEvent } = require('../utils/auditLogger');
 
+const ADMIN_PORTAL_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
+
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
@@ -119,6 +121,109 @@ exports.login = async (req, res, next) => {
       entityType: 'auth',
       status: 'success',
       details: { role: user.role, portal: 'default' }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        department: user.department,
+        token
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Login user to admin portal
+// @route   POST /api/auth/admin/login
+// @access  Public
+exports.adminLogin = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email }).select('+password');
+
+    if (!user) {
+      await logAuditEvent({
+        req,
+        userEmail: email,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'user_not_found', portal: 'admin' }
+      });
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      await logAuditEvent({
+        req,
+        userId: user._id,
+        userEmail: user.email,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'password_mismatch', portal: 'admin' }
+      });
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    if (user.status !== 'active') {
+      await logAuditEvent({
+        req,
+        userId: user._id,
+        userEmail: user.email,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'inactive_account', portal: 'admin' }
+      });
+      return res.status(401).json({
+        success: false,
+        message: 'User account is not active'
+      });
+    }
+
+    const normalizedRole = String(user.role || '').toLowerCase();
+    if (!ADMIN_PORTAL_ROLES.includes(normalizedRole)) {
+      await logAuditEvent({
+        req,
+        userId: user._id,
+        userEmail: user.email,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'role_not_allowed_admin_portal', role: user.role, portal: 'admin' }
+      });
+      return res.status(403).json({
+        success: false,
+        message: 'This account is not allowed to access the admin portal'
+      });
+    }
+
+    const token = generateToken(user._id, user.role);
+
+    await logAuditEvent({
+      req,
+      userId: user._id,
+      userEmail: user.email,
+      actionType: 'login_success',
+      entityType: 'auth',
+      status: 'success',
+      details: { role: user.role, portal: 'admin' }
     });
 
     res.json({
