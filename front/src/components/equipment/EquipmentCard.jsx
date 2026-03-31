@@ -28,6 +28,12 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole 
     else if (onBorrow) onBorrow(equipment);
   };
 
+  const handleViewAndBorrowClick = (e) => {
+    e.stopPropagation();
+    if (onBorrow) onBorrow(equipment);
+    else if (onSelect) onSelect(equipment);
+  };
+
   // Get all available images
   const allImages = equipment.images_urls && equipment.images_urls.length > 0 
     ? equipment.images_urls 
@@ -152,10 +158,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole 
           {/* Borrow button */}
           {canBorrow && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClick();
-              }}
+              onClick={handleViewAndBorrowClick}
               disabled={available === 0}
               className="learn-more-card-btn mt-1 w-full"
             >

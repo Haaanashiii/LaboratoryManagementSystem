@@ -200,6 +200,7 @@ export default function Catalog() {
                         <EquipmentCard
                           equipment={item}
                           onSelect={setViewedEquipment}
+                          onBorrow={(eq) => setSelectedEquipment(eq)}
                           userRole={user?.role}
                         />
                       </div>
@@ -219,6 +220,7 @@ export default function Catalog() {
                   <EquipmentCard
                     equipment={item}
                     onSelect={setViewedEquipment}
+                    onBorrow={(eq) => setSelectedEquipment(eq)}
                     userRole={user?.role}
                   />
                 </div>
