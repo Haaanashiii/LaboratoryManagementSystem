@@ -8,7 +8,7 @@ import LandingBG from '@/components/layouts/LandingBG';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
 
-const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
+const ADMIN_ACCESS_ROLES = ['lecturer', 'head', 'head_of_lab', 'lab_assistant', 'admin'];
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -35,18 +35,6 @@ export default function LoginPage() {
       navigate(destination, { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate, user]);
-
-  useEffect(() => {
-    const handleAdminShortcut = (event) => {
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'a') {
-        event.preventDefault();
-        navigate('/admin-login');
-      }
-    };
-
-    window.addEventListener('keydown', handleAdminShortcut);
-    return () => window.removeEventListener('keydown', handleAdminShortcut);
-  }, [navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

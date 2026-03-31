@@ -9,7 +9,7 @@ import equimonLogo from '@/assets/images/Equimon Logo.png';
 import itsSecondLogo from '@/assets/images/ITSSecond.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
 
-const ADMIN_ACCESS_ROLES = ['lecturer', 'head_of_lab', 'lab_assistant', 'admin'];
+const ADMIN_ACCESS_ROLES = ['lecturer', 'head', 'head_of_lab', 'lab_assistant', 'admin'];
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();

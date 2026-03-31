@@ -48,7 +48,7 @@ export default function AdminAuditLogs() {
   return (
     <div className="max-w-7xl mx-auto space-y-4 py-4 px-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Admin Audit Logs (Ghost Mode)</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Admin Audit Logs</h1>
         <p className="text-sm text-slate-600 mt-1">Track login attempts, borrow activity, returns, and damage verification actions.</p>
       </div>
 
@@ -101,9 +101,10 @@ export default function AdminAuditLogs() {
       </Card>
 
       <Card className="border-slate-200 shadow-none">
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
+        <CardContent className="p-0">
+          <div className="max-h-[65vh] overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Timestamp</th>
                 <th className="text-left px-4 py-3 font-medium">User</th>
@@ -112,8 +113,8 @@ export default function AdminAuditLogs() {
                 <th className="text-left px-4 py-3 font-medium">Entity</th>
                 <th className="text-left px-4 py-3 font-medium">Details</th>
               </tr>
-            </thead>
-            <tbody>
+              </thead>
+              <tbody>
               {isLoading && (
                 <tr>
                   <td className="px-4 py-6 text-slate-500" colSpan={6}>Loading logs...</td>
@@ -146,8 +147,9 @@ export default function AdminAuditLogs() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>

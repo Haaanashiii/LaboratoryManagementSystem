@@ -17,7 +17,7 @@ exports.registerValidation = [
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('name').trim().notEmpty().withMessage('Name is required'),
-  body('role').optional().isIn(['admin', 'head_of_lab', 'lecturer', 'lab_assistant', 'student'])
+  body('role').optional().isIn(['admin', 'head', 'head_of_lab', 'lecturer', 'lab_assistant', 'student'])
 ];
 
 exports.loginValidation = [
