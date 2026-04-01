@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const dns = require('dns');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -26,6 +27,7 @@ const errorHandler = require('./middleware/errorHandler');
 const logger = require('./middleware/logger');
 const { initGridFS } = require('./config/gridfs');
 const { maintenanceModeGuard } = require('./middleware/maintenanceMode');
+const { initSocket } = require('./socket');
 
 const app = express();
 let server;
@@ -169,10 +171,13 @@ mongoose.connect(process.env.MONGODB_URI)
   
   // Initialize GridFS after MongoDB connection
   initGridFS();
+
+  const PORT = Number(process.env.PORT) || 3000;
+  const httpServer = http.createServer(app);
+  initSocket(httpServer, allowedOrigins);
   
   // Start server
-  const PORT = Number(process.env.PORT) || 3000;
-  server = app.listen(PORT, () => {
+  server = httpServer.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
   });
 

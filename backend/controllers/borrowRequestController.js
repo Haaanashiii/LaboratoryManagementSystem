@@ -3,6 +3,11 @@ const Equipment = require('../models/Equipment');
 const User = require('../models/User');
 const { uploadToGridFS, getFileMetadata, downloadFromGridFS } = require('../config/gridfs');
 const { logAuditEvent } = require('../utils/auditLogger');
+const {
+  notifyStudentBorrowStatus,
+  notifyRoleRefresh,
+  notifyUserRefresh
+} = require('../utils/realtimeNotification');
 
 let stockReconcilePromise = null;
 let lastStockReconcileAt = 0;
@@ -249,6 +254,12 @@ exports.createBorrowRequest = async (req, res, next) => {
     // Populate before returning
     await request.populate('equipment', 'name category');
 
+    // Notify lecturer dashboards that new requests are waiting.
+    notifyRoleRefresh('lecturer', {
+      type: 'borrow_request_created',
+      requestId: String(request._id)
+    });
+
     res.status(201).json({
       success: true,
       data: request
@@ -330,6 +341,21 @@ exports.lecturerAction = async (req, res, next) => {
 
     await request.save();
 
+    await notifyStudentBorrowStatus(request);
+    notifyUserRefresh(String(request.student), {
+      type: 'borrow_request_status_changed',
+      requestId: String(request._id),
+      status: request.status
+    });
+
+    if (action === 'approve') {
+      notifyRoleRefresh('head_of_lab', {
+        type: 'borrow_request_status_changed',
+        requestId: String(request._id),
+        status: request.status
+      });
+    }
+
     res.json({
       success: true,
       data: request
@@ -391,6 +417,21 @@ exports.headAction = async (req, res, next) => {
 
     await request.save();
 
+    await notifyStudentBorrowStatus(request);
+    notifyUserRefresh(String(request.student), {
+      type: 'borrow_request_status_changed',
+      requestId: String(request._id),
+      status: request.status
+    });
+
+    if (action === 'approve') {
+      notifyRoleRefresh('lab_assistant', {
+        type: 'borrow_request_status_changed',
+        requestId: String(request._id),
+        status: request.status
+      });
+    }
+
     res.json({
       success: true,
       data: request
@@ -433,6 +474,13 @@ exports.prepareEquipment = async (req, res, next) => {
     request.prepared_by = req.user.id;
     request.prepared_at = Date.now();
     await request.save();
+
+    await notifyStudentBorrowStatus(request);
+    notifyUserRefresh(String(request.student), {
+      type: 'borrow_request_status_changed',
+      requestId: String(request._id),
+      status: request.status
+    });
 
     res.json({
       success: true,
@@ -494,6 +542,18 @@ exports.releaseEquipment = async (req, res, next) => {
     request.released_by = req.user.id;
     request.released_at = Date.now();
     await request.save();
+
+    await notifyStudentBorrowStatus(request);
+    notifyUserRefresh(String(request.student), {
+      type: 'borrow_request_status_changed',
+      requestId: String(request._id),
+      status: request.status
+    });
+    notifyRoleRefresh('admin', {
+      type: 'borrow_request_status_changed',
+      requestId: String(request._id),
+      status: request.status
+    });
 
     await logAuditEvent({
       req,
@@ -653,6 +713,18 @@ exports.returnEquipment = async (req, res, next) => {
     request.stock_reserved = false;
     request.returned_to = req.user.id;
     await request.save();
+
+    await notifyStudentBorrowStatus(request);
+    notifyUserRefresh(String(request.student), {
+      type: 'borrow_request_status_changed',
+      requestId: String(request._id),
+      status: request.status
+    });
+    notifyRoleRefresh('admin', {
+      type: 'borrow_request_status_changed',
+      requestId: String(request._id),
+      status: request.status
+    });
 
     await logAuditEvent({
       req,

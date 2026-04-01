@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { api } from '@/api/apiClient';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, getStoredToken } from '@/api/apiClient';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 import { 
   FlaskConical, 
@@ -37,6 +37,7 @@ import { useLang } from '@/components/i18n/LangContext';
 import Sidebar from '@/components/layouts/sidebar';
 import { useAuth } from '@/components/hooks/useAuth.js';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
+import { connectNotificationSocket, disconnectNotificationSocket } from '@/lib/socketClient';
 
 // Role-based navigation configuration
 const navigationConfig = {
@@ -94,6 +95,7 @@ const roleColors = {
 };
 
 export default function DashboardLayout() {
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -139,6 +141,56 @@ export default function DashboardLayout() {
       setNotifications(Array.isArray(data) ? data : []);
     }
   });
+
+  useEffect(() => {
+    if (!user) {
+      disconnectNotificationSocket();
+      return undefined;
+    }
+
+    const token = getStoredToken();
+    const socket = connectNotificationSocket(token);
+    if (!socket) {
+      return undefined;
+    }
+
+    const handleNotificationNew = (incoming) => {
+      if (!incoming) {
+        return;
+      }
+
+      setNotifications((prev) => {
+        const incomingId = incoming._id || incoming.id;
+        const exists = prev.some((item) => (item._id || item.id) === incomingId);
+        if (exists) {
+          return prev;
+        }
+
+        return [
+          {
+            ...incoming,
+            id: incomingId,
+            isRead: Boolean(incoming.isRead)
+          },
+          ...prev
+        ].slice(0, 20);
+      });
+    };
+
+    const handleNotificationRefresh = () => {
+      queryClient.invalidateQueries({
+        queryKey: ['notifications', user?.id, user?.role]
+      });
+    };
+
+    socket.on('notification:new', handleNotificationNew);
+    socket.on('notification:refresh', handleNotificationRefresh);
+
+    return () => {
+      socket.off('notification:new', handleNotificationNew);
+      socket.off('notification:refresh', handleNotificationRefresh);
+    };
+  }, [queryClient, user]);
 
   const markNotificationReadMutation = useMutation({
     mutationFn: (id) => api.notifications.markAsRead(id)
