@@ -98,7 +98,7 @@ const request = async (endpoint, options = {}) => {
     }
 
     if (res.status === 403) {
-      throw new Error('You do not have permission to access this resource with the current account.');
+      throw new Error(data.message || 'You do not have permission to access this resource with the current account.');
     }
 
     throw new Error(data.message || `Request failed with status ${res.status}`);

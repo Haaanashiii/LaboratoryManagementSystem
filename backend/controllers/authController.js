@@ -9,6 +9,7 @@ const {
 } = require('../utils/emailPolicy');
 
 const ADMIN_PORTAL_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
+const STUDENT_PORTAL_DOMAIN = 'student.its.ac.id';
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -86,19 +87,18 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    const isBypassEmail = isDevBypassEmail(parsedEmail.normalizedEmail);
-    if (!isBypassEmail && !isAllowedRegistrationDomain(parsedEmail.domain)) {
+    if (parsedEmail.domain !== STUDENT_PORTAL_DOMAIN) {
       await logAuditEvent({
         req,
         userEmail: parsedEmail.normalizedEmail,
         actionType: 'login_failed',
         entityType: 'auth',
         status: 'failed',
-        details: { reason: 'domain_not_allowed_for_login' }
+        details: { reason: 'domain_not_allowed_for_student_portal', portal: 'default' }
       });
       return res.status(403).json({
         success: false,
-        message: 'Email domain is not allowed'
+        message: 'Student portal only accepts @student.its.ac.id accounts'
       });
     }
 
@@ -120,7 +120,7 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    if (!isBypassEmail && !isAllowedDomainForRole(user.role, parsedEmail.domain)) {
+    if (String(user.role || '').toLowerCase() !== 'student') {
       await logAuditEvent({
         req,
         userId: user._id,
@@ -128,11 +128,11 @@ exports.login = async (req, res, next) => {
         actionType: 'login_failed',
         entityType: 'auth',
         status: 'failed',
-        details: { reason: 'domain_role_mismatch', role: user.role }
+        details: { reason: 'role_not_allowed_student_portal', role: user.role, portal: 'default' }
       });
       return res.status(403).json({
         success: false,
-        message: 'Email domain is not allowed for this role'
+        message: 'This account is not allowed to access the student portal'
       });
     }
 

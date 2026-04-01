@@ -85,6 +85,12 @@ export default function LoginPage() {
     if (validateForm()) {
       if (isLogin) {
         try {
+          const normalizedEmail = String(formData.email || '').trim().toLowerCase();
+          if (!normalizedEmail.endsWith('@student.its.ac.id')) {
+            setErrors({ email: t('errorStudentDomainOnly') });
+            return;
+          }
+
           // Handle login logic
           await api.auth.login(formData.email, formData.password);
           const user = await refreshSession();

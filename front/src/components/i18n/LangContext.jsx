@@ -131,6 +131,7 @@ const translations = {
     errorConfirmPassword: 'Please confirm your password',
     errorPasswordMismatch: 'Passwords do not match',
     errorInvalidCredentials: 'Invalid credentials',
+    errorStudentDomainOnly: 'Student portal only accepts @student.its.ac.id email addresses',
     errorRegistrationFailed: 'Registration failed',
 
     // Admin Login
@@ -630,6 +631,7 @@ const translations = {
     errorConfirmPassword: 'Silakan konfirmasi kata sandi Anda',
     errorPasswordMismatch: 'Kata sandi tidak cocok',
     errorInvalidCredentials: 'Kredensial tidak valid',
+    errorStudentDomainOnly: 'Portal mahasiswa hanya menerima email @student.its.ac.id',
     showPassword: 'Tampilkan kata sandi',
     hidePassword: 'Sembunyikan kata sandi',
     errorRegistrationFailed: 'Pendaftaran gagal',
