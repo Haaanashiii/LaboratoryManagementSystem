@@ -63,6 +63,7 @@ export default function AdminCatalog() {
   return (
     <>
       <CatalogContent
+        hideHeader
         header={{
           eyebrow: 'Equipment Catalog',
           title: 'Admin Catalog',

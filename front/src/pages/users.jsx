@@ -20,8 +20,47 @@ const roles = [
   { value: 'student', label: 'Student', color: 'bg-blue-100 text-blue-800' }
 ];
 
+const STAFF_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
+
+const getAllowedDomainForRole = (role) => {
+  return role === 'student' ? 'student.its.ac.id' : 'its.ac.id';
+};
+
+const validateRoleEmailDomain = (email, role) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) {
+    return { isValid: true, message: '' };
+  }
+
+  const emailPattern = /^\S+@\S+\.\S+$/;
+  if (!emailPattern.test(normalizedEmail)) {
+    return { isValid: false, message: 'Please provide a valid email.' };
+  }
+
+  const domain = normalizedEmail.split('@')[1] || '';
+  const isAllowedRegistrationDomain = domain === 'student.its.ac.id' || domain === 'its.ac.id';
+
+  if (!isAllowedRegistrationDomain) {
+    return {
+      isValid: false,
+      message: 'Only @student.its.ac.id or @its.ac.id emails are allowed.'
+    };
+  }
+
+  if (role === 'student' && domain !== 'student.its.ac.id') {
+    return { isValid: false, message: 'Student accounts must use @student.its.ac.id.' };
+  }
+
+  if (STAFF_ROLES.includes(role) && domain !== 'its.ac.id') {
+    return { isValid: false, message: 'Staff roles must use @its.ac.id.' };
+  }
+
+  return { isValid: true, message: '' };
+};
+
 export default function Users() {
   const [search, setSearch] = useState('');
+  const [activeRole, setActiveRole] = useState('student');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -53,10 +92,8 @@ export default function Users() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: ({ email, role }) => api.users.inviteUser(email, role === 'admin' ? 'admin' : 'user'),
+    mutationFn: ({ email, role }) => api.users.inviteUser(email, role),
     onSuccess: () => {
-      // After invite, we need to update the user's role if it's not admin/user
-      // This is a workaround since inviteUser only supports 'admin' and 'user'
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsInviteOpen(false);
       setInviteEmail('');
@@ -100,9 +137,25 @@ export default function Users() {
     user.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const usersByRole = roles.reduce((acc, role) => {
+    acc[role.value] = users.filter((user) => (user.role || 'student') === role.value);
+    return acc;
+  }, {});
+
+  const filteredUsersByRole = roles.reduce((acc, role) => {
+    acc[role.value] = filteredUsers.filter((user) => (user.role || 'student') === role.value);
+    return acc;
+  }, {});
+
   const getRoleConfig = (role) => {
     return roles.find(r => r.value === role) || roles.find(r => r.value === 'student');
   };
+
+  const activeRoleConfig = getRoleConfig(activeRole);
+  const activeRoleUsers = filteredUsersByRole[activeRole] || [];
+  const shouldScrollTable = activeRoleUsers.length >= 5;
+  const inviteValidation = validateRoleEmailDomain(inviteEmail, inviteRole);
+  const addValidation = validateRoleEmailDomain(addForm.email, addForm.role);
 
   const openEditDialog = (user) => {
     setEditingUser(user);
@@ -194,6 +247,34 @@ export default function Users() {
         </div>
       </div>
 
+      {/* Role folders */}
+      <div className="mb-4">
+        <div className="flex flex-wrap gap-2">
+          {roles.map((role) => {
+            const totalInRole = usersByRole[role.value]?.length || 0;
+            const isActive = activeRole === role.value;
+
+            return (
+              <button
+                key={role.value}
+                type="button"
+                onClick={() => setActiveRole(role.value)}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? 'border-blue-300 bg-blue-50 text-blue-700'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <span>{role.label}</span>
+                <Badge className={isActive ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}>
+                  {totalInRole}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Users Table */}
       <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
@@ -214,57 +295,79 @@ export default function Users() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead>User</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => {
-                    const roleConfig = getRoleConfig(user.role);
-                    return (
-                      <TableRow key={user.id} className="hover:bg-slate-50/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
-                              {user.name?.[0]?.toUpperCase() || 'U'}
-                            </div>
-                            <span className="font-medium text-slate-900">{user.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-600">{user.email}</TableCell>
-                        <TableCell>
-                          <Badge className={roleConfig.color}>
-                            {roleConfig.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-slate-600">{user.department || '-'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
-                              <Pencil className="w-4 h-4 text-slate-400" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteUser(user)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </Button>
-                          </div>
+            <div>
+              <div className="flex items-center justify-between px-4 py-3 border-b bg-slate-50/80">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-slate-900">{activeRoleConfig.label} Users</p>
+                  <Badge className={activeRoleConfig.color}>{usersByRole[activeRole]?.length || 0}</Badge>
+                </div>
+                {search.trim() && (
+                  <p className="text-xs text-slate-500">
+                    Showing {activeRoleUsers.length} result{activeRoleUsers.length === 1 ? '' : 's'} for this folder
+                  </p>
+                )}
+              </div>
+
+              <div className={`overflow-x-auto ${shouldScrollTable ? 'max-h-[430px] overflow-y-auto' : ''}`}>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50">
+                      <TableHead>User</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeRoleUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-10 text-center text-sm text-slate-500">
+                          No users found in {activeRoleConfig.label}.
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    ) : (
+                      activeRoleUsers.map((user) => {
+                        const roleConfig = getRoleConfig(user.role);
+                        return (
+                          <TableRow key={user.id} className="hover:bg-slate-50/50">
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
+                                  {user.name?.[0]?.toUpperCase() || 'U'}
+                                </div>
+                                <span className="font-medium text-slate-900">{user.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-600">{user.email}</TableCell>
+                            <TableCell>
+                              <Badge className={roleConfig.color}>
+                                {roleConfig.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-slate-600">{user.department || '-'}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
+                                  <Pencil className="w-4 h-4 text-slate-400" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteUser(user)}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>
@@ -286,6 +389,9 @@ export default function Users() {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="user@example.com"
               />
+              {!inviteValidation.isValid && (
+                <p className="text-xs text-red-600">{inviteValidation.message}</p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -302,6 +408,9 @@ export default function Users() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-slate-500">
+                Allowed domain for {getRoleConfig(inviteRole).label}: @{getAllowedDomainForRole(inviteRole)}
+              </p>
             </div>
           </div>
 
@@ -309,7 +418,7 @@ export default function Users() {
             <Button variant="outline" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
             <Button 
               onClick={handleInvite}
-              disabled={!inviteEmail || inviteMutation.isPending}
+              disabled={!inviteEmail || !inviteValidation.isValid || inviteMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {inviteMutation.isPending ? (
@@ -347,6 +456,9 @@ export default function Users() {
                 onChange={(event) => setAddForm((prev) => ({ ...prev, email: event.target.value }))}
                 placeholder="user@example.com"
               />
+              {!addValidation.isValid && (
+                <p className="text-xs text-red-600">{addValidation.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -373,6 +485,9 @@ export default function Users() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-slate-500">
+                Allowed domain for {getRoleConfig(addForm.role).label}: @{getAllowedDomainForRole(addForm.role)}
+              </p>
             </div>
           </div>
 
@@ -380,7 +495,7 @@ export default function Users() {
             <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
             <Button
               onClick={handleAddUser}
-              disabled={!addForm.name || !addForm.email || addUserMutation.isPending}
+              disabled={!addForm.name || !addForm.email || !addValidation.isValid || addUserMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {addUserMutation.isPending ? (

@@ -6,6 +6,7 @@ import AdminLoginPage from './pages/AdminLoginPage'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
+import RoleRoute from './components/RoleRoute'
 
 // Dashboard
 import Dashboard from './pages/Dashboard'
@@ -21,6 +22,11 @@ import AllApprovalHistory from './pages/approvals/allApprovalHistory'
 
 // Functions
 import Catalog from './pages/catalogs/CatalogRedirect'
+import StudentCatalog from './pages/catalogs/StudentCatalog'
+import LecturerCatalog from './pages/catalogs/LecturerCatalog'
+import HeadCatalog from './pages/catalogs/HeadCatalog'
+import AssistantCatalog from './pages/catalogs/AssistantCatalog'
+import AdminCatalog from './pages/catalogs/AdminCatalog'
 import AllRequests from './pages/functions/allRequest'
 import FunctionsApprovalHistory from './pages/functions/approvalHistory'
 
@@ -109,6 +115,21 @@ function App() {
             
             {/* Functions */}
             <Route path="catalog" element={<Catalog />} />
+            <Route element={<RoleRoute allowedRoles={['student']} />}>
+              <Route path="catalog/student" element={<StudentCatalog />} />
+            </Route>
+            <Route element={<RoleRoute allowedRoles={['lecturer']} />}>
+              <Route path="catalog/lecturer" element={<LecturerCatalog />} />
+            </Route>
+            <Route element={<RoleRoute allowedRoles={['head_of_lab']} />}>
+              <Route path="catalog/head-of-lab" element={<HeadCatalog />} />
+            </Route>
+            <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>
+              <Route path="catalog/lab-assistant" element={<AssistantCatalog />} />
+            </Route>
+            <Route element={<RoleRoute allowedRoles={['admin']} />}>
+              <Route path="catalog/admin" element={<AdminCatalog />} />
+            </Route>
             <Route path="all-requests" element={<AllRequests />} />
             <Route path="functions-approval-history" element={<FunctionsApprovalHistory />} />
             

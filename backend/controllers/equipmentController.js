@@ -229,6 +229,8 @@ exports.getImage = async (req, res, next) => {
     // Set content type
     res.set('Content-Type', metadata.metadata.contentType || 'image/jpeg');
     res.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+    // Allow frontend app (different origin in dev) to render image responses.
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
     // Stream the file
     const downloadStream = downloadFromGridFS(fileId);

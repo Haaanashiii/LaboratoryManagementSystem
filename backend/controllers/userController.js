@@ -1,4 +1,10 @@
 const User = require('../models/User');
+const {
+  parseEmail,
+  isDevBypassEmail,
+  isAllowedRegistrationDomain,
+  isAllowedDomainForRole
+} = require('../utils/emailPolicy');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -59,9 +65,33 @@ exports.getUser = async (req, res, next) => {
 exports.createUser = async (req, res, next) => {
   try {
     const { email, password, name, role, department, studentId, phone } = req.body;
+    const normalizedRole = String(role || 'student').trim().toLowerCase();
+
+    const parsedEmail = parseEmail(email);
+    if (!parsedEmail.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email'
+      });
+    }
+
+    const isBypassEmail = isDevBypassEmail(parsedEmail.normalizedEmail);
+    if (!isBypassEmail && !isAllowedRegistrationDomain(parsedEmail.domain)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Email domain is not allowed'
+      });
+    }
+
+    if (!isBypassEmail && !isAllowedDomainForRole(normalizedRole, parsedEmail.domain)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Email domain is not allowed for this role'
+      });
+    }
 
     // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: parsedEmail.normalizedEmail });
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -71,10 +101,10 @@ exports.createUser = async (req, res, next) => {
 
     // Create user
     const user = await User.create({
-      email,
+      email: parsedEmail.normalizedEmail,
       password: password || 'default123', // Default password
       name,
-      role: role || 'student',
+      role: normalizedRole,
       department,
       studentId,
       phone

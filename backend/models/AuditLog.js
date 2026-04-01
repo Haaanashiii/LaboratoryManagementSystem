@@ -12,7 +12,17 @@ const auditLogSchema = new mongoose.Schema({
   },
   action_type: {
     type: String,
-    enum: ['login_success', 'login_failed', 'borrow_created', 'borrow_released', 'borrow_returned', 'damage_verified'],
+    enum: [
+      'login_success',
+      'login_failed',
+      'borrow_created',
+      'borrow_released',
+      'borrow_returned',
+      'damage_verified',
+      'maintenance_toggled',
+      'role_changed',
+      'audit_logs_cleared'
+    ],
     required: true
   },
   entity_type: {
