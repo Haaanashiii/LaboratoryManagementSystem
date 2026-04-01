@@ -68,6 +68,10 @@ export default function LoginPage() {
       if (!formData.name) {
         newErrors.name = t('errorNameRequired');
       }
+      const normalizedEmail = String(formData.email || '').trim().toLowerCase();
+      if (normalizedEmail && !normalizedEmail.endsWith('@student.its.ac.id')) {
+        newErrors.email = t('errorStudentDomainOnly');
+      }
       if (!formData.confirmPassword) {
         newErrors.confirmPassword = t('errorConfirmPassword');
       } else if (formData.password !== formData.confirmPassword) {

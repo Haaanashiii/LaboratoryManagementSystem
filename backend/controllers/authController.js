@@ -26,11 +26,10 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    const isBypassEmail = isDevBypassEmail(parsedEmail.normalizedEmail);
-    if (!isBypassEmail && !isAllowedRegistrationDomain(parsedEmail.domain)) {
+    if (parsedEmail.domain !== STUDENT_PORTAL_DOMAIN) {
       return res.status(403).json({
         success: false,
-        message: 'Registration is restricted to @student.its.ac.id or @its.ac.id emails'
+        message: 'Student registration only accepts @student.its.ac.id accounts'
       });
     }
 
