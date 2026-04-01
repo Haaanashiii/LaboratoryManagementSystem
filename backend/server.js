@@ -3,6 +3,9 @@ const dns = require('dns');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
 const User = require('./models/User');
 
 // Load environment variables
@@ -16,6 +19,7 @@ const borrowRequestRoutes = require('./routes/borrowRequestRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -120,8 +124,13 @@ app.use(cors({
   },
   credentials: true
 }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(mongoSanitize());
+app.use(xss());
 app.use(logger);
 app.use(maintenanceModeGuard);
 
@@ -146,6 +155,7 @@ app.use('/api/equipment', equipmentRoutes);
 app.use('/api/borrow-requests', borrowRequestRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/admin/audit-logs', auditLogRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

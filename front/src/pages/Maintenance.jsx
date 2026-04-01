@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import LightRays from './LightRays';
 
 export default function Maintenance() {
   const navigate = useNavigate();
+  const [statusView, setStatusView] = useState('maintenance');
 
   useEffect(() => {
     const checkMaintenanceStatus = async () => {
@@ -15,9 +16,12 @@ export default function Maintenance() {
 
         if (response.ok && payload?.data?.maintenanceMode === false) {
           navigate('/login', { replace: true });
+          return;
         }
+
+        setStatusView('maintenance');
       } catch {
-        // Keep current page if status check fails.
+        setStatusView('offline');
       }
     };
 
@@ -52,10 +56,16 @@ export default function Maintenance() {
         <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-slate-900/70 p-8 text-center shadow-2xl backdrop-blur-md sm:p-10">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold tracking-[0.12em] text-amber-200">
             <AlertTriangle className="h-4 w-4" />
-            MAINTENANCE
+            {statusView === 'offline' ? 'OFFLINE' : 'MAINTENANCE'}
           </div>
 
-          <h1 className="text-3xl font-semibold text-white sm:text-4xl">Page is under maintenance.</h1>
+          {statusView === 'offline' && (
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Page is currently offline.</h1>
+          )}
+
+          {statusView === 'maintenance' && (
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Page is under maintenance.</h1>
+          )}
 
           <div className="mt-6 flex items-center justify-center gap-3">
             <button

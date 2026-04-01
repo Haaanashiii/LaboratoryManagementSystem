@@ -170,6 +170,7 @@ const catalogStyles = `
 
 export default function CatalogContent({
   header,
+  hideHeader = false,
   actions,
   search,
   onSearchChange,
@@ -266,25 +267,27 @@ export default function CatalogContent({
       <div className={innerClass}>
 
       {/* Header */}
-      <div className={headerClass}>
-        <div>
-          <p className={eyebrowClass}>{eyebrow}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className={titleClass}>{title}</h1>
-            {badge && (
-              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${badgeClass}`}>
-                {badge}
-              </span>
-            )}
+      {!hideHeader && (
+        <div className={headerClass}>
+          <div>
+            <p className={eyebrowClass}>{eyebrow}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className={titleClass}>{title}</h1>
+              {badge && (
+                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${badgeClass}`}>
+                  {badge}
+                </span>
+              )}
+            </div>
+            <p className={descriptionClass}>{description}</p>
           </div>
-          <p className={descriptionClass}>{description}</p>
+          {!isLoading && !isError && (
+            <span className={countClass}>
+              {itemCount} item{itemCount !== 1 ? 's' : ''} found
+            </span>
+          )}
         </div>
-        {!isLoading && !isError && (
-          <span className={countClass}>
-            {itemCount} item{itemCount !== 1 ? 's' : ''} found
-          </span>
-        )}
-      </div>
+      )}
 
       {isLecturer ? (
         <div className="catalog-fade-up catalog-fade-up-2 grid gap-4 lg:grid-cols-[1.2fr_1fr]">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package,
@@ -12,8 +12,7 @@ import {
   Home,
   History,
   CheckCircle,
-  Calendar,
-  Clock
+  LogOut
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useLang } from '@/components/i18n/LangContext';
@@ -61,31 +60,10 @@ const menuConfig = {
   ],
 };
 
-export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed = false }) {
+export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed = false, onLogout }) {
   const userRole = user?.role || 'student';
   const menu = menuConfig[userRole] || menuConfig.student;
-  const { t, lang } = useLang();
-  
-  const [currentDateTime, setCurrentDateTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDateTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatDate = (date) => {
-    const locale = lang === 'id' ? 'id-ID' : 'en-US';
-    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
-    return date.toLocaleDateString(locale, options);
-  };
-
-  const formatTime = (date) => {
-    const locale = lang === 'id' ? 'id-ID' : 'en-US';
-    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
+  const { t } = useLang();
 
   return (
     <>
@@ -159,18 +137,29 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
         {/* Spacer to push user info to bottom */}
         <div className="flex-1"></div>
 
-        {/* User Info */}
+        {/* Sidebar profile card */}
         {!collapsed && (
           <div className="p-4 border-t border-slate-200">
-            <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50/50">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
-                {user?.name?.[0]?.toUpperCase() || 'U'}
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50/80 border border-slate-200">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-slate-900 truncate">{user?.name || 'User'}</p>
-                <p className="text-xs text-slate-500 capitalize">{t(userRole.replace('_', ''))}</p>
+                <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'User'}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.email || 'user@its.ac.id'}</p>
+                <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">
+                  {t(userRole)}
+                </span>
               </div>
             </div>
+            <Button
+              variant="outline"
+              onClick={onLogout}
+              className="w-full mt-3 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              {t('logout')}
+            </Button>
           </div>
         )}
 
@@ -178,30 +167,6 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
           <div className="p-4 border-t border-slate-200 flex justify-center">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
               {user?.name?.[0]?.toUpperCase() || 'U'}
-            </div>
-          </div>
-        )}
-
-        {/* Date and Time */}
-        {!collapsed && (
-          <div className="px-4 pb-4">
-            <div className="px-4 py-3 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <p className="text-xs font-medium text-blue-900">{formatDate(currentDateTime)}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-600" />
-                <p className="text-sm font-semibold text-blue-900 tabular-nums">{formatTime(currentDateTime)}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {collapsed && (
-          <div className="px-2 pb-4 flex justify-center">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
-              <Clock className="w-5 h-5 text-blue-600" />
             </div>
           </div>
         )}

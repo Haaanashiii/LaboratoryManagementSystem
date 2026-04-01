@@ -1,6 +1,12 @@
 const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
 const { logAuditEvent } = require('../utils/auditLogger');
+const {
+  parseEmail,
+  isDevBypassEmail,
+  isAllowedRegistrationDomain,
+  isAllowedDomainForRole
+} = require('../utils/emailPolicy');
 
 const ADMIN_PORTAL_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
 
@@ -9,10 +15,26 @@ const ADMIN_PORTAL_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { email, password, name, role, department, studentId, phone } = req.body;
+    const { email, password, name, department, studentId, phone } = req.body;
+
+    const parsedEmail = parseEmail(email);
+    if (!parsedEmail.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email'
+      });
+    }
+
+    const isBypassEmail = isDevBypassEmail(parsedEmail.normalizedEmail);
+    if (!isBypassEmail && !isAllowedRegistrationDomain(parsedEmail.domain)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Registration is restricted to @student.its.ac.id or @its.ac.id emails'
+      });
+    }
 
     // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: parsedEmail.normalizedEmail });
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -22,10 +44,10 @@ exports.register = async (req, res, next) => {
 
     // Create user
     const user = await User.create({
-      email,
+      email: parsedEmail.normalizedEmail,
       password,
       name,
-      role: role || 'student',
+      role: 'student',
       department,
       studentId,
       phone
@@ -56,13 +78,37 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    const parsedEmail = parseEmail(email);
+    if (!parsedEmail.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email'
+      });
+    }
+
+    const isBypassEmail = isDevBypassEmail(parsedEmail.normalizedEmail);
+    if (!isBypassEmail && !isAllowedRegistrationDomain(parsedEmail.domain)) {
+      await logAuditEvent({
+        req,
+        userEmail: parsedEmail.normalizedEmail,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'domain_not_allowed_for_login' }
+      });
+      return res.status(403).json({
+        success: false,
+        message: 'Email domain is not allowed'
+      });
+    }
+
     // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: parsedEmail.normalizedEmail }).select('+password');
     
     if (!user) {
       await logAuditEvent({
         req,
-        userEmail: email,
+        userEmail: parsedEmail.normalizedEmail,
         actionType: 'login_failed',
         entityType: 'auth',
         status: 'failed',
@@ -71,6 +117,22 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
+      });
+    }
+
+    if (!isBypassEmail && !isAllowedDomainForRole(user.role, parsedEmail.domain)) {
+      await logAuditEvent({
+        req,
+        userId: user._id,
+        userEmail: user.email,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'domain_role_mismatch', role: user.role }
+      });
+      return res.status(403).json({
+        success: false,
+        message: 'Email domain is not allowed for this role'
       });
     }
 
@@ -146,12 +208,36 @@ exports.adminLogin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    const parsedEmail = parseEmail(email);
+    if (!parsedEmail.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email'
+      });
+    }
+
+    const isBypassEmail = isDevBypassEmail(parsedEmail.normalizedEmail);
+    if (!isBypassEmail && !isAllowedRegistrationDomain(parsedEmail.domain)) {
+      await logAuditEvent({
+        req,
+        userEmail: parsedEmail.normalizedEmail,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'domain_not_allowed_for_admin_login', portal: 'admin' }
+      });
+      return res.status(403).json({
+        success: false,
+        message: 'Email domain is not allowed'
+      });
+    }
+
+    const user = await User.findOne({ email: parsedEmail.normalizedEmail }).select('+password');
 
     if (!user) {
       await logAuditEvent({
         req,
-        userEmail: email,
+        userEmail: parsedEmail.normalizedEmail,
         actionType: 'login_failed',
         entityType: 'auth',
         status: 'failed',
@@ -160,6 +246,22 @@ exports.adminLogin = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
+      });
+    }
+
+    if (!isBypassEmail && !isAllowedDomainForRole(user.role, parsedEmail.domain)) {
+      await logAuditEvent({
+        req,
+        userId: user._id,
+        userEmail: user.email,
+        actionType: 'login_failed',
+        entityType: 'auth',
+        status: 'failed',
+        details: { reason: 'domain_role_mismatch', role: user.role, portal: 'admin' }
+      });
+      return res.status(403).json({
+        success: false,
+        message: 'Email domain is not allowed for this role'
       });
     }
 

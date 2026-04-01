@@ -1,5 +1,11 @@
 # Laboratory Management System - Backend API
 
+## Full Documentation
+
+For complete and up-to-date backend documentation, see:
+
+- BACKEND_DOCUMENTATION.md
+
 A complete RESTful API for managing laboratory equipment inventory and borrowing requests with role-based access control.
 
 ## Features

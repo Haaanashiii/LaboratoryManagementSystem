@@ -257,6 +257,28 @@ export const api = {
     },
   },
 
+  notifications: {
+    list: async () => {
+      const data = await request('/notifications');
+      return (data.data || []).map((item) => ({
+        ...item,
+        id: item._id || item.id,
+        isRead: Boolean(item.isRead)
+      }));
+    },
+    markAsRead: async (id) => {
+      const data = await request(`/notifications/${id}/read`, {
+        method: 'PUT'
+      });
+
+      return {
+        ...data.data,
+        id: data.data?._id || data.data?.id,
+        isRead: Boolean(data.data?.isRead)
+      };
+    }
+  },
+
   // Entities
   entities: {
     // Users - REAL BACKEND
