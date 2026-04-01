@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTheme } from '@/components/hooks/ThemeContext';
 import './ViewBorrowButton.css';
 
 const cardStyles = `
@@ -99,6 +100,158 @@ const cardStyles = `
     background: rgba(34, 197, 94, 0.15);
   }
 
+  /* ── Default (Student) card — dark ── */
+  .eq-card {
+    --eq-bg: #111118;
+    --eq-surface: #1a1a24;
+    --eq-border: #2a2a3a;
+    --eq-border-hover: #3b82f6;
+    --eq-text: #e2e8f0;
+    --eq-muted: #94a3b8;
+    --eq-dim: #64748b;
+    background: var(--eq-bg);
+    border: 1px solid var(--eq-border);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(4, 6, 15, 0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Default (Student) card — light ── */
+  .eq-card--light {
+    --eq-bg: #ffffff;
+    --eq-surface: #f8fafc;
+    --eq-border: #e2e8f0;
+    --eq-border-hover: #3b82f6;
+    --eq-text: #1e293b;
+    --eq-muted: #475569;
+    --eq-dim: #64748b;
+    background: var(--eq-bg);
+    border-color: var(--eq-border);
+    box-shadow: none;
+  }
+
+  .eq-card--light:hover {
+    border-color: rgba(59,130,246,0.5);
+    box-shadow: none;
+  }
+
+  .eq-card--light::before {
+    background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, transparent 55%);
+  }
+
+  .eq-card--light .eq-img-wrap {
+    background: linear-gradient(160deg, #f1f5f9 0%, #e2e8f0 100%);
+  }
+
+  .eq-card--light .eq-cat-tag {
+    background: rgba(255,255,255,0.85);
+    border-color: rgba(148,163,184,0.35);
+    color: #64748b;
+  }
+
+  .eq-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 55%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .eq-card:hover::before {
+    opacity: 1;
+  }
+
+  .eq-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(59,130,246,0.5);
+    box-shadow: 0 20px 50px rgba(4, 6, 15, 0.55), 0 0 0 1px rgba(59,130,246,0.18);
+  }
+
+  .eq-card .eq-card-name {
+    font-family: 'Space Grotesk', 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--eq-text);
+    line-height: 1.3;
+  }
+
+  .eq-card .eq-card-desc {
+    font-size: 11.5px;
+    color: var(--eq-muted);
+    line-height: 1.65;
+  }
+
+  .eq-card .eq-img-wrap {
+    background: linear-gradient(160deg, #1a1a2e 0%, #13131e 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .eq-card .eq-cat-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(10, 10, 20, 0.75);
+    border: 1px solid rgba(148,163,184,0.22);
+    color: var(--eq-muted);
+    backdrop-filter: blur(4px);
+  }
+
+  .eq-card .eq-avail-track {
+    height: 5px;
+    background: rgba(148,163,184,0.15);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .eq-card .eq-avail-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.55s cubic-bezier(0.25,1,0.5,1);
+  }
+
+  .eq-card .eq-avail-label {
+    font-size: 11px;
+    color: var(--eq-dim);
+  }
+
+  .eq-card .eq-qty-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .eq-card .eq-qty-chip {
+    flex: 1;
+    background: var(--eq-surface);
+    border: 1px solid var(--eq-border);
+    border-radius: 12px;
+    padding: 0.5rem 0.6rem;
+    text-align: center;
+  }
+
+  .eq-card .eq-qty-chip-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--eq-dim);
+    margin-bottom: 0.2rem;
+  }
+
+  .eq-card .eq-qty-chip-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--eq-text);
+    line-height: 1;
+  }
+
   .eq-card--lecturer .eq-action-meta {
     font-size: 11px;
     color: var(--catalog-dim, #64748b);
@@ -168,6 +321,7 @@ const cardStyles = `
 `;
 
 export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole, variant = 'default' }) {
+  const { isDark } = useTheme();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const isLecturer = variant === 'lecturer';
 
@@ -211,10 +365,9 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
     availPct <= 30   ? 'bg-amber-400' :
                        'bg-emerald-400';
 
-  const availTextColor =
-    available === 0 ? 'text-red-500' :
-    availPct <= 30   ? 'text-amber-600' :
-                       'text-emerald-600';
+  const availTextColor = isDark
+    ? (available === 0 ? 'text-red-400' : availPct <= 30 ? 'text-amber-400' : 'text-emerald-400')
+    : (available === 0 ? 'text-red-500' : availPct <= 30 ? 'text-amber-600' : 'text-emerald-600');
 
   const availabilityLabel =
     available === 0 ? 'Unavailable' :
@@ -350,13 +503,12 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
   return (
     <>
       <style>{cardStyles}</style>
-      <div 
+      <div
         onClick={handleClick}
-        className="eq-card group flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all duration-250 hover:-translate-y-1 hover:shadow-lg hover:border-blue-200 cursor-pointer"
+        className={`eq-card${isDark ? '' : ' eq-card--light'} group flex flex-col cursor-pointer`}
       >
-
         {/* Image area */}
-        <div className="relative aspect-[16/10] bg-slate-50 overflow-hidden">
+        <div className="eq-img-wrap relative aspect-[16/10]">
           {currentImage ? (
             <img
               src={currentImage}
@@ -365,71 +517,80 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-9 h-9 text-slate-200 transition-colors duration-200 group-hover:text-slate-300" />
+              <Package className="w-10 h-10 text-slate-700" />
             </div>
           )}
 
-          {/* Navigation arrows - visible on hover when multiple images */}
+          {/* Gradient overlay — lightened in light mode */}
+          <div className={`absolute inset-0 pointer-events-none ${isDark ? 'bg-gradient-to-t from-black/60 via-transparent to-transparent' : 'bg-gradient-to-t from-black/20 via-transparent to-transparent'}`} />
+
+          {/* Navigation arrows */}
           {hasMultipleImages && (
             <>
               <button
                 onClick={goToPreviousImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/55 hover:bg-black/75 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                 aria-label="Previous image"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={goToNextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/55 hover:bg-black/75 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                 aria-label="Next image"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
-
-              {/* Image counter */}
-              <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full font-medium">
+              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
                 {currentImageIndex + 1} / {allImages.length}
               </div>
             </>
           )}
 
-          {/* Category pill — top right */}
+          {/* Category pill */}
           {equipment.category && (
-            <span className="absolute top-2 left-2 text-[10px] font-medium text-slate-500 bg-white/90 backdrop-blur-sm border border-slate-100 px-2 py-0.5 rounded-full shadow-sm">
+            <span className="eq-cat-tag absolute top-2 left-2">
               {equipment.category}
             </span>
           )}
 
-          {/* Slide-in top bar on hover */}
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+          {/* Accent top bar */}
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-350 origin-left" />
         </div>
 
         {/* Content */}
-        <div className="flex flex-col flex-1 p-3 gap-1.5">
-          <h3 className="font-semibold text-slate-800 text-[13px] leading-snug line-clamp-1">
-            {equipment.name}
-          </h3>
+        <div className="flex flex-col flex-1 p-4 gap-3">
+          {/* Title + description */}
+          <div>
+            <h3 className="eq-card-name line-clamp-1 mb-1">{equipment.name}</h3>
+            {equipment.description && (
+              <p className="eq-card-desc line-clamp-2">{equipment.description}</p>
+            )}
+          </div>
 
-          {equipment.description && (
-            <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed flex-1">
-              {equipment.description}
-            </p>
-          )}
+          {/* Quantity chips */}
+          <div className="eq-qty-row">
+            <div className="eq-qty-chip">
+              <p className="eq-qty-chip-label">Total</p>
+              <p className="eq-qty-chip-value">{total}</p>
+            </div>
+            <div className="eq-qty-chip">
+              <p className="eq-qty-chip-label">Available</p>
+              <p className={`eq-qty-chip-value ${availTextColor}`}>{available}</p>
+            </div>
+          </div>
 
           {/* Availability bar */}
-          <div className="mt-auto pt-2.5 border-t border-slate-100 space-y-1.5">
+          <div className="mt-auto space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Availability</span>
-              <span className={`text-[11px] font-semibold ${availTextColor}`}>
-                {available === 0 ? 'Out of stock' : `${available} / ${total}`}
+              <span className="eq-avail-label">Availability</span>
+              <span className={`text-[11px] font-bold ${availTextColor}`}>
+                {available === 0 ? 'Out of stock' : `${availPct}%`}
               </span>
             </div>
-
-            {/* Progress bar */}
-            <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="eq-avail-track">
               <div
-                className={`eq-availability-bar-fill h-full rounded-full ${availColor}`}
+                className={`eq-avail-fill ${availColor}`}
                 style={{ width: `${availPct}%` }}
               />
             </div>

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { LangProvider } from './components/i18n/LangContext'
 import { AuthProvider } from './components/hooks/AuthProvider'
+import { ThemeProvider } from './components/hooks/ThemeContext'
 import './index.css'
 import App from './App.jsx'
 
@@ -20,7 +21,9 @@ createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <LangProvider>
-          <App />
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
         </LangProvider>
       </AuthProvider>
     </QueryClientProvider>

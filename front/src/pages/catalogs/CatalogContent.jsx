@@ -186,6 +186,7 @@ export default function CatalogContent({
   onSelect,
   onBorrow,
   variant = 'default',
+  isDark = false,
 }) {
   const isLecturer = variant === 'lecturer';
   const {
@@ -222,46 +223,70 @@ export default function CatalogContent({
   const innerClass = isLecturer ? 'catalog-shell-inner space-y-6' : 'space-y-5';
   const headerClass = isLecturer
     ? 'catalog-fade-up catalog-fade-up-1 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-6 border-b border-[var(--catalog-border)]'
-    : 'catalog-fade-up catalog-fade-up-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200';
+    : `catalog-fade-up catalog-fade-up-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b ${isDark ? 'border-white/10' : 'border-slate-200'}`;
   const eyebrowClass = isLecturer
     ? 'catalog-kicker'
-    : 'text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1';
+    : `text-xs font-semibold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
   const titleClass = isLecturer
     ? 'catalog-title'
-    : 'text-2xl font-bold text-slate-900';
+    : `text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`;
   const descriptionClass = isLecturer
     ? 'catalog-subtitle'
-    : 'text-sm text-slate-500 mt-1.5 font-medium';
+    : `text-sm mt-1.5 font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const countClass = isLecturer
     ? 'catalog-count-badge'
-    : 'text-xs text-slate-400 font-semibold shrink-0 px-3 py-1.5 rounded-lg bg-slate-50';
+    : `text-xs font-semibold shrink-0 px-3 py-1.5 rounded-lg ${isDark ? 'text-slate-400 bg-white/5 border border-white/10' : 'text-slate-400 bg-slate-50'}`;
   const searchInputClass = isLecturer
     ? 'pl-9 rounded-lg bg-[var(--catalog-surface)] border-[var(--catalog-border)] text-[var(--catalog-text)] placeholder:text-[var(--catalog-dim)] focus:border-[var(--catalog-accent)] focus:ring-[var(--catalog-accent)] ring-offset-[var(--catalog-bg)] font-medium'
-    : 'pl-9 bg-white border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400 transition-colors font-medium';
+    : `pl-9 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500' : 'bg-white border-slate-200 placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400'}`;
   const searchIconClass = isLecturer
     ? 'text-[var(--catalog-muted)]'
-    : 'text-slate-400';
+    : isDark ? 'text-slate-500' : 'text-slate-400';
   const toggleBaseClass = isLecturer
     ? 'inline-flex items-center gap-2 text-xs font-semibold px-3 h-9 rounded-lg border transition-colors border-[var(--catalog-border)] bg-[var(--catalog-surface)] text-[var(--catalog-muted)] hover:text-[var(--catalog-text)] hover:border-[var(--catalog-border-strong)]'
-    : 'inline-flex items-center gap-2 text-xs font-semibold px-3 h-9 rounded-lg border transition-colors';
+    : `inline-flex items-center gap-2 text-xs font-semibold px-3 h-9 rounded-lg border transition-colors ${isDark ? 'border-white/10 bg-white/5 text-slate-400 hover:text-slate-200 hover:border-white/20' : ''}`;
   const toggleActiveClass = isLecturer
     ? 'bg-[rgba(59,130,246,0.16)] text-[var(--catalog-text)] border-[rgba(59,130,246,0.35)]'
-    : 'bg-blue-50 text-blue-700 border-blue-200';
+    : isDark ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-blue-50 text-blue-700 border-blue-200';
   const toggleInactiveClass = isLecturer
     ? ''
-    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50';
+    : isDark ? '' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50';
   const emptyStateClass = isLecturer
     ? 'flex flex-col items-center justify-center py-20 rounded-2xl border border-dashed border-[var(--catalog-border)] bg-[rgba(17,17,24,0.6)] text-center'
-    : 'flex flex-col items-center justify-center py-20 rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center';
+    : `flex flex-col items-center justify-center py-20 rounded-xl border border-dashed text-center ${isDark ? 'border-white/10 bg-white/3' : 'border-slate-200 bg-slate-50'}`;
   const emptyIconWrapClass = isLecturer
     ? 'w-12 h-12 rounded-xl bg-[rgba(26,26,36,0.9)] flex items-center justify-center mb-3 border border-[var(--catalog-border)]'
-    : 'w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3 border border-slate-200';
+    : `w-12 h-12 rounded-xl flex items-center justify-center mb-3 border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`;
   const errorIconWrapClass = isLecturer
     ? 'w-12 h-12 rounded-xl bg-[rgba(239,68,68,0.1)] flex items-center justify-center mb-3 border border-[rgba(239,68,68,0.4)]'
-    : 'w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-3 border border-red-100';
+    : `w-12 h-12 rounded-xl flex items-center justify-center mb-3 border ${isDark ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-100'}`;
+
+  const lightVars = {
+    '--catalog-bg': '#f8fafc',
+    '--catalog-surface': '#ffffff',
+    '--catalog-surface-2': '#f1f5f9',
+    '--catalog-border': '#e2e8f0',
+    '--catalog-border-strong': '#cbd5e1',
+    '--catalog-text': '#0f172a',
+    '--catalog-muted': '#475569',
+    '--catalog-dim': '#94a3b8',
+    '--catalog-accent': '#3b82f6',
+  };
+  const darkVars = {
+    '--catalog-bg': '#0a0a0f',
+    '--catalog-surface': '#111118',
+    '--catalog-surface-2': '#1a1a24',
+    '--catalog-border': '#2a2a3a',
+    '--catalog-border-strong': '#3a3a5a',
+    '--catalog-text': '#e2e8f0',
+    '--catalog-muted': '#94a3b8',
+    '--catalog-dim': '#64748b',
+    '--catalog-accent': '#3b82f6',
+  };
+  const cssVars = isLecturer ? {} : (isDark ? darkVars : lightVars);
 
   return (
-    <div className={wrapperClass}>
+    <div className={wrapperClass} style={cssVars}>
       <style>{catalogStyles}</style>
       {isLecturer && <div className="catalog-grid-glow" aria-hidden="true" />}
       <div className={innerClass}>
@@ -363,8 +388,8 @@ export default function CatalogContent({
             <div className={errorIconWrapClass}>
               <Package className={isLecturer ? 'w-6 h-6 text-red-300' : 'w-6 h-6 text-red-400'} />
             </div>
-            <p className={isLecturer ? 'text-sm font-semibold text-slate-100' : 'text-sm font-semibold text-slate-700'}>Unable to load equipment</p>
-            <p className={isLecturer ? 'text-xs text-slate-400 mt-1.5 max-w-xs font-medium' : 'text-xs text-slate-500 mt-1.5 max-w-xs font-medium'}>
+            <p className={isLecturer ? 'text-sm font-semibold text-slate-100' : `text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Unable to load equipment</p>
+            <p className={isLecturer ? 'text-xs text-slate-400 mt-1.5 max-w-xs font-medium' : `text-xs mt-1.5 max-w-xs font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
               {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
             </p>
           </div>
@@ -373,8 +398,8 @@ export default function CatalogContent({
             <div className={emptyIconWrapClass}>
               <Package className={isLecturer ? 'w-6 h-6 text-slate-500' : 'w-6 h-6 text-slate-400'} />
             </div>
-            <p className={isLecturer ? 'text-sm font-semibold text-slate-100' : 'text-sm font-semibold text-slate-700'}>No equipment found</p>
-            <p className={isLecturer ? 'text-xs text-slate-400 mt-1.5 font-medium' : 'text-xs text-slate-500 mt-1.5 font-medium'}>Try adjusting your search or filter.</p>
+            <p className={isLecturer ? 'text-sm font-semibold text-slate-100' : `text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>No equipment found</p>
+            <p className={isLecturer ? 'text-xs text-slate-400 mt-1.5 font-medium' : `text-xs mt-1.5 font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Try adjusting your search or filter.</p>
           </div>
         ) : (
           groupByCategory ? (
@@ -382,7 +407,7 @@ export default function CatalogContent({
               {groupedCategories.map((cat, sectionIndex) => (
                 <section key={cat} className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h2 className={isLecturer ? 'text-sm font-bold text-slate-100' : 'text-sm font-bold text-slate-900'}>{cat}</h2>
+                    <h2 className={isLecturer ? 'text-sm font-bold text-slate-100' : `text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{cat}</h2>
                     <span className={isLecturer ? 'text-xs font-semibold text-slate-400' : 'text-xs font-semibold text-slate-400'}>
                       {groupedEquipment[cat].length} item{groupedEquipment[cat].length !== 1 ? 's' : ''}
                     </span>
@@ -400,6 +425,7 @@ export default function CatalogContent({
                           onBorrow={onBorrow}
                           userRole={userRole}
                           variant={variant}
+                          isDark={isDark}
                         />
                       </div>
                     ))}
@@ -421,6 +447,7 @@ export default function CatalogContent({
                     onBorrow={onBorrow}
                     userRole={userRole}
                     variant={variant}
+                    isDark={isDark}
                   />
                 </div>
               ))}

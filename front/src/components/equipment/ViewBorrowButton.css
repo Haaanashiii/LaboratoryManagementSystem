@@ -71,7 +71,7 @@ button.learn-more-card-btn .button-text {
 	bottom: 0;
 	padding: 0.75rem 0;
 	margin: 0 0 0 1.85rem;
-	color: #282936;
+	color: #e2e8f0;
 	font-weight: 700;
 	line-height: 1.6;
 	text-align: center;
@@ -89,4 +89,23 @@ button.learn-more-card-btn:hover:not(:disabled) .circle .icon.arrow {
 
 button.learn-more-card-btn:hover:not(:disabled) .button-text {
 	color: #fff;
+}
+
+/* Light card overrides */
+.eq-card--light button.learn-more-card-btn .circle {
+	background: #1e40af;
+}
+
+.eq-card--light button.learn-more-card-btn .button-text {
+	color: #1e293b;
+	font-weight: 700;
+}
+
+.eq-card--light button.learn-more-card-btn:hover:not(:disabled) .button-text {
+	color: #fff;
+}
+
+/* Give the light-mode button a subtle visible container so it doesn't look transparent */
+.eq-card--light button.learn-more-card-btn .circle {
+	background: #1e40af;
 }

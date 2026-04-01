@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, getStoredToken } from '@/api/apiClient';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 import { 
-  FlaskConical, 
   Package, 
   FileText, 
   CheckCircle, 
@@ -21,7 +20,9 @@ import {
   Bell,
   Calendar,
   Clock,
-  ChevronDown
+  ChevronDown,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from './antd-icons';
@@ -36,6 +37,7 @@ import {
 import { useLang } from '@/components/i18n/LangContext';
 import Sidebar from '@/components/layouts/sidebar';
 import { useAuth } from '@/components/hooks/useAuth.js';
+import { useTheme } from '@/components/hooks/ThemeContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 import { connectNotificationSocket, disconnectNotificationSocket } from '@/lib/socketClient';
 
@@ -105,6 +107,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { t, lang, toggleLang } = useLang();
   const { logout } = useAuth();
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -356,8 +359,23 @@ export default function DashboardLayout() {
   }
 
   // Student layout - horizontal navbar
+  const glassLight = {
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(219,234,254,0.55) 100%)',
+    backdropFilter: 'blur(22px) saturate(1.6)',
+    WebkitBackdropFilter: 'blur(22px) saturate(1.6)',
+    boxShadow: '0 8px 32px rgba(59,130,246,0.10), inset 0 1px 0 rgba(255,255,255,0.85)',
+    border: '1px solid rgba(255,255,255,0.62)',
+  };
+  const glassDark = {
+    background: 'linear-gradient(135deg, rgba(15,23,42,0.78) 0%, rgba(30,41,59,0.68) 100%)',
+    backdropFilter: 'blur(22px) saturate(1.6)',
+    WebkitBackdropFilter: 'blur(22px) saturate(1.6)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.08)',
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className={`min-h-screen ${isDark ? 'bg-slate-950 dark' : 'bg-slate-100'}`}>
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -368,8 +386,10 @@ export default function DashboardLayout() {
 
       {/* Mobile Menu Dropdown */}
       {sidebarOpen && (
-        <div className="fixed top-16 left-0 right-0 z-50 lg:hidden bg-white border-b border-slate-200 shadow-lg">
-          <nav className="p-4 space-y-1">
+        <div className={`fixed top-[72px] left-3 right-3 z-50 lg:hidden rounded-2xl shadow-xl overflow-hidden`}
+          style={isDark ? glassDark : glassLight}
+        >
+          <nav className="p-3 space-y-1">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -377,10 +397,14 @@ export default function DashboardLayout() {
                   key={item.name}
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-slate-700 hover:bg-slate-100'
+                      ? isDark
+                        ? 'bg-blue-500/25 text-blue-300 shadow-sm'
+                        : 'bg-blue-500/15 text-blue-700 shadow-sm'
+                      : isDark
+                        ? 'text-slate-300 hover:bg-white/10'
+                        : 'text-slate-700 hover:bg-white/60'
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -392,38 +416,51 @@ export default function DashboardLayout() {
         </div>
       )}
 
-      {/* Header/Navbar */}
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
-        <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
+      {/* Floating Glass Navbar */}
+      <header
+        className="fixed top-0 left-3 right-3 z-30 rounded-b-2xl"
+        style={isDark ? glassDark : glassLight}
+      >
+        <div className="flex h-[60px] items-center gap-3 px-4">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <img src={equimonLogo} alt="Equimon Logo" className="w-12 h-12 object-contain" />
+          <div className="flex items-center gap-2.5 shrink-0">
+            <img src={equimonLogo} alt="Equimon Logo" className="w-9 h-9 object-contain" />
             <div className="hidden sm:block">
-              <span className="text-lg font-bold text-slate-900">Equimon</span>
-              <p className="text-xs text-slate-500 leading-none">{t('appSubtitle')}</p>
+              <span className={`text-base font-bold leading-none ${
+                isDark ? 'text-white' : 'text-slate-900'
+              }`}>Equimon</span>
+              <p className={`text-[10px] leading-tight mt-0.5 ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}>{t('appSubtitle')}</p>
             </div>
           </div>
 
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden ml-2"
+            className={`lg:hidden ml-1 p-1.5 rounded-lg transition-colors ${
+              isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-700 hover:bg-white/60'
+            }`}
           >
-            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1 ml-8 flex-1">
+          {/* Desktop Navigation — centered */}
+          <nav className="hidden lg:flex items-center justify-center gap-1 flex-1">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-slate-700 hover:bg-slate-100'
+                      ? isDark
+                        ? 'bg-blue-500/25 text-blue-300 shadow-[0_0_0_1px_rgba(99,179,237,0.3)]'
+                        : 'bg-white/80 text-blue-600 shadow-[0_1px_6px_rgba(59,130,246,0.18)] border border-white/70'
+                      : isDark
+                        ? 'text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                        : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'
                   }`}
                 >
                   <item.icon className="w-4 h-4" />
@@ -434,18 +471,33 @@ export default function DashboardLayout() {
           </nav>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Language Switcher - Always visible */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="flex items-center gap-1 px-3"
+          <div className="flex items-center gap-1 ml-auto shrink-0">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
+                isDark
+                  ? 'text-amber-300 hover:bg-white/10'
+                  : 'text-slate-600 hover:bg-white/60'
+              }`}
+            >
+              {isDark
+                ? <Sun className="w-4 h-4" />
+                : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* Language Switcher */}
+            <button
               onClick={toggleLang}
               title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+              className={`flex items-center gap-1 px-2 h-8 rounded-lg text-xs font-semibold transition-all ${
+                isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-white/60'
+              }`}
             >
-              <Globe className="w-5 h-5 text-slate-600" />
-              <span className="text-xs font-medium text-slate-600">{lang.toUpperCase()}</span>
-            </Button>
+              <Globe className="w-4 h-4" />
+              {lang.toUpperCase()}
+            </button>
 
             {/* Notification Bell */}
             {notificationsBell}
@@ -453,16 +505,21 @@ export default function DashboardLayout() {
             {/* User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 hover:bg-slate-100">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm">
+                <button className={`flex items-center gap-2 px-2 h-8 rounded-xl transition-all ${
+                  isDark ? 'hover:bg-white/10' : 'hover:bg-white/60'
+                }`}>
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
                     {user?.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <span className="hidden md:inline text-sm font-medium text-slate-900">{user?.name}</span>
-                  <ChevronDown className="w-4 h-4 text-slate-500" />
-                </Button>
+                  <span className={`hidden md:inline text-sm font-medium truncate max-w-[96px] ${
+                    isDark ? 'text-slate-200' : 'text-slate-800'
+                  }`}>{user?.name}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 shrink-0 ${
+                    isDark ? 'text-slate-400' : 'text-slate-500'
+                  }`} />
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
-                {/* User Info Section - Clickable to navigate to profile */}
                 <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-slate-50">
                   <div className="flex items-center gap-3 py-2 w-full">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
@@ -477,16 +534,12 @@ export default function DashboardLayout() {
                     </div>
                   </div>
                 </DropdownMenuItem>
-                
                 <DropdownMenuSeparator />
-                
                 <DropdownMenuItem onClick={() => navigate('/settings')}>
                   <Settings className="w-4 h-4 mr-2" />
                   {t('settings')}
                 </DropdownMenuItem>
-                
                 <DropdownMenuSeparator />
-                
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
                   <LogOut className="w-4 h-4 mr-2" />
                   {t('logout')}
@@ -497,8 +550,8 @@ export default function DashboardLayout() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="p-4 sm:p-6 lg:p-8">
+      {/* Main content — padded below fixed navbar */}
+      <main className="pt-[76px] p-4 sm:p-6 lg:p-8">
         <Outlet />
       </main>
     </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Package } from 'lucide-react';
 
-export default function FeaturedEquipmentCard({ equipment, onClick }) {
+export default function FeaturedEquipmentCard({ equipment, onClick, isDark = false }) {
   const image =
     (equipment?.images_urls && equipment.images_urls.length > 0 && equipment.images_urls[0]) ||
     equipment?.image_url ||
@@ -27,7 +27,8 @@ export default function FeaturedEquipmentCard({ equipment, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="group w-full text-left rounded-xl border border-slate-200 bg-transparent overflow-hidden hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      className="group w-full text-left rounded-xl bg-transparent overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-400"
+      style={{ border: isDark ? '1px solid #2a2a3a' : '1px solid #e2e8f0' }}
     >
       <div className="relative aspect-square bg-transparent">
         {image ? (

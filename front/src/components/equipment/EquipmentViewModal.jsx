@@ -1,8 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, ChevronLeft, ChevronRight, MapPin, Layers, BoxSelect } from 'lucide-react';
+import { useTheme } from '@/components/hooks/ThemeContext';
 
+/* ─── tiny helpers ────────────────────────────────────────────── */
+const conditionMeta = {
+  Excellent: {
+    dark:  { bg: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.30)',  text: '#93c5fd' },
+    light: { bg: '#eff6ff',                border: '#bfdbfe',                text: '#1d4ed8' },
+  },
+  Good: {
+    dark:  { bg: 'rgba(34,197,94,0.13)',   border: 'rgba(34,197,94,0.25)',   text: '#86efac' },
+    light: { bg: '#f0fdf4',               border: '#bbf7d0',                text: '#15803d' },
+  },
+  Fair: {
+    dark:  { bg: 'rgba(245,158,11,0.13)',  border: 'rgba(245,158,11,0.25)', text: '#fcd34d' },
+    light: { bg: '#fffbeb',               border: '#fde68a',                text: '#b45309' },
+  },
+  Poor: {
+    dark:  { bg: 'rgba(239,68,68,0.13)',   border: 'rgba(239,68,68,0.25)',   text: '#fca5a5' },
+    light: { bg: '#fef2f2',               border: '#fecaca',                text: '#b91c1c' },
+  },
+};
+
+function conditionStyle(condition, isDark) {
+  const meta = conditionMeta[condition] || conditionMeta.Poor;
+  const t = isDark ? meta.dark : meta.light;
+  return { background: t.bg, border: `1px solid ${t.border}`, color: t.text };
+}
+
+/* ─── component ───────────────────────────────────────────────── */
 export default function EquipmentViewModal({
   equipment,
   open,
@@ -11,223 +38,347 @@ export default function EquipmentViewModal({
   primaryActionLabel,
   onPrimaryAction,
 }) {
+  const { isDark } = useTheme();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Get all available images
-  const allImages = (equipment?.images_urls && equipment.images_urls.length > 0 
-    ? equipment.images_urls 
-    : (equipment?.image_url ? [equipment.image_url] : [])) || [];
-  
+  const allImages =
+    (equipment?.images_urls?.length > 0
+      ? equipment.images_urls
+      : equipment?.image_url
+      ? [equipment.image_url]
+      : []) ?? [];
+
   const hasMultipleImages = allImages.length > 1;
 
-  // Auto-advance slideshow
   useEffect(() => {
     if (!open || !hasMultipleImages || !equipment) return;
-
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
-    }, 3000); // Change image every 3 seconds
-
-    return () => clearInterval(interval);
+    const id = setInterval(() => {
+      setCurrentImageIndex((p) => (p === allImages.length - 1 ? 0 : p + 1));
+    }, 3200);
+    return () => clearInterval(id);
   }, [open, hasMultipleImages, equipment, allImages.length]);
+
+  useEffect(() => {
+    if (open) setCurrentImageIndex(0);
+  }, [open, equipment]);
 
   if (!equipment) return null;
 
-  const currentImage = allImages[currentImageIndex] || null;
-
-  const goToPreviousImage = () => {
-    setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
-  };
-
-  const goToNextImage = () => {
-    setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
-  };
+  const currentImage = allImages[currentImageIndex] ?? null;
+  const prev = () => setCurrentImageIndex((p) => (p === 0 ? allImages.length - 1 : p - 1));
+  const next = () => setCurrentImageIndex((p) => (p === allImages.length - 1 ? 0 : p + 1));
 
   const available = equipment.available_quantity ?? 0;
-  const total = equipment.total_quantity ?? 1;
-  const availPct = Math.max(0, Math.min(Math.round((available / total) * 100), 100));
+  const total     = equipment.total_quantity ?? 1;
+  const availPct  = Math.max(0, Math.min(Math.round((available / total) * 100), 100));
 
-  const availColor =
-    available === 0 ? 'bg-red-400' :
-    availPct <= 30   ? 'bg-amber-400' :
-                       'bg-emerald-400';
+  const actionHandler   = onPrimaryAction || onBorrow;
+  const isBorrowAction  = !onPrimaryAction && typeof onBorrow === 'function';
+  const actionLabel     = onPrimaryAction ? (primaryActionLabel || 'Take action') : 'Borrow';
 
-  const availTextColor =
-    available === 0 ? 'text-red-500' :
-    availPct <= 30   ? 'text-amber-600' :
-                       'text-emerald-600';
+  const stockColor =
+    available === 0  ? { dark: '#f87171', light: '#dc2626' } :
+    availPct <= 30   ? { dark: '#fbbf24', light: '#d97706' } :
+                       { dark: '#34d399', light: '#059669' };
 
-  const actionHandler = onPrimaryAction || onBorrow;
-  const isBorrowAction = !onPrimaryAction && typeof onBorrow === 'function';
-  const actionLabel = onPrimaryAction
-    ? (primaryActionLabel || 'Take action')
-    : 'Borrow';
-  const availabilityLabel = available === 0
-    ? 'Unavailable'
-    : (isBorrowAction ? 'Ready to borrow' : 'Available');
+  const barBg =
+    available === 0  ? '#ef4444' :
+    availPct <= 30   ? '#f59e0b' :
+                       '#22c55e';
+
+  const stockLabel =
+    available === 0  ? 'Out of stock' :
+    isBorrowAction   ? 'Available to borrow' :
+                       'In stock';
+
+  /* theme tokens */
+  const T = isDark ? {
+    modalBg:       '#0e0e16',
+    heroBg:        'linear-gradient(160deg,#0d1117 0%,#0e0e16 100%)',
+    heroOverlay:   'linear-gradient(to top, rgba(14,14,22,0.92) 0%, transparent 55%)',
+    detailBg:      '#111118',
+    divider:       'rgba(255,255,255,0.07)',
+    cardBg:        'rgba(255,255,255,0.04)',
+    cardBorder:    'rgba(255,255,255,0.08)',
+    label:         '#64748b',
+    value:         '#e2e8f0',
+    muted:         '#94a3b8',
+    stockDot:      stockColor.dark,
+    stockLabel:    stockColor.dark,
+    barTrack:      'rgba(255,255,255,0.08)',
+    closeBtnBg:    'rgba(255,255,255,0.05)',
+    closeBtnBor:   'rgba(255,255,255,0.10)',
+    closeBtnText:  '#94a3b8',
+    ctaDisBg:      'rgba(255,255,255,0.05)',
+    ctaDisBor:     'rgba(255,255,255,0.08)',
+    ctaDisText:    '#475569',
+    modalBorder:   'rgba(255,255,255,0.08)',
+    shadow:        '0 32px 80px rgba(0,0,0,0.8)',
+    navBg:         'rgba(14,14,22,0.70)',
+    navBorder:     'rgba(255,255,255,0.12)',
+    navColor:      '#e2e8f0',
+    catBg:         'rgba(59,130,246,0.14)',
+    catBorder:     'rgba(59,130,246,0.28)',
+    catColor:      '#93c5fd',
+    counterBg:     'rgba(14,14,22,0.75)',
+    counterBor:    'rgba(255,255,255,0.08)',
+    counterText:   '#94a3b8',
+  } : {
+    modalBg:       '#ffffff',
+    heroBg:        'linear-gradient(160deg,#f0f4ff 0%,#f8fafc 100%)',
+    heroOverlay:   'linear-gradient(to top, rgba(248,250,252,0.92) 0%, transparent 55%)',
+    detailBg:      '#ffffff',
+    divider:       '#e2e8f0',
+    cardBg:        '#f8fafc',
+    cardBorder:    '#e2e8f0',
+    label:         '#94a3b8',
+    value:         '#0f172a',
+    muted:         '#64748b',
+    stockDot:      stockColor.light,
+    stockLabel:    stockColor.light,
+    barTrack:      '#e2e8f0',
+    closeBtnBg:    '#f1f5f9',
+    closeBtnBor:   '#e2e8f0',
+    closeBtnText:  '#64748b',
+    ctaDisBg:      '#f1f5f9',
+    ctaDisBor:     '#e2e8f0',
+    ctaDisText:    '#94a3b8',
+    modalBorder:   '#e2e8f0',
+    shadow:        '0 20px 60px rgba(0,0,0,0.12)',
+    navBg:         'rgba(255,255,255,0.85)',
+    navBorder:     'rgba(0,0,0,0.09)',
+    navColor:      '#334155',
+    catBg:         'rgba(59,130,246,0.09)',
+    catBorder:     'rgba(59,130,246,0.22)',
+    catColor:      '#2563eb',
+    counterBg:     'rgba(255,255,255,0.88)',
+    counterBor:    'rgba(0,0,0,0.07)',
+    counterText:   '#64748b',
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[92vw] sm:w-[86vw] lg:w-[82vw] max-w-[76rem] gap-0 p-0 border border-slate-200 bg-white shadow-2xl overflow-hidden max-h-[88vh]">
-        <div className="flex flex-col lg:flex-row h-full min-h-0">
-          {/* Image Section */}
-          <div className="w-full lg:w-[52%] relative flex-shrink-0 bg-[radial-gradient(circle_at_top,#dbeafe_0%,#eff6ff_35%,#f8fafc_100%)] border-b lg:border-b-0 lg:border-r border-slate-200">
-            <div className="w-full h-[40vh] sm:h-[48vh] lg:h-[560px] flex items-center justify-center relative p-4 sm:p-6">
-              {currentImage ? (
-                <img
-                  src={currentImage}
-                  alt={equipment.name}
-                  className="w-full h-full object-contain rounded-xl bg-white/65 shadow-sm"
+      <DialogContent
+        className="w-[96vw] sm:w-[88vw] max-w-[520px] gap-0 p-0 overflow-hidden"
+        style={{
+          background: T.modalBg,
+          border: `1px solid ${T.modalBorder}`,
+          borderRadius: '18px',
+          boxShadow: T.shadow,
+          maxHeight: '86vh',
+        }}
+      >
+        {/* ── Hero image ─────────────────────────────────────── */}
+        <div
+          className="relative w-full overflow-hidden"
+          style={{ height: 'clamp(140px, 24vh, 200px)', background: T.heroBg }}
+        >
+          {currentImage ? (
+            <img
+              src={currentImage}
+              alt={equipment.name}
+              className="w-full h-full object-cover"
+              style={{ objectPosition: 'center' }}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+              <Package className="w-16 h-16" style={{ color: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.45)' }} />
+              <span className="text-xs font-medium" style={{ color: T.label }}>No image</span>
+            </div>
+          )}
+
+          {/* gradient fade into detail panel */}
+          <div className="absolute inset-0 pointer-events-none" style={{ background: T.heroOverlay }} />
+
+          {/* category badge */}
+          {equipment.category && (
+            <span
+              className="absolute top-3 left-3 text-[11px] font-semibold px-3 py-1 rounded-full"
+              style={{ background: T.catBg, border: `1px solid ${T.catBorder}`, color: T.catColor, backdropFilter: 'blur(6px)' }}
+            >
+              {equipment.category}
+            </span>
+          )}
+
+          {/* nav arrows */}
+          {hasMultipleImages && (
+            <>
+              <button onClick={prev} aria-label="Previous image"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-90"
+                style={{ background: T.navBg, border: `1px solid ${T.navBorder}`, color: T.navColor, backdropFilter: 'blur(8px)' }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={next} aria-label="Next image"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-90"
+                style={{ background: T.navBg, border: `1px solid ${T.navBorder}`, color: T.navColor, backdropFilter: 'blur(8px)' }}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
+          {/* dot indicators + counter */}
+          {hasMultipleImages && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+              {allImages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentImageIndex(i)}
+                  aria-label={`Go to image ${i + 1}`}
+                  className="rounded-full transition-all"
+                  style={{
+                    width: i === currentImageIndex ? '1.25rem' : '0.4rem',
+                    height: '0.4rem',
+                    background: i === currentImageIndex ? '#3b82f6' : 'rgba(148,163,184,0.45)',
+                  }}
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center rounded-xl bg-white/70 border border-slate-200">
-                  <Package className="w-24 h-24 text-slate-300" />
-                </div>
-              )}
+              ))}
+            </div>
+          )}
 
-              {/* Navigation arrows */}
-              {hasMultipleImages && (
-                <>
-                  <button
-                    onClick={goToPreviousImage}
-                    className="absolute left-5 top-1/2 -translate-y-1/2 bg-slate-900/55 hover:bg-slate-900/75 text-white p-2 rounded-full transition-all"
-                    aria-label="Previous image"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={goToNextImage}
-                    className="absolute right-5 top-1/2 -translate-y-1/2 bg-slate-900/55 hover:bg-slate-900/75 text-white p-2 rounded-full transition-all"
-                    aria-label="Next image"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+          {hasMultipleImages && (
+            <span
+              className="absolute bottom-3 right-3 text-[11px] font-medium px-2.5 py-0.5 rounded-full"
+              style={{ background: T.counterBg, border: `1px solid ${T.counterBor}`, color: T.counterText, backdropFilter: 'blur(6px)' }}
+            >
+              {currentImageIndex + 1} / {allImages.length}
+            </span>
+          )}
+        </div>
 
-                  {/* Image counter */}
-                  <div className="absolute bottom-5 right-5 bg-slate-900/70 text-white text-sm px-3 py-1 rounded-full font-medium">
-                    {currentImageIndex + 1} / {allImages.length}
-                  </div>
-                </>
-              )}
-
-              {hasMultipleImages && (
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-                  {allImages.map((_, index) => (
-                    <span
-                      key={index}
-                      className={`h-1.5 rounded-full transition-all ${
-                        index === currentImageIndex ? 'w-6 bg-slate-800/85' : 'w-2 bg-slate-400/55'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Category badge */}
-              {equipment.category && (
-                <span className="absolute top-5 left-5 text-xs font-semibold text-slate-700 bg-white/95 px-3 py-1.5 rounded-full shadow-sm border border-slate-200">
-                  {equipment.category}
+        {/* ── Detail panel ────────────────────────────────────── */}
+        <div
+          className="overflow-y-auto"
+          style={{
+            background: T.detailBg,
+            maxHeight: 'calc(86vh - clamp(140px, 24vh, 200px))',
+          }}
+        >
+          {/* name + stock status */}
+          <div className="px-4 pt-3.5 pb-3" style={{ borderBottom: `1px solid ${T.divider}` }}>
+            <div className="flex items-start justify-between gap-4">
+              <h2
+                className="text-base sm:text-lg font-bold leading-snug"
+                style={{ color: T.value, letterSpacing: '-0.02em' }}
+              >
+                {equipment.name}
+              </h2>
+              <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: T.stockDot, boxShadow: `0 0 6px ${T.stockDot}` }}
+                />
+                <span className="text-xs font-semibold" style={{ color: T.stockLabel }}>
+                  {stockLabel}
                 </span>
-              )}
+              </div>
+            </div>
+            {equipment.description && (
+              <p className="text-sm leading-relaxed mt-2" style={{ color: T.muted }}>
+                {equipment.description}
+              </p>
+            )}
+          </div>
+
+          {/* stats row */}
+          <div className="grid grid-cols-3 divide-x px-0" style={{ borderBottom: `1px solid ${T.divider}`, '--tw-divide-opacity': 1 }}>
+            {[
+              { label: 'Total', value: total },
+              { label: 'Available', value: available, accent: true },
+              { label: 'In Use', value: total - available },
+            ].map(({ label, value, accent }) => (
+              <div key={label} className="flex flex-col items-center py-2.5 gap-0.5" style={{ borderRight: `1px solid ${T.divider}` }}>
+                <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: T.label }}>{label}</span>
+                <span
+                  className="text-lg font-bold tabular-nums"
+                  style={{ color: accent ? T.stockLabel : T.value }}
+                >
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* meta fields */}
+          <div className="px-4 py-3 space-y-3">
+            {(equipment.location || equipment.condition) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {equipment.location && (
+                  <div
+                    className="flex items-start gap-2.5 rounded-lg p-2.5"
+                    style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}` }}
+                  >
+                    <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: '#3b82f6' }} />
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: T.label }}>Location</p>
+                      <p className="text-sm font-medium truncate" style={{ color: T.value }}>{equipment.location}</p>
+                    </div>
+                  </div>
+                )}
+                {equipment.condition && (
+                  <div
+                    className="flex items-start gap-2.5 rounded-lg p-2.5"
+                    style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}` }}
+                  >
+                    <Layers className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: '#8b5cf6' }} />
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: T.label }}>Condition</p>
+                      <span
+                        className="text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-block"
+                        style={conditionStyle(equipment.condition, isDark)}
+                      >
+                        {equipment.condition}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* availability bar */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: T.label }}>Availability</span>
+                <span className="text-xs font-bold tabular-nums" style={{ color: T.stockLabel }}>
+                  {available === 0 ? '0%' : `${availPct}%`}
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: T.barTrack }}>
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${availPct}%`, background: barBg, boxShadow: availPct > 0 ? `0 0 8px ${barBg}60` : 'none' }}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Details Section */}
-          <div className="w-full lg:w-[48%] min-h-0 flex flex-col bg-white">
-            {/* Title and description */}
-            <div className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-9">
-              <div className="mb-6">
-                <div className="flex items-start justify-between gap-4">
-                  <h2 className="text-2xl sm:text-[1.65rem] font-bold text-slate-900 leading-tight">
-                    {equipment.name}
-                  </h2>
-                  <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${availTextColor} bg-slate-100`}>
-                    {availabilityLabel}
-                  </span>
-                </div>
-                {equipment.description && (
-                  <p className="text-slate-600 text-sm leading-relaxed mt-3">
-                    {equipment.description}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5 mb-6">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Units</p>
-                  <p className="text-xl font-bold text-slate-900">{total}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Available</p>
-                  <p className={`text-xl font-bold ${availTextColor}`}>{available}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                {equipment.location && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Location</p>
-                    <p className="text-sm font-medium text-slate-900">{equipment.location}</p>
-                  </div>
-                )}
-
-                {equipment.condition && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Condition</p>
-                    <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-full inline-block
-                        ${equipment.condition === 'Excellent' ? 'bg-blue-100 text-blue-800' : ''}
-                        ${equipment.condition === 'Good' ? 'bg-green-100 text-green-800' : ''}
-                        ${equipment.condition === 'Fair' ? 'bg-amber-100 text-amber-800' : ''}
-                        ${equipment.condition === 'Needs Maintenance' ? 'bg-red-100 text-red-800' : ''}
-                        ${!['Excellent', 'Good', 'Fair', 'Needs Maintenance'].includes(equipment.condition) ? 'bg-slate-100 text-slate-700' : ''}
-                      `}
-                    >
-                      {equipment.condition}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-slate-600">Availability</span>
-                  <span className={`text-xs font-bold ${availTextColor}`}>
-                    {available === 0 ? 'Out of stock' : `${availPct}%`}
-                  </span>
-                </div>
-                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${availColor}`}
-                    style={{ width: `${availPct}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-200 p-4 sm:p-5 bg-white/95">
-              <div className="flex flex-col-reverse sm:flex-row gap-3">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="flex-1 border-slate-300 text-slate-700 hover:bg-slate-50"
+          {/* action footer */}
+          <div
+            className="px-4 pb-4 pt-2 flex flex-col sm:flex-row gap-2"
+            style={{ borderTop: `1px solid ${T.divider}` }}
+          >
+            {actionHandler && (
+              <button
+                onClick={() => { actionHandler(equipment); onClose(); }}
+                disabled={isBorrowAction && available === 0}
+                className="flex-1 h-9 px-4 rounded-lg font-semibold text-xs transition-all"
+                style={
+                  isBorrowAction && available === 0
+                    ? { background: T.ctaDisBg, border: `1px solid ${T.ctaDisBor}`, color: T.ctaDisText, cursor: 'not-allowed' }
+                    : { background: '#3b82f6', color: '#fff', border: 'none', boxShadow: '0 4px 20px rgba(59,130,246,0.40)' }
+                }
               >
-                Close
-              </Button>
-              {actionHandler && (
-                <Button
-                  onClick={() => {
-                    actionHandler(equipment);
-                    onClose();
-                  }}
-                  disabled={isBorrowAction && available === 0}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-300 disabled:cursor-not-allowed"
-                >
-                  {isBorrowAction && available === 0 ? 'Unavailable' : actionLabel}
-                </Button>
-              )}
-              </div>
-            </div>
+                {isBorrowAction && available === 0 ? 'Unavailable' : actionLabel}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="flex-1 sm:flex-none sm:w-auto h-9 px-4 rounded-lg font-semibold text-xs transition-all"
+              style={{ background: T.closeBtnBg, border: `1px solid ${T.closeBtnBor}`, color: T.closeBtnText }}
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       </DialogContent>

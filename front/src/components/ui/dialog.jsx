@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { X } from 'lucide-react';
+import { useTheme } from '@/components/hooks/ThemeContext';
 
 const DialogContext = createContext();
 
@@ -29,7 +30,8 @@ export const DialogTrigger = ({ children, asChild, ...props }) => {
 
 export const DialogContent = React.forwardRef(({ className = '', children, ...props }, ref) => {
   const { open, onOpenChange } = useContext(DialogContext);
-  
+  const { isDark } = useTheme();
+
   if (!open) return null;
   
   return (
@@ -43,13 +45,14 @@ export const DialogContent = React.forwardRef(({ className = '', children, ...pr
       {/* Content */}
       <div
         ref={ref}
-        className={`relative z-50 grid w-full max-w-lg gap-4 border bg-white p-6 shadow-lg sm:rounded-lg ${className}`}
+        className={`relative z-50 w-full p-6 ${isDark ? 'bg-[#111118] text-slate-100' : 'bg-white text-slate-900'} ${className}`}
         {...props}
       >
         {children}
         <button
           onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
+          className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none"
+          style={{ color: isDark ? '#94a3b8' : '#64748b' }}
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

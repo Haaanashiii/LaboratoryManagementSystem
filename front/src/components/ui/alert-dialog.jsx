@@ -1,4 +1,5 @@
 import React, { createContext, useContext } from 'react';
+import { useTheme } from '../hooks/ThemeContext';
 
 const AlertDialogContext = createContext();
 
@@ -28,15 +29,20 @@ export const AlertDialogTrigger = ({ children, asChild, ...props }) => {
 
 export const AlertDialogContent = React.forwardRef(({ className = '', children, ...props }, ref) => {
   const { open, onOpenChange } = useContext(AlertDialogContext);
+  const { isDark } = useTheme();
   
   if (!open) return null;
+  
+  const base = isDark
+    ? 'bg-[#111118] border-white/10 text-slate-100'
+    : 'bg-white border-slate-200 text-slate-900';
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={() => onOpenChange(false)} />
       <div
         ref={ref}
-        className={`relative z-50 grid w-full max-w-lg gap-4 border bg-white p-6 shadow-lg sm:rounded-lg ${className}`}
+        className={`relative z-50 grid w-full max-w-lg gap-4 border p-6 shadow-lg sm:rounded-lg ${base} ${className}`}
         {...props}
       >
         {children}
@@ -60,7 +66,7 @@ export const AlertDialogTitle = React.forwardRef(({ className = '', ...props }, 
 AlertDialogTitle.displayName = 'AlertDialogTitle';
 
 export const AlertDialogDescription = React.forwardRef(({ className = '', ...props }, ref) => (
-  <p ref={ref} className={`text-sm text-slate-500 ${className}`} {...props} />
+  <p ref={ref} className={`text-sm ${className}`} {...props} />
 ));
 AlertDialogDescription.displayName = 'AlertDialogDescription';
 

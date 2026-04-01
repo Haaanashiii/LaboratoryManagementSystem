@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, addDays } from 'date-fns';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { api } from '@/api/apiClient';
 import { useAuth } from '@/components/hooks/useAuth.js';
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 import CatalogContent from './CatalogContent';
 import { useCatalogData } from './useCatalogData';
+import { useTheme } from '@/components/hooks/ThemeContext';
 
 const getDefaultBorrowForm = () => ({
   quantity: 1,
@@ -26,9 +27,11 @@ const getDefaultBorrowForm = () => ({
 
 export default function StudentCatalog() {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const [viewedEquipment, setViewedEquipment] = useState(null);
   const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successPhase, setSuccessPhase] = useState(0); // 0 = check only, 1 = check moved + text shown
   const [borrowForm, setBorrowForm] = useState(getDefaultBorrowForm());
 
   const {
@@ -51,8 +54,10 @@ export default function StudentCatalog() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       setSelectedEquipment(null);
+      setSuccessPhase(0);
       setShowSuccessModal(true);
       setBorrowForm(getDefaultBorrowForm());
+      setTimeout(() => setSuccessPhase(1), 1400);
     },
   });
 
@@ -95,6 +100,7 @@ export default function StudentCatalog() {
         userRole={user?.role}
         onSelect={setViewedEquipment}
         onBorrow={setSelectedEquipment}
+        isDark={isDark}
       />
 
       {/* Equipment View Modal */}
@@ -104,31 +110,32 @@ export default function StudentCatalog() {
           open={!!viewedEquipment}
           onClose={() => setViewedEquipment(null)}
           onBorrow={handleViewEquipmentBorrow}
+          isDark={isDark}
         />
       )}
 
       {/* Borrow Dialog */}
       {user?.role === 'student' && (
         <Dialog open={!!selectedEquipment} onOpenChange={closeBorrowDialog}>
-          <DialogContent className="sm:max-w-md rounded-xl border-slate-200 shadow-lg">
+          <DialogContent className={`sm:max-w-md max-h-[90vh] overflow-y-auto rounded-xl shadow-lg ${isDark ? 'bg-[#111118] border-white/10 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-slate-900">
+              <DialogTitle className={`text-lg font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                 Borrow Equipment
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 py-2">
               {/* Equipment Name */}
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Item</p>
-                <p className="text-sm font-bold text-blue-900">{selectedEquipment?.name}</p>
+              <div className={`p-3 rounded-lg border ${isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Item</p>
+                <p className={`text-sm font-bold ${isDark ? 'text-blue-300' : 'text-blue-900'}`}>{selectedEquipment?.name}</p>
               </div>
 
               {/* Quantity */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 uppercase tracking-widest">
+                <Label className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
                   Quantity
-                  <span className="ml-2 text-slate-400 font-normal normal-case">
+                  <span className={`ml-2 font-normal normal-case ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     (max {selectedEquipment?.available_quantity})
                   </span>
                 </Label>
@@ -138,48 +145,48 @@ export default function StudentCatalog() {
                   max={selectedEquipment?.available_quantity}
                   value={borrowForm.quantity}
                   onChange={(event) => setBorrowForm({ ...borrowForm, quantity: parseInt(event.target.value, 10) || 1 })}
-                  className="border-slate-200 rounded-lg text-sm focus:border-blue-400 focus:ring-blue-400 font-medium"
+                  className={`rounded-lg text-sm font-medium ${isDark ? 'bg-white/5 border-white/10 text-slate-200 focus:border-blue-500 focus:ring-blue-500' : 'border-slate-200 focus:border-blue-400 focus:ring-blue-400'}`}
                 />
               </div>
 
               {/* Purpose */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Purpose</Label>
+                <Label className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>Purpose</Label>
                 <Textarea
                   placeholder="Explain why you need this equipment..."
                   value={borrowForm.purpose}
                   onChange={(event) => setBorrowForm({ ...borrowForm, purpose: event.target.value })}
                   rows={3}
-                  className="border-slate-200 rounded-lg text-sm resize-none focus:border-blue-400 focus:ring-blue-400 font-medium"
+                  className={`rounded-lg text-sm resize-none font-medium ${isDark ? 'bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500' : 'border-slate-200 focus:border-blue-400 focus:ring-blue-400'}`}
                 />
               </div>
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Borrow Date</Label>
+                  <Label className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>Borrow Date</Label>
                   <Input
                     type="date"
                     value={borrowForm.borrow_date}
                     onChange={(event) => setBorrowForm({ ...borrowForm, borrow_date: event.target.value })}
-                    className="border-slate-200 rounded-lg text-sm focus:border-blue-400 focus:ring-blue-400 font-medium"
+                    className={`rounded-lg text-sm font-medium ${isDark ? 'bg-white/5 border-white/10 text-slate-200 focus:border-blue-500 focus:ring-blue-500 [color-scheme:dark]' : 'border-slate-200 focus:border-blue-400 focus:ring-blue-400 [color-scheme:light]'}`}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Return Date</Label>
+                  <Label className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>Return Date</Label>
                   <Input
                     type="date"
                     value={borrowForm.return_date}
                     onChange={(event) => setBorrowForm({ ...borrowForm, return_date: event.target.value })}
-                    className="border-slate-200 rounded-lg text-sm focus:border-blue-400 focus:ring-blue-400 font-medium"
+                    className={`rounded-lg text-sm font-medium ${isDark ? 'bg-white/5 border-white/10 text-slate-200 focus:border-blue-500 focus:ring-blue-500 [color-scheme:dark]' : 'border-slate-200 focus:border-blue-400 focus:ring-blue-400 [color-scheme:light]'}`}
                   />
                 </div>
               </div>
 
               {/* Policy */}
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2.5">
-                <p className="text-xs font-bold text-amber-900 uppercase tracking-widest">Agreement Policy</p>
-                <p className="text-xs text-amber-850 leading-relaxed font-medium">
+              <div className={`rounded-lg border p-4 space-y-2.5 ${isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
+                <p className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-amber-400' : 'text-amber-900'}`}>Agreement Policy</p>
+                <p className={`text-xs leading-relaxed font-medium ${isDark ? 'text-amber-300/80' : 'text-amber-850'}`}>
                   Damaged items may be subject to replacement depending on the damage and severity. Lost items must be replaced by the borrower.
                 </p>
                 <label className="flex items-start gap-2 cursor-pointer">
@@ -189,7 +196,7 @@ export default function StudentCatalog() {
                     checked={borrowForm.agree_policy}
                     onChange={(event) => setBorrowForm({ ...borrowForm, agree_policy: event.target.checked })}
                   />
-                  <span className="text-xs text-amber-900 leading-relaxed font-medium">
+                  <span className={`text-xs leading-relaxed font-medium ${isDark ? 'text-amber-300/80' : 'text-amber-900'}`}>
                     I understand and agree to this policy, including replacement responsibility when applicable.
                   </span>
                 </label>
@@ -198,16 +205,16 @@ export default function StudentCatalog() {
 
             <DialogFooter className="gap-2 sm:gap-2">
               <Button
-                variant="outline"
                 onClick={closeBorrowDialog}
-                className="rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold"
+                variant="ghost"
+                className={`rounded-lg text-sm font-semibold border ${isDark ? 'bg-white/5 border-white/10 !text-slate-300 hover:bg-white/10' : 'bg-white border-slate-200 !text-slate-700 hover:bg-slate-50'}`}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleBorrowSubmit}
                 disabled={createRequestMutation.isPending || !borrowForm.purpose || !borrowForm.agree_policy}
-                className="rounded-lg bg-slate-900 hover:bg-blue-600 text-white text-sm transition-colors disabled:opacity-40 font-semibold"
+                className={`rounded-lg text-white text-sm transition-colors disabled:opacity-40 font-semibold ${isDark ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-900 hover:bg-blue-600'}`}
               >
                 {createRequestMutation.isPending ? (
                   <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Submitting...</>
@@ -221,29 +228,95 @@ export default function StudentCatalog() {
       )}
 
       {/* Success Modal */}
-      <AlertDialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-        <AlertDialogContent className="rounded-xl border-slate-200 shadow-lg max-w-sm">
-          <AlertDialogHeader>
-            <div className="flex justify-center mb-4">
-              <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-emerald-500" />
+      <AlertDialog open={showSuccessModal} onOpenChange={(v) => { setShowSuccessModal(v); if (!v) setSuccessPhase(0); }}>
+        <AlertDialogContent
+          className={`rounded-2xl shadow-2xl max-w-xs overflow-hidden p-0 ${isDark ? 'bg-[#111118] border-white/10' : 'bg-white border-slate-200'}`}
+          style={{ minHeight: 300 }}
+        >
+          <style>{`
+            /* ── check draw ── */
+            @keyframes lms2-fill { from { opacity:0; transform:scale(0.4); } to { opacity:1; transform:scale(1); } }
+            @keyframes lms2-ring  { from { stroke-dashoffset:201; } to { stroke-dashoffset:0; } }
+            @keyframes lms2-tick  { from { stroke-dashoffset:50;  opacity:0; } to { stroke-dashoffset:0; opacity:1; } }
+            /* ── phase 1: check settles in from above ── */
+            @keyframes lms2-rise  {
+              from { opacity: 0; transform: translateY(-18px) scale(1.15); }
+              to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            /* ── text fades up in ── */
+            @keyframes lms2-text-in {
+              from { opacity:0; transform:translateY(18px); }
+              to   { opacity:1; transform:translateY(0); }
+            }
+            .lms2-check-wrap {
+              animation: lms2-fill 0.4s cubic-bezier(0.16,1,0.3,1) 0.05s both;
+            }
+            .lms2-check-wrap.risen {
+              animation: lms2-rise 0.55s cubic-bezier(0.16,1,0.3,1) both;
+            }
+            .lms2-ring {
+              stroke-dasharray: 201;
+              stroke-dashoffset: 201;
+              animation: lms2-ring 0.6s cubic-bezier(0.16,1,0.3,1) 0.35s both;
+            }
+            .lms2-tick {
+              stroke-dasharray: 50;
+              stroke-dashoffset: 50;
+              animation: lms2-tick 0.4s cubic-bezier(0.16,1,0.3,1) 0.85s both;
+            }
+            .lms2-text {
+              animation: lms2-text-in 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both;
+            }
+          `}</style>
+
+          {/* ── phase 0: check centered, fills the modal ── */}
+          {successPhase === 0 && (
+            <div className="flex items-center justify-center" style={{ height: 300 }}>
+              <div className="lms2-check-wrap">
+                <svg viewBox="0 0 72 72" width="120" height="120" fill="none">
+                  <circle cx="36" cy="36" r="32" fill={isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.10)'} />
+                  <circle className="lms2-ring" cx="36" cy="36" r="32" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                  <polyline className="lms2-tick" points="21,36 31,46 51,26" stroke="#10b981" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
             </div>
-            <AlertDialogTitle className="text-center text-lg font-bold text-slate-900">
-              Request Submitted
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-sm text-slate-600 leading-relaxed font-medium">
-              Your borrow request is pending lecturer approval. Track its status on the Requests page.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button
-              onClick={() => setShowSuccessModal(false)}
-              className="w-full rounded-lg bg-slate-900 hover:bg-blue-600 text-white text-sm transition-colors font-semibold"
-            >
-              Got it
-            </Button>
-          </AlertDialogFooter>
+          )}
+
+          {/* ── phase 1: check at top + text + button ── */}
+          {successPhase === 1 && (
+            <div className="flex flex-col items-center pt-6 pb-6 px-6 gap-0">
+              {/* check — risen position (smaller, top) */}
+              <div className="lms2-check-wrap risen" style={{ marginBottom: 8 }}>
+                <svg viewBox="0 0 72 72" width="80" height="80" fill="none">
+                  <circle cx="36" cy="36" r="32" fill={isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.10)'} />
+                  <circle cx="36" cy="36" r="32" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                  <polyline points="21,36 31,46 51,26" stroke="#10b981" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+
+              {/* text */}
+              <div className="lms2-text text-center mt-2">
+                <p className={`text-lg font-bold mb-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                  Request Submitted
+                </p>
+                <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Your borrow request is pending lecturer approval. Track its status on the Requests page.
+                </p>
+              </div>
+
+              {/* button */}
+              <div className="lms2-text w-full mt-5" style={{ animationDelay: '0.2s' }}>
+                <Button
+                  onClick={() => { setShowSuccessModal(false); setSuccessPhase(0); }}
+                  className={`w-full rounded-xl h-10 text-white text-sm font-semibold transition-colors ${
+                    isDark ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-900 hover:bg-blue-700'
+                  }`}
+                >
+                  Got it
+                </Button>
+              </div>
+            </div>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </>
