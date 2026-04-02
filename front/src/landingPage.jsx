@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import LandingBG from '@/components/layouts/LandingBG';
 import { useLang } from '@/components/i18n/LangContext';
-import { clearStoredAuth, getStoredToken } from '@/api/apiClient';
+import { clearStoredAuth, getStoredToken, getStoredUser } from '@/api/apiClient';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 
 export default function Landing() {
@@ -123,7 +123,7 @@ export default function Landing() {
   useEffect(() => {
     if (navigationType === 'POP') {
       const hasToken = !!getStoredToken();
-      const hasUser = !!localStorage.getItem('currentUser');
+      const hasUser = !!getStoredUser();
 
       if (hasToken || hasUser) {
         clearStoredAuth();

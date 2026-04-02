@@ -2,10 +2,56 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const TOKEN_KEY = 'token';
 const USER_KEY = 'currentUser';
+const AUTH_STORAGE_MODE_KEY = 'authStorageMode';
+const STORAGE_MODES = {
+  LOCAL: 'local',
+  SESSION: 'session',
+};
+
+const getStorageByMode = (mode) => (mode === STORAGE_MODES.SESSION ? sessionStorage : localStorage);
+
+const getActiveAuthStorage = () => {
+  const preferredMode = localStorage.getItem(AUTH_STORAGE_MODE_KEY);
+
+  if (preferredMode === STORAGE_MODES.SESSION) {
+    return sessionStorage;
+  }
+
+  if (preferredMode === STORAGE_MODES.LOCAL) {
+    return localStorage;
+  }
+
+  if (localStorage.getItem(TOKEN_KEY) || localStorage.getItem(USER_KEY)) {
+    return localStorage;
+  }
+
+  if (sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(USER_KEY)) {
+    return sessionStorage;
+  }
+
+  return localStorage;
+};
+
+const storeAuthData = ({ token, userData, rememberMe = true }) => {
+  const targetMode = rememberMe ? STORAGE_MODES.LOCAL : STORAGE_MODES.SESSION;
+  const targetStorage = getStorageByMode(targetMode);
+  const otherStorage = targetStorage === localStorage ? sessionStorage : localStorage;
+
+  otherStorage.removeItem(TOKEN_KEY);
+  otherStorage.removeItem(USER_KEY);
+
+  targetStorage.setItem(TOKEN_KEY, token);
+  targetStorage.setItem(USER_KEY, JSON.stringify(userData));
+
+  localStorage.setItem(AUTH_STORAGE_MODE_KEY, targetMode);
+};
 
 const clearAuthStorage = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(AUTH_STORAGE_MODE_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
 };
 
 const decodeJwtPayload = (token) => {
@@ -22,7 +68,22 @@ const decodeJwtPayload = (token) => {
   }
 };
 
-export const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
+export const getStoredToken = () => {
+  const storage = getActiveAuthStorage();
+  return storage.getItem(TOKEN_KEY);
+};
+
+export const getStoredUser = () => {
+  const storage = getActiveAuthStorage();
+  return storage.getItem(USER_KEY);
+};
+
+export const setRememberSession = (rememberMe) => {
+  localStorage.setItem(
+    AUTH_STORAGE_MODE_KEY,
+    rememberMe ? STORAGE_MODES.LOCAL : STORAGE_MODES.SESSION
+  );
+};
 
 export const isTokenExpired = (token) => {
   if (!token) return true;
@@ -50,6 +111,32 @@ const resolveApiAssetUrl = (value) => {
 // Helper for making authenticated requests to the real backend
 const request = async (endpoint, options = {}) => {
   const token = getStoredToken();
+
+  const getRetryAfterMs = (response) => {
+    const retryAfterHeader = response.headers.get('retry-after');
+    if (retryAfterHeader) {
+      const asSeconds = Number(retryAfterHeader);
+      if (Number.isFinite(asSeconds) && asSeconds > 0) {
+        return asSeconds * 1000;
+      }
+
+      const asDate = Date.parse(retryAfterHeader);
+      if (Number.isFinite(asDate)) {
+        const diff = asDate - Date.now();
+        if (diff > 0) return diff;
+      }
+    }
+
+    const rateLimitResetHeader = response.headers.get('ratelimit-reset');
+    if (rateLimitResetHeader) {
+      const asSeconds = Number(rateLimitResetHeader);
+      if (Number.isFinite(asSeconds) && asSeconds > 0) {
+        return asSeconds * 1000;
+      }
+    }
+
+    return null;
+  };
 
   // Prevent requests with expired tokens and force re-login.
   if (token && isTokenExpired(token)) {
@@ -100,8 +187,13 @@ const request = async (endpoint, options = {}) => {
     if (res.status === 403) {
       throw new Error(data.message || 'You do not have permission to access this resource with the current account.');
     }
-
-    throw new Error(data.message || `Request failed with status ${res.status}`);
+    const error = new Error(data.message || `Request failed with status ${res.status}`);
+    error.status = res.status;
+    const retryAfterMs = getRetryAfterMs(res);
+    if (retryAfterMs) {
+      error.retryAfterMs = retryAfterMs;
+    }
+    throw error;
   }
 
   return data;
@@ -110,7 +202,7 @@ const request = async (endpoint, options = {}) => {
 export const api = {
   // Authentication (real backend)
   auth: {
-    login: async (email, password) => {
+    login: async (email, password, options = {}) => {
       // Perform real login with backend authentication
       const data = await request('/auth/login', {
         method: 'POST',
@@ -123,8 +215,11 @@ export const api = {
 
       // Store token and user data
       const { token, ...userData } = data.data;
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      storeAuthData({
+        token,
+        userData,
+        rememberMe: options.rememberMe !== false,
+      });
       
       return userData;
     },
@@ -140,8 +235,7 @@ export const api = {
       }
 
       const { token, ...userData } = data.data;
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      storeAuthData({ token, userData, rememberMe: true });
 
       return userData;
     },
@@ -159,8 +253,7 @@ export const api = {
 
       // Store token and user data
       const { token, ...userData } = data.data;
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      storeAuthData({ token, userData, rememberMe: true });
       
       return userData;
     },
@@ -189,16 +282,18 @@ export const api = {
         return null;
       }
 
-      localStorage.setItem(USER_KEY, JSON.stringify(data.data));
+      const storage = getActiveAuthStorage();
+      storage.setItem(USER_KEY, JSON.stringify(data.data));
       return data.data;
     },
 
     updateMe: async (data) => {
-      const stored = localStorage.getItem(USER_KEY);
+      const storage = getActiveAuthStorage();
+      const stored = storage.getItem(USER_KEY);
       const currentUser = stored ? JSON.parse(stored) : null;
       if (currentUser) {
         const updated = { ...currentUser, ...data };
-        localStorage.setItem(USER_KEY, JSON.stringify(updated));
+        storage.setItem(USER_KEY, JSON.stringify(updated));
         return updated;
       }
       return currentUser;
