@@ -126,6 +126,38 @@ exports.getNotifications = async (req, res, next) => {
   }
 };
 
+exports.markNotificationUnread = async (req, res, next) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        user: req.user.id,
+        recipient_role: req.user.role
+      },
+      {
+        $set: { isRead: false }
+      },
+      {
+        new: true
+      }
+    );
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.markNotificationRead = async (req, res, next) => {
   try {
     const notification = await Notification.findOneAndUpdate(

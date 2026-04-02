@@ -45,6 +45,23 @@ const dashboardStyles = `
     will-change: transform, opacity;
   }
 
+  @keyframes waveHand {
+    0%   { transform: rotate(0deg);   }
+    10%  { transform: rotate(14deg);  }
+    20%  { transform: rotate(-8deg);  }
+    30%  { transform: rotate(14deg);  }
+    40%  { transform: rotate(-4deg);  }
+    50%  { transform: rotate(10deg);  }
+    60%  { transform: rotate(0deg);   }
+    100% { transform: rotate(0deg);   }
+  }
+  .wave-emoji {
+    display: inline-block;
+    transform-origin: 70% 70%;
+    animation: waveHand 2.2s ease-in-out infinite;
+    animation-delay: 0.6s;
+  }
+
   .glass-card {
     background: rgba(255,255,255,0.72);
     backdrop-filter: blur(12px);
@@ -85,7 +102,7 @@ const dashboardStyles = `
   .stat-tile-body {
     flex: 1;
     padding: 18px 16px 16px 20px;
-    background: white;
+    background: #f5f5f4;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -103,7 +120,7 @@ const dashboardStyles = `
   .bento-action {
     position: relative;
     overflow: hidden;
-    background: white;
+    background: #f5f5f4;
     transition: box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
     display: flex;
     flex-direction: column;
@@ -126,13 +143,13 @@ const dashboardStyles = `
     position: absolute;
     bottom: -10px; left: 0; right: 0;
     height: 20px;
-    background: white;
+    background: #f5f5f4;
     clip-path: ellipse(55% 100% at 50% 100%);
   }
   .bento-action-body {
     flex: 1;
     padding: 18px 20px 16px;
-    background: white;
+    background: #f5f5f4 !important;
   }
   .action-icon-wrap {
     width: 40px; height: 40px;
@@ -187,14 +204,14 @@ const dashboardStyles = `
     border-color: rgba(255,255,255,0.25);
   }
   .dashboard-dark .bento-action {
-    background: #0d0d14;
+    background: #0d0d14 !important;
     border-color: rgba(255,255,255,0.25);
   }
   .dashboard-dark .bento-action-body {
-    background: #0d0d14;
+    background: #0d0d14 !important;
   }
   .dashboard-dark .bento-action-header::after {
-    background: #0d0d14;
+    background: #0d0d14 !important;
   }
   .dashboard-dark .request-row:hover {
     background: rgba(255,255,255,0.04);
@@ -279,7 +296,7 @@ export default function StudentDashboard() {
             <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">{getTodayDate()}</p>
             <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
               {getTimeGreeting()},<br className="sm:hidden" />{' '}
-              <span className="text-blue-100">{user?.name?.split(' ')[0] || 'Student'}</span> 👋
+              <span className="text-blue-100">{user?.name?.split(' ')[0] || 'Student'}</span> <span className="wave-emoji">👋</span>
             </h1>
             <p className="text-blue-200 text-sm mt-2 leading-relaxed max-w-sm">
               {pendingRequests.length > 0
@@ -429,7 +446,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Progress / Summary card */}
-        <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-colors ${isDark ? 'border-white/[0.08] hover:border-white/[0.14] bg-[#0d0d14]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+        <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-colors ${isDark ? 'border-white/[0.08] hover:border-white/[0.14] bg-[#0d0d14]' : 'border-stone-300 hover:border-stone-400 bg-stone-100'}`}>
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-sm">
@@ -450,7 +467,7 @@ export default function StudentDashboard() {
                     <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{row.label}</span>
                     <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{row.value}</span>
                   </div>
-                  <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-100'}`}>
+                    <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-stone-200'}`}>
                     <div
                       className={`h-full ${row.color} rounded-full transition-all duration-700`}
                       style={{ width: `${Math.round((row.value / row.max) * 100)}%` }}
@@ -461,7 +478,7 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className={`mt-4 pt-4 border-t flex items-center justify-between ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
+          <div className={`mt-4 pt-4 border-t flex items-center justify-between ${isDark ? 'border-white/10' : 'border-stone-200'}`}>
             <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Completion rate</p>
             <span className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{completionPct}%</span>
           </div>
@@ -501,8 +518,8 @@ export default function StudentDashboard() {
       </div>
 
       {/* ── RECENT REQUESTS ──────────────────────────────────────── */}
-      <div className={`fade-up fade-up-5 rounded-2xl border shadow-sm overflow-hidden transition-colors ${isDark ? 'border-white/[0.08] hover:border-white/[0.14] bg-[#0d0d14]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
-        <div className={`flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
+      <div className={`fade-up fade-up-5 rounded-2xl border shadow-sm overflow-hidden transition-colors ${isDark ? 'border-white/[0.08] hover:border-white/[0.14] bg-[#0d0d14]' : 'border-stone-300 hover:border-stone-400 bg-stone-100'}`}>
+        <div className={`flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDark ? 'border-white/10' : 'border-stone-200'}`}>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
               <FileText className="w-3.5 h-3.5 text-white" />
@@ -534,7 +551,7 @@ export default function StudentDashboard() {
             </button>
           </div>
         ) : (
-          <div className={`divide-y ${isDark ? 'divide-white/8' : 'divide-slate-100'}`}>
+          <div className={`divide-y ${isDark ? 'divide-white/8' : 'divide-stone-200'}`}>
             {myRequests.slice(0, 6).map((request, idx) => (
               <div
                 key={request.id}

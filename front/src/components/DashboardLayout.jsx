@@ -199,6 +199,10 @@ export default function DashboardLayout() {
     mutationFn: (id) => api.notifications.markAsRead(id)
   });
 
+  const markNotificationUnreadMutation = useMutation({
+    mutationFn: (id) => api.notifications.markAsUnread(id)
+  });
+
   const unreadCount = notifications.filter((item) => item.isRead === false).length;
 
   const handleNotificationsOpenChange = (open) => {
@@ -224,43 +228,117 @@ export default function DashboardLayout() {
     }
   };
 
+  const handleMarkUnread = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await markNotificationUnreadMutation.mutateAsync(id);
+      setNotifications((prev) =>
+        prev.map((item) =>
+          (item._id || item.id) === id ? { ...item, isRead: false } : item
+        )
+      );
+    } catch {
+      // Keep UI unchanged on failure.
+    }
+  };
+
+  const notifBg = isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200';
+  const notifHeader = isDark ? 'border-slate-700/60' : 'border-slate-100';
+  const notifTextPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
+  const notifTextSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const notifItemHover = isDark ? 'hover:bg-white/5 focus:bg-white/8' : 'hover:bg-slate-50 focus:bg-slate-50';
+  const notifDivider = isDark ? 'border-slate-700/40' : 'border-slate-100';
+
   const notificationsBell = (
     <DropdownMenu open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5 text-slate-600" />
+          <Bell className={`w-5 h-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} />
           {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          <span>{t('notifications') || 'Notifications'}</span>
-          <span className="text-xs font-normal text-slate-500">{notifications.length} items</span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent
+        align="end"
+        className={`w-96 p-0 shadow-xl rounded-2xl border overflow-hidden ${notifBg}`}
+        style={isDark ? { background: '#0f172a', borderColor: 'rgba(255,255,255,0.08)', color: '#f1f5f9' } : {}}
+      >
+        {/* Header */}
+        <div className={`flex items-center justify-between px-4 py-3 border-b ${notifHeader}`}>
+          <div className="flex items-center gap-2">
+            <Bell className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+            <span className={`text-sm font-semibold ${notifTextPrimary}`}>{t('notifications') || 'Notifications'}</span>
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-500 text-white min-w-[18px]">
+                {unreadCount}
+              </span>
+            )}
+          </div>
+          <span className={`text-xs ${notifTextSecondary}`}>{notifications.length} total</span>
+        </div>
 
-        {notifications.length === 0 ? (
-          <div className="px-3 py-4 text-sm text-slate-500">No notifications yet.</div>
-        ) : (
-          notifications.map((item) => {
-            const isUnread = item.isRead === false;
+        {/* List */}
+        <div className="max-h-[360px] overflow-y-auto">
+          {notifications.length === 0 ? (
+            <div className={`flex flex-col items-center justify-center py-10 gap-2 ${notifTextSecondary}`}>
+              <Bell className="w-8 h-8 opacity-30" />
+              <p className="text-sm">No notifications yet.</p>
+            </div>
+          ) : (
+            notifications.map((item, idx) => {
+              const isUnread = item.isRead === false;
+              const itemId = item._id || item.id;
 
-            return (
-              <DropdownMenuItem
-                key={item._id || item.id}
-                className="items-start gap-2 py-3 cursor-pointer focus:bg-slate-50"
-                onClick={() => handleNotificationClick(item._id || item.id)}
-              >
-                <span className={`mt-1 h-2 w-2 rounded-full ${isUnread ? 'bg-blue-500' : 'bg-slate-300'}`} />
-                <div className="flex flex-col">
-                  <span className="text-sm text-slate-800 leading-snug">{item.message}</span>
-                  <span className="text-xs text-slate-500 mt-1">
-                    {item.event_time ? new Date(item.event_time).toLocaleString() : 'Just now'}
-                  </span>
+              return (
+                <div
+                  key={itemId}
+                  onClick={() => handleNotificationClick(itemId)}
+                  className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors group ${notifItemHover} ${
+                    idx < notifications.length - 1 ? `border-b ${notifDivider}` : ''
+                  } ${isUnread ? (isDark ? 'bg-blue-950/20' : 'bg-blue-50/60') : ''}`}
+                >
+                  {/* unread dot */}
+                  <span
+                    className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${
+                      isUnread ? 'bg-blue-500' : isDark ? 'bg-slate-700' : 'bg-slate-200'
+                    }`}
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm leading-snug ${isUnread ? (isDark ? 'text-slate-100 font-medium' : 'text-slate-900 font-medium') : notifTextSecondary}`}>
+                      {item.message}
+                    </p>
+                    <p className={`text-xs mt-1 ${notifTextSecondary}`}>
+                      {item.event_time ? new Date(item.event_time).toLocaleString() : 'Just now'}
+                    </p>
+                  </div>
+
+                  {/* Mark as unread — only show on read items, on group hover */}
+                  {!isUnread && (
+                    <button
+                      onClick={(e) => handleMarkUnread(e, itemId)}
+                      title="Mark as unread"
+                      className={`shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-medium px-2 py-1 rounded-md ${
+                        isDark
+                          ? 'text-blue-400 hover:bg-blue-900/40 bg-transparent'
+                          : 'text-blue-600 hover:bg-blue-100 bg-transparent'
+                      }`}
+                    >
+                      Unread
+                    </button>
+                  )}
                 </div>
-              </DropdownMenuItem>
-            );
-          })
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        {notifications.length > 0 && (
+          <div className={`px-4 py-2.5 border-t ${notifHeader}`}>
+            <p className={`text-xs text-center ${notifTextSecondary}`}>
+              Click a notification to mark it as read
+            </p>
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
