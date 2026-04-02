@@ -28,6 +28,9 @@ const pageStyles = `
   .req-dark .req-card:hover {
     box-shadow: 0 8px 24px -8px rgba(0,0,0,0.40);
   }
+  .req-dark .req-hero-banner {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 45%, #3730a3 100%) !important;
+  }
 
   @keyframes heroGlow {
     0%, 100% { opacity: 0.6; transform: scale(1); }
@@ -65,6 +68,7 @@ const trackerSteps = [
   { key: 'returned', label: 'Returned' },
 ];
 
+const ACTIVE_PAGE_SIZE = 5;
 const HISTORY_PAGE_SIZE = 10;
 
 const HISTORY_FILTERS = [
@@ -79,6 +83,7 @@ const HISTORY_FILTERS = [
 export default function MyRequests() {
   const [filter, setFilter] = useState('active');
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [activePage, setActivePage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyFilter, setHistoryFilter] = useState('all');
   const { isDark } = useTheme();
@@ -312,7 +317,7 @@ export default function MyRequests() {
       <style>{pageStyles}</style>
 
       {/* ── HERO BANNER ─────────────────────────────────────────── */}
-      <div className="req-fade-up req-fade-1 relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-6 shadow-xl">
+      <div className="req-fade-up req-fade-1 req-hero-banner relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-6 shadow-xl">
         <div className="req-orb   absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10 pointer-events-none" />
         <div className="req-orb-2 absolute -bottom-14 -left-8  w-44 h-44 rounded-full bg-indigo-400/20 pointer-events-none" />
         <div className="absolute top-4 right-28 w-2.5 h-2.5 rounded-full bg-white/30 pointer-events-none" />
@@ -329,13 +334,13 @@ export default function MyRequests() {
           {/* Quick stat pills */}
           <div className="flex gap-2 flex-wrap">
             {[
-              { label: 'Active',   value: activeCount,   color: 'bg-white/20' },
-              { label: 'Returned', value: returnedCount,  color: 'bg-emerald-400/20' },
-              { label: 'Rejected', value: rejectedCount,  color: 'bg-red-400/20' },
+              { label: 'Active',   value: activeCount,   textColor: isDark ? 'text-blue-400' : 'text-white' },
+              { label: 'Returned', value: returnedCount,  textColor: isDark ? 'text-emerald-400' : 'text-white' },
+              { label: 'Rejected', value: rejectedCount,  textColor: isDark ? 'text-red-400' : 'text-white' },
             ].map(s => (
-              <div key={s.label} className={`${s.color} backdrop-blur-sm rounded-xl px-3 py-2 text-center min-w-[60px] border border-white/20`}>
-                <p className="text-lg font-black text-white leading-none">{s.value}</p>
-                <p className="text-[9px] text-blue-200 font-semibold uppercase tracking-wide mt-0.5">{s.label}</p>
+              <div key={s.label} className={`rounded-xl px-3 py-2 text-center min-w-[60px] border shadow-sm ${isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white/20 backdrop-blur-sm border-white/20'}`}>
+                <p className={`text-lg font-black leading-none ${s.textColor}`}>{s.value}</p>
+                <p className={`text-[9px] font-semibold uppercase tracking-wide mt-0.5 ${isDark ? 'text-slate-500' : 'text-blue-200'}`}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -348,7 +353,7 @@ export default function MyRequests() {
           {tabs.map(tab => (
             <button
               key={tab.key}
-              onClick={() => { setFilter(tab.key); setHistoryPage(1); setHistoryFilter('all'); }}
+              onClick={() => { setFilter(tab.key); setActivePage(1); setHistoryPage(1); setHistoryFilter('all'); }}
               className={`tab-pill ${filter === tab.key
                 ? isDark ? 'active-dark' : 'active-light'
                 : isDark ? 'inactive-dark' : 'inactive-light'
@@ -477,11 +482,61 @@ export default function MyRequests() {
               </div>
             )}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredRequests.map(renderRequestCard)}
-          </div>
-        )}
+        ) : (() => {
+          const activeTotal = filteredRequests.length;
+          const activeTotalPages = Math.max(1, Math.ceil(activeTotal / ACTIVE_PAGE_SIZE));
+          const safeActivePage = Math.min(activePage, activeTotalPages);
+          const pagedActive = filteredRequests.slice((safeActivePage - 1) * ACTIVE_PAGE_SIZE, safeActivePage * ACTIVE_PAGE_SIZE);
+          return (
+            <div className="space-y-3">
+              {pagedActive.map(renderRequestCard)}
+              {activeTotalPages > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Showing {(safeActivePage - 1) * ACTIVE_PAGE_SIZE + 1}–{Math.min(safeActivePage * ACTIVE_PAGE_SIZE, activeTotal)} of {activeTotal}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setActivePage(p => Math.max(1, p - 1))}
+                      disabled={safeActivePage === 1}
+                      className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ${
+                        safeActivePage === 1
+                          ? isDark ? 'border-white/[0.06] text-slate-700 cursor-not-allowed' : 'border-slate-200 text-slate-300 cursor-not-allowed'
+                          : isDark ? 'border-white/[0.10] text-slate-300 hover:bg-white/[0.06]' : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {Array.from({ length: activeTotalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setActivePage(page)}
+                        className={`flex items-center justify-center w-8 h-8 rounded-lg border text-xs font-semibold transition-colors ${
+                          page === safeActivePage
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : isDark ? 'border-white/[0.10] text-slate-400 hover:bg-white/[0.06]' : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setActivePage(p => Math.min(activeTotalPages, p + 1))}
+                      disabled={safeActivePage === activeTotalPages}
+                      className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ${
+                        safeActivePage === activeTotalPages
+                          ? isDark ? 'border-white/[0.06] text-slate-700 cursor-not-allowed' : 'border-slate-200 text-slate-300 cursor-not-allowed'
+                          : isDark ? 'border-white/[0.10] text-slate-300 hover:bg-white/[0.06]' : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── REQUEST DETAILS DIALOG ──────────────────────────────── */}

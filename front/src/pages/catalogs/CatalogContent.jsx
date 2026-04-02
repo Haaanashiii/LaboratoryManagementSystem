@@ -219,7 +219,7 @@ export default function CatalogContent({
 
   const wrapperClass = isLecturer
     ? 'w-full catalog-shell catalog-shell--lecturer'
-    : 'w-full space-y-5 py-4 px-4';
+    : 'w-full space-y-5 py-1 px-4';
   const innerClass = isLecturer ? 'catalog-shell-inner space-y-6' : 'space-y-5';
   const headerClass = isLecturer
     ? 'catalog-fade-up catalog-fade-up-1 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-6 border-b border-[var(--catalog-border)]'

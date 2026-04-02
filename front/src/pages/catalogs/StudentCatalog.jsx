@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, addDays } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
 
 import { api } from '@/api/apiClient';
 import { useAuth } from '@/components/hooks/useAuth.js';
@@ -79,29 +79,88 @@ export default function StudentCatalog() {
     setBorrowForm(getDefaultBorrowForm());
   };
 
+  const catalogStyles = `
+    @keyframes cat-fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .cat-fade-up { opacity: 0; animation: cat-fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
+    .cat-fade-1  { animation-delay: 0.04s; }
+    .cat-fade-2  { animation-delay: 0.12s; }
+
+    @keyframes catHeroGlow {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.08); }
+    }
+    .cat-orb   { animation: catHeroGlow 6s ease-in-out infinite; }
+    .cat-orb-2 { animation: catHeroGlow 8s ease-in-out infinite reverse; }
+
+    .cat-dark .cat-hero-banner {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 45%, #3730a3 100%) !important;
+    }
+  `;
+
   return (
     <>
-      <CatalogContent
-        header={{
-          eyebrow: 'Equipment Catalog',
-          title: 'Equipment Catalog',
-          description: 'Browse and borrow available laboratory equipment.',
-        }}
-        search={search}
-        onSearchChange={setSearch}
-        groupByCategory={groupByCategory}
-        onToggleGroupBy={() => setGroupByCategory((value) => !value)}
-        filteredEquipment={filteredEquipment}
-        groupedEquipment={groupedEquipment}
-        groupedCategories={groupedCategories}
-        isLoading={isLoading}
-        isError={isError}
-        error={error}
-        userRole={user?.role}
-        onSelect={setViewedEquipment}
-        onBorrow={setSelectedEquipment}
-        isDark={isDark}
-      />
+      <div className={`space-y-2 ${isDark ? 'cat-dark' : ''}`}>
+        <style>{catalogStyles}</style>
+
+        {/* ── HERO BANNER ─────────────────────────────────────────── */}
+        <div className="cat-fade-up cat-fade-1 cat-hero-banner relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-6 shadow-xl">
+          <div className="cat-orb   absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10 pointer-events-none" />
+          <div className="cat-orb-2 absolute -bottom-14 -left-8  w-44 h-44 rounded-full bg-indigo-400/20 pointer-events-none" />
+          <div className="absolute top-4 right-28 w-2.5 h-2.5 rounded-full bg-white/30 pointer-events-none" />
+
+          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-blue-200 text-[10px] font-semibold uppercase tracking-widest mb-1">Laboratory Management</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">Equipment Catalog</h1>
+              <p className="text-blue-200 text-sm mt-1.5 max-w-sm">
+                Browse and borrow available laboratory equipment for your sessions.
+              </p>
+            </div>
+
+            {/* Quick stat pills */}
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { label: 'Total',     value: isLoading ? '—' : filteredEquipment.length },
+                { label: 'Available', value: isLoading ? '—' : filteredEquipment.filter(e => (e.available_quantity ?? e.available ?? 0) > 0).length },
+              ].map(s => (
+                <div key={s.label} className={`rounded-xl px-3 py-2 text-center min-w-[60px] border shadow-sm ${isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white/20 backdrop-blur-sm border-white/20'}`}>
+                  <p className={`text-lg font-black leading-none ${isDark ? 'text-blue-400' : 'text-white'}`}>{s.value}</p>
+                  <p className={`text-[9px] font-semibold uppercase tracking-wide mt-0.5 ${isDark ? 'text-slate-500' : 'text-blue-200'}`}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── CATALOG CONTENT ─────────────────────────────────────── */}
+        <div className="cat-fade-up cat-fade-2">
+          <CatalogContent
+            header={{
+              eyebrow: 'Equipment Catalog',
+              title: 'Equipment Catalog',
+              description: 'Browse and borrow available laboratory equipment.',
+            }}
+            hideHeader
+            search={search}
+            onSearchChange={setSearch}
+            groupByCategory={groupByCategory}
+            onToggleGroupBy={() => setGroupByCategory((value) => !value)}
+            filteredEquipment={filteredEquipment}
+            groupedEquipment={groupedEquipment}
+            groupedCategories={groupedCategories}
+            isLoading={isLoading}
+            isError={isError}
+            error={error}
+            userRole={user?.role}
+            onSelect={setViewedEquipment}
+            onBorrow={setSelectedEquipment}
+            isDark={isDark}
+          />
+        </div>
+      </div>
 
       {/* Equipment View Modal */}
       {user?.role === 'student' && (
