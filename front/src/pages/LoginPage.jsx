@@ -18,9 +18,14 @@ export default function LoginPage() {
   const { isAuthenticated, isLoading, user, refreshSession } = useAuth();
   // Login state
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    const savedMode = localStorage.getItem('authStorageMode');
+    return savedMode !== 'session';
+  });
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
+  const [rateLimitUntil, setRateLimitUntil] = useState(null);
+  const [countdownNow, setCountdownNow] = useState(0);
 
   // Sign-up modal state
   const [showSignup, setShowSignup] = useState(false);
@@ -51,6 +56,33 @@ export default function LoginPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
+
+  useEffect(() => {
+    if (!rateLimitUntil) return;
+
+    const interval = window.setInterval(() => {
+      setCountdownNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [rateLimitUntil]);
+
+  const getCountdownLabel = () => {
+    if (!rateLimitUntil) return '';
+
+    const remainingMs = Math.max(0, rateLimitUntil - countdownNow);
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (totalSeconds <= 0) {
+      return '';
+    }
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const countdownLabel = getCountdownLabel();
 
   const handleSignupChange = (e) => {
     const { name, value } = e.target;
@@ -83,9 +115,26 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (rateLimitUntil && Date.now() >= rateLimitUntil) {
+      setRateLimitUntil(null);
+      setErrors((prev) => {
+        const next = { ...prev };
+        if (next.email && next.email.toLowerCase().includes('too many failed login attempts')) {
+          delete next.email;
+        }
+        return next;
+      });
+    }
+
+    if (rateLimitUntil && Date.now() < rateLimitUntil) {
+      setErrors({ email: `Too many failed login attempts. Try again in ${countdownLabel || '00:00'}.` });
+      return;
+    }
+
     if (!validateLogin()) return;
     try {
-      await api.auth.login(formData.email, formData.password);
+      await api.auth.login(formData.email, formData.password, { rememberMe });
       const user = await refreshSession();
       console.log('Login successful:', user);
 
@@ -101,6 +150,20 @@ export default function LoginPage() {
       navigate(defaultDestination, { replace: true });
     } catch (error) {
       console.error('Login failed:', error);
+      if (error?.status === 429) {
+        const defaultRetryMs = 30 * 60 * 1000;
+        const retryMs = Number.isFinite(error?.retryAfterMs) ? error.retryAfterMs : defaultRetryMs;
+        const until = Date.now() + retryMs;
+        setRateLimitUntil(until);
+        setCountdownNow(Date.now());
+        const initialSeconds = Math.ceil(retryMs / 1000);
+        const initialMinutes = Math.floor(initialSeconds / 60);
+        const initialRemainder = initialSeconds % 60;
+        const initialLabel = `${String(initialMinutes).padStart(2, '0')}:${String(initialRemainder).padStart(2, '0')}`;
+        setErrors({ email: `Too many failed login attempts. Try again in ${initialLabel}.` });
+        return;
+      }
+
       setErrors({ email: error.message || t('errorInvalidCredentials') });
     }
   };
@@ -206,6 +269,9 @@ export default function LoginPage() {
                 />
               </div>
               {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              {rateLimitUntil && countdownLabel && (
+                <p className="mt-1 text-sm text-red-600">Try again in {countdownLabel}</p>
+              )}
             </div>
 
             {/* Password Field */}

@@ -19,10 +19,39 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [rateLimitUntil, setRateLimitUntil] = useState(null);
+  const [countdownNow, setCountdownNow] = useState(0);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+
+  useEffect(() => {
+    if (!rateLimitUntil) return;
+
+    const interval = window.setInterval(() => {
+      setCountdownNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [rateLimitUntil]);
+
+  const getCountdownLabel = () => {
+    if (!rateLimitUntil) return '';
+
+    const remainingMs = Math.max(0, rateLimitUntil - countdownNow);
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    if (totalSeconds <= 0) {
+      return '';
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const countdownLabel = getCountdownLabel();
+  const isRateLimited = !!rateLimitUntil && Date.now() < rateLimitUntil;
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -42,6 +71,16 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (rateLimitUntil && Date.now() >= rateLimitUntil) {
+      setRateLimitUntil(null);
+      setError('');
+    }
+
+    if (rateLimitUntil && Date.now() < rateLimitUntil) {
+      setError(`Too many failed login attempts. Try again in ${countdownLabel || '00:00'}.`);
+      return;
+    }
 
     if (!formData.email || !formData.password) {
       setError(t('adminErrorRequired'));
@@ -64,6 +103,22 @@ export default function AdminLoginPage() {
 
       navigate('/admin-dashboard', { replace: true });
     } catch (loginError) {
+      if (loginError?.status === 429) {
+        const defaultRetryMs = 30 * 60 * 1000;
+        const retryMs = Number.isFinite(loginError?.retryAfterMs) ? loginError.retryAfterMs : defaultRetryMs;
+        const until = Date.now() + retryMs;
+        setRateLimitUntil(until);
+        setCountdownNow(Date.now());
+
+        const initialSeconds = Math.ceil(retryMs / 1000);
+        const initialMinutes = Math.floor(initialSeconds / 60);
+        const initialRemainder = initialSeconds % 60;
+        const initialLabel = `${String(initialMinutes).padStart(2, '0')}:${String(initialRemainder).padStart(2, '0')}`;
+
+        setError(`Too many failed login attempts. Try again in ${initialLabel}.`);
+        return;
+      }
+
       setError(loginError.message || t('adminErrorInvalidCredentials'));
     } finally {
       setLoading(false);
@@ -144,9 +199,13 @@ export default function AdminLoginPage() {
               </p>
             )}
 
+            {isRateLimited && countdownLabel && (
+              <p className="text-sm text-red-200">Try again in {countdownLabel}</p>
+            )}
+
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || isRateLimited}
               className="h-11 w-full rounded-xl bg-cyan-400 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-900/40 disabled:text-slate-400"
             >
               {loading ? t('adminSigningIn') : t('adminSignInButton')}

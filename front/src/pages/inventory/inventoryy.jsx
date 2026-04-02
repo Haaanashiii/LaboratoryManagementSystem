@@ -19,6 +19,7 @@ const conditions = ['Excellent', 'Good', 'Fair', 'Needs Maintenance'];
 
 export default function Inventory() {
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
@@ -78,6 +79,31 @@ export default function Inventory() {
     item.category?.toLowerCase().includes(search.toLowerCase()) ||
     item.location?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const groupedEquipment = filteredEquipment.reduce((acc, item) => {
+    const categoryName = item.category || 'Other';
+    if (!acc[categoryName]) {
+      acc[categoryName] = [];
+    }
+    acc[categoryName].push(item);
+    return acc;
+  }, {});
+
+  const orderedCategories = [
+    ...categories.filter((category) => groupedEquipment[category]?.length),
+    ...Object.keys(groupedEquipment)
+      .filter((category) => !categories.includes(category))
+      .sort((a, b) => a.localeCompare(b)),
+  ];
+
+  const categoryCounts = orderedCategories.reduce((acc, category) => {
+    acc[category] = groupedEquipment[category]?.length || 0;
+    return acc;
+  }, {});
+
+  const visibleCategories = activeCategory === 'all'
+    ? orderedCategories
+    : orderedCategories.filter((category) => category === activeCategory);
 
   const openAddDialog = () => {
     setEditingItem(null);
@@ -196,6 +222,46 @@ export default function Inventory() {
         )}
       </div>
 
+      {/* Category Pills */}
+      <div className="mb-5 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => setActiveCategory('all')}
+          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
+            activeCategory === 'all'
+              ? 'border-blue-300 bg-blue-50 text-blue-700'
+              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          All
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+            activeCategory === 'all' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700'
+          }`}>
+            {filteredEquipment.length}
+          </span>
+        </button>
+
+        {orderedCategories.map((category) => (
+          <button
+            key={category}
+            type="button"
+            onClick={() => setActiveCategory(category)}
+            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeCategory === category
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            {category}
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              activeCategory === category ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {categoryCounts[category]}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Equipment Table */}
       <Card className="border-0 shadow-sm overflow-hidden">
         <CardContent className="p-0">
@@ -230,59 +296,84 @@ export default function Inventory() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEquipment.map((item) => (
-                    <TableRow key={item.id} className="hover:bg-slate-50/50">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                            {item.image_url ? (
-                              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                            ) : (
-                              <Package className="w-5 h-5 text-slate-400" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium text-slate-900">{item.name}</p>
-                            {item.description && (
-                              <p className="text-xs text-slate-400 line-clamp-1">{item.description}</p>
-                            )}
-                          </div>
-                        </div>
+                  {filteredEquipment.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={canEdit ? 7 : 6} className="py-10 text-center text-slate-500">
+                        No equipment found for the current search.
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{item.category}</Badge>
-                      </TableCell>
-                      <TableCell className="text-slate-600">{item.location || '-'}</TableCell>
-                      <TableCell className="text-center font-medium">{item.total_quantity}</TableCell>
-                      <TableCell className="text-center">
-                        <span className={item.available_quantity > 0 ? 'text-blue-600 font-medium' : 'text-red-600 font-medium'}>
-                          {item.available_quantity}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={
-                          item.condition === 'Excellent' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                          item.condition === 'Good' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                          item.condition === 'Fair' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                          'bg-red-100 text-red-800 border-red-200'
-                        }>
-                          {item.condition}
-                        </Badge>
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)}>
-                              <Pencil className="w-4 h-4 text-slate-400" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteItem(item)}>
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
                     </TableRow>
-                  ))}
+                  ) : (
+                    visibleCategories.map((category) => (
+                      <React.Fragment key={category}>
+                        <TableRow className="bg-slate-50/80">
+                          <TableCell colSpan={canEdit ? 7 : 6} className="py-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                {category}
+                              </p>
+                              <Badge variant="secondary" className="text-xs">
+                                {groupedEquipment[category].length}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+
+                        {groupedEquipment[category].map((item) => (
+                          <TableRow key={item.id} className="hover:bg-slate-50/50">
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                  {item.image_url ? (
+                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                                  ) : (
+                                    <Package className="w-5 h-5 text-slate-400" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900">{item.name}</p>
+                                  {item.description && (
+                                    <p className="text-xs text-slate-400 line-clamp-1">{item.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{item.category}</Badge>
+                            </TableCell>
+                            <TableCell className="text-slate-600">{item.location || '-'}</TableCell>
+                            <TableCell className="text-center font-medium">{item.total_quantity}</TableCell>
+                            <TableCell className="text-center">
+                              <span className={item.available_quantity > 0 ? 'text-blue-600 font-medium' : 'text-red-600 font-medium'}>
+                                {item.available_quantity}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={
+                                item.condition === 'Excellent' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                item.condition === 'Good' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                item.condition === 'Fair' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                'bg-red-100 text-red-800 border-red-200'
+                              }>
+                                {item.condition}
+                              </Badge>
+                            </TableCell>
+                            {canEdit && (
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)}>
+                                    <Pencil className="w-4 h-4 text-slate-400" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => setDeleteItem(item)}>
+                                    <Trash2 className="w-4 h-4 text-red-400" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </React.Fragment>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
