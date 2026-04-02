@@ -43,6 +43,28 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const { isDark } = useTheme();
 
+  React.useEffect(() => {
+    const el = document.querySelector('main');
+    if (!el) return;
+    const prev = el.style.overflowY;
+    const apply = () => {
+      if (window.innerWidth >= 1024) {
+        el.style.overflowY = 'hidden';
+        document.body.style.overflowY = 'hidden';
+      } else {
+        el.style.overflowY = prev;
+        document.body.style.overflowY = '';
+      }
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => {
+      window.removeEventListener('resize', apply);
+      el.style.overflowY = prev;
+      document.body.style.overflowY = '';
+    };
+  }, []);
+
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword]         = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -127,7 +149,7 @@ export default function ProfilePage() {
   const initials = (user?.name || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   return (
-    <div className={`min-h-screen pb-16 overflow-x-hidden overflow-y-auto ${isDark ? 'bg-slate-950 pf-dark' : 'bg-slate-200/70'}`}>
+    <div className={`min-h-screen pb-16 overflow-x-hidden overflow-y-hidden ${isDark ? 'bg-slate-950 pf-dark' : 'bg-slate-200/70'}`}>
       <style>{profileStyles}</style>
 
       {/* ── HERO BANNER ── */}

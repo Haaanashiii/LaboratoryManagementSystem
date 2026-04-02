@@ -74,6 +74,28 @@ export default function Settings() {
   const { isDark, toggle: toggleTheme } = useTheme();
   const { logout } = useAuth();
 
+  React.useEffect(() => {
+    const el = document.querySelector('main');
+    if (!el) return;
+    const prev = el.style.overflowY;
+    const apply = () => {
+      if (window.innerWidth >= 1024) {
+        el.style.overflowY = 'hidden';
+        document.body.style.overflowY = 'hidden';
+      } else {
+        el.style.overflowY = prev;
+        document.body.style.overflowY = '';
+      }
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => {
+      window.removeEventListener('resize', apply);
+      el.style.overflowY = prev;
+      document.body.style.overflowY = '';
+    };
+  }, []);
+
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.auth.me(),
@@ -106,7 +128,7 @@ export default function Settings() {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-slate-950 st-dark' : 'bg-slate-50'} pb-12`}>
+    <div className={`min-h-screen overflow-y-hidden ${isDark ? 'bg-slate-950 st-dark' : 'bg-slate-50'} pb-12`}>
       <style>{settingsStyles}</style>
 
       {/* ── PAGE HEADER BANNER ── */}
