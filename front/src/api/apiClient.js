@@ -371,6 +371,17 @@ export const api = {
         id: data.data?._id || data.data?.id,
         isRead: Boolean(data.data?.isRead)
       };
+    },
+    markAsUnread: async (id) => {
+      const data = await request(`/notifications/${id}/unread`, {
+        method: 'PUT'
+      });
+
+      return {
+        ...data.data,
+        id: data.data?._id || data.data?.id,
+        isRead: Boolean(data.data?.isRead)
+      };
     }
   },
 
