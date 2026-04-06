@@ -35,15 +35,14 @@ const menuConfig = {
     { label: 'dashboard', icon: Home, href: '/dashboard' },
     { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.lecturer },
     { label: 'pendingApprovals', icon: CheckSquare, href: '/lecturer-approvals' },
-    { label: 'approvalHistory', icon: History, href: '/approval-history' },
-    { label: 'allRequests', icon: BarChart3, href: '/all-approval-history' },
+    { label: 'approvalHistory', icon: History, href: '/lecturer-approval-history' },
   ],
   head_of_lab: [
     { label: 'dashboard', icon: Home, href: '/dashboard' },
     { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.head_of_lab },
     { label: 'finalApprovals', icon: CheckCircle, href: '/head-approvals' },
     { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
-    { label: 'approvalHistory', icon: History, href: '/all-approval-history' },
+    { label: 'approvalHistory', icon: History, href: '/head-approval-history' },
     { label: 'inventory', icon: Package, href: '/inventory' },
   ],
   lab_assistant: [
@@ -93,7 +92,7 @@ export default function Sidebar({ user, currentPage, isOpen, onClose, collapsed 
               </div>
               {!collapsed && (
                 <div>
-                  <h1 className="font-bold text-lg text-slate-900">EquiMon</h1>
+                  <h1 className="font-bold text-lg text-slate-900">Equimon</h1>
                   <p className="text-xs text-slate-500">{t('appSubtitle')}</p>
                 </div>
               )}

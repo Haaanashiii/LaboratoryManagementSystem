@@ -1,11 +1,11 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import StudentDashboard from './dashboards/StudentDashboard';
-import LecturerDashboard from './dashboards/LecturerDashboard';
-import HeadDashboard from './dashboards/HeadDashboard';
-import LabAssistantDashboard from './dashboards/LabAssistantDashboard';
-import AdminDashboard from './dashboards/AdminDashboard';
+import StudentDashboard from './StudentDashboard';
+import LecturerDashboard from './LecturerDashboard';
+import HeadDashboard from './HeadDashboard';
+import LabAssistantDashboard from './LabAssistantDashboard';
+import AdminDashboard from './AdminDashboard';
 import BanterLoader from '@/components/ui/BanterLoader';
 
 export default function Dashboard() {

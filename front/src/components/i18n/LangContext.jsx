@@ -19,7 +19,7 @@ const translations = {
     myHistory: 'My History',
     finalApprovals: 'Final Approvals',
     labEquipment: 'Lab Equipment',
-    equipmentPrep: 'Equipment Prep',
+    equipmentPrep: 'Equipment Preparation',
     returns: 'Returns',
     equipmentCatalog: 'Equipment Catalog',
     myRequests: 'My Requests',

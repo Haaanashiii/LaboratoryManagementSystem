@@ -11,10 +11,10 @@ import { format } from 'date-fns';
 
 const STATUS_TABS = [
   { key: 'all', label: 'All Requests', statuses: null },
-  { key: 'pending', label: 'Pending', statuses: ['pending_lecturer', 'pending_head'] },
-  { key: 'approved', label: 'Approved', statuses: ['approved', 'ready_pickup', 'borrowed'] },
-  { key: 'returned', label: 'Returned', statuses: ['returned'] },
-  { key: 'rejected', label: 'Rejected', statuses: ['rejected'] },
+  { key: 'pending', label: 'Pending', statuses: ['Pending Lecturer', 'Pending Head'] },
+  { key: 'approved', label: 'Approved', statuses: ['Approved', 'Ready for pickup', 'Borrowed'] },
+  { key: 'returned', label: 'Returned', statuses: ['Returned'] },
+  { key: 'rejected', label: 'Rejected', statuses: ['Rejected'] },
 ];
 
 export default function AllRequests() {

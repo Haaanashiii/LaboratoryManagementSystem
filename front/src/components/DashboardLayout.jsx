@@ -54,8 +54,7 @@ const navigationConfig = {
     { name: 'dashboard', href: '/dashboard', icon: Home },
     { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.lecturer, icon: Package },
     { name: 'pendingApprovals', href: '/lecturer-approvals', icon: CheckSquare },
-    { name: 'approvalHistory', href: '/approval-history', icon: History },
-    { name: 'allRequests', href: '/all-approval-history', icon: BarChart3 },
+    { name: 'approvalHistory', href: '/lecturer-approval-history', icon: History },
   ],
   
   head_of_lab: [
@@ -63,7 +62,7 @@ const navigationConfig = {
     { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.head_of_lab, icon: Package },
     { name: 'finalApprovals', href: '/head-approvals', icon: CheckCircle },
     { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
-    { name: 'approvalHistory', href: '/all-approval-history', icon: History },
+    { name: 'approvalHistory', href: '/head-approval-history', icon: History },
     { name: 'inventory', href: '/inventory', icon: Package },
   ],
   

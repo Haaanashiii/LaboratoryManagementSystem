@@ -81,7 +81,7 @@ export default function ApprovalHistory() {
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['myRequests'],
     queryFn: () => api.entities.BorrowRequest.myRequests(),
-    enabled: !!user
+    enabled: !!user && user.role === 'student',
   });
 
   const activeFilter = STATUS_FILTERS.find(f => f.key === statusFilter) || STATUS_FILTERS[0];
