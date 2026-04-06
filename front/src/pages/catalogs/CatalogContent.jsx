@@ -185,6 +185,7 @@ export default function CatalogContent({
   userRole,
   onSelect,
   onBorrow,
+  pendingEquipmentIds,
   variant = 'default',
   isDark = false,
 }) {
@@ -416,7 +417,7 @@ export default function CatalogContent({
                     {groupedEquipment[cat].map((item, index) => (
                       <div
                         key={item.id}
-                        className="card-in"
+                        className="card-in h-full"
                         style={{ animationDelay: `${0.05 + (sectionIndex * 10 + index) * 0.03}s` }}
                       >
                         <EquipmentCard
@@ -426,6 +427,7 @@ export default function CatalogContent({
                           userRole={userRole}
                           variant={variant}
                           isDark={isDark}
+                          isPending={pendingEquipmentIds?.has(item._id || item.id)}
                         />
                       </div>
                     ))}
@@ -438,7 +440,7 @@ export default function CatalogContent({
               {filteredEquipment.map((item, index) => (
                 <div
                   key={item.id}
-                  className="card-in"
+                  className="card-in h-full"
                   style={{ animationDelay: `${0.05 + index * 0.03}s` }}
                 >
                   <EquipmentCard
@@ -448,6 +450,7 @@ export default function CatalogContent({
                     userRole={userRole}
                     variant={variant}
                     isDark={isDark}
+                    isPending={pendingEquipmentIds?.has(item._id || item.id)}
                   />
                 </div>
               ))}

@@ -116,6 +116,7 @@ const cardStyles = `
     transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     position: relative;
     overflow: hidden;
+    height: 100%;
   }
 
   /* ── Default (Student) card — light ── */
@@ -320,18 +321,19 @@ const cardStyles = `
   }
 `;
 
-export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole, variant = 'default' }) {
+export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole, isPending = false, variant = 'default' }) {
   const { isDark } = useTheme();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const isLecturer = variant === 'lecturer';
 
   const handleClick = () => {
     if (onSelect) onSelect(equipment);
-    else if (onBorrow) onBorrow(equipment);
+    else if (onBorrow && !isPending) onBorrow(equipment);
   };
 
   const handleViewAndBorrowClick = (e) => {
     e.stopPropagation();
+    if (isPending) return;
     if (onBorrow) onBorrow(equipment);
     else if (onSelect) onSelect(equipment);
   };
@@ -482,7 +484,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
               >
                 View details
               </button>
-              {onBorrow ? (
+              {onBorrow && !isPending ? (
                 <button
                   onClick={handleViewAndBorrowClick}
                   className="eq-action-btn eq-action-secondary"
@@ -490,6 +492,11 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
                 >
                   Request for class
                 </button>
+              ) : isPending ? (
+                <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#f59e0b' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Pending
+                </div>
               ) : (
                 <span className="eq-action-meta">Request for class in approvals</span>
               )}
@@ -563,9 +570,9 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
           {/* Title + description */}
           <div>
             <h3 className="eq-card-name line-clamp-1 mb-1">{equipment.name}</h3>
-            {equipment.description && (
-              <p className="eq-card-desc line-clamp-2">{equipment.description}</p>
-            )}
+            <p className="eq-card-desc line-clamp-2" style={{ minHeight: '2.5em' }}>
+              {equipment.description || ''}
+            </p>
           </div>
 
           {/* Quantity chips */}
@@ -598,16 +605,25 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
 
           {/* Borrow button */}
           {canBorrow && (
-            <button
-              onClick={handleViewAndBorrowClick}
-              disabled={available === 0}
-              className="learn-more-card-btn mt-1 w-full"
-            >
-              <span className="circle" aria-hidden="true">
-                <span className="icon arrow"></span>
-              </span>
-              <span className="button-text">View & Borrow</span>
-            </button>
+            isPending ? (
+              <div className="mt-1 w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-semibold cursor-not-allowed"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#f59e0b' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                Borrow Pending
+              </div>
+            ) : (
+              <button
+                onClick={handleViewAndBorrowClick}
+                disabled={available === 0}
+                className="learn-more-card-btn mt-1 w-full"
+              >
+                <span className="circle" aria-hidden="true">
+                  <span className="icon arrow"></span>
+                </span>
+                <span className="button-text">View & Borrow</span>
+              </button>
+            )
           )}
           
         </div>

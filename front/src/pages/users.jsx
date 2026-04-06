@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle } from 'lucide-react';
+import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 
 const roles = [
@@ -21,6 +21,7 @@ const roles = [
 ];
 
 const STAFF_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
+const PAGE_SIZE = 10;
 
 const getAllowedDomainForRole = (role) => {
   return role === 'student' ? 'student.its.ac.id' : 'its.ac.id';
@@ -65,6 +66,7 @@ export default function Users() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [editForm, setEditForm] = useState({
     name: '',
     role: 'student',
@@ -133,6 +135,8 @@ export default function Users() {
     }
   });
 
+  useEffect(() => { setCurrentPage(1); }, [search, activeRole]);
+
   const filteredUsers = users.filter(user =>
     user.name?.toLowerCase().includes(search.toLowerCase()) ||
     user.email?.toLowerCase().includes(search.toLowerCase())
@@ -154,7 +158,8 @@ export default function Users() {
 
   const activeRoleConfig = activeRole ? getRoleConfig(activeRole) : null;
   const displayedUsers = activeRole ? (filteredUsersByRole[activeRole] || []) : filteredUsers;
-  const shouldScrollTable = displayedUsers.length >= 5;
+  const totalPages = Math.max(1, Math.ceil(displayedUsers.length / PAGE_SIZE));
+  const paginatedUsers = displayedUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const inviteValidation = validateRoleEmailDomain(inviteEmail, inviteRole);
   const addValidation = validateRoleEmailDomain(addForm.email, addForm.role);
 
@@ -336,7 +341,7 @@ export default function Users() {
               </p>
             </div>
           ) : (
-            <div className={`overflow-x-auto ${shouldScrollTable ? 'max-h-[460px] overflow-y-auto' : ''}`}>
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
@@ -362,7 +367,7 @@ export default function Users() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    displayedUsers.map((user) => {
+                    paginatedUsers.map((user) => {
                       const roleConfig = getRoleConfig(user.role);
                       const initials = (user.name || 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
                       const statusClass =
@@ -423,6 +428,44 @@ export default function Users() {
                   )}
                 </TableBody>
               </Table>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                  <p className="text-xs text-slate-500">
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedUsers.length)} of {displayedUsers.length} users
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size="icon"
+                        className={`h-7 w-7 text-xs ${currentPage === page ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
