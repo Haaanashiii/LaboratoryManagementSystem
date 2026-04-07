@@ -8,18 +8,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, FileText, Clock3, CheckCircle2, RotateCcw } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
-
-const STATUS_TABS = [
-  { key: 'all', label: 'All Requests', statuses: null },
-  { key: 'pending', label: 'Pending', statuses: ['Pending Lecturer', 'Pending Head'] },
-  { key: 'approved', label: 'Approved', statuses: ['Approved', 'Ready for pickup', 'Borrowed'] },
-  { key: 'returned', label: 'Returned', statuses: ['Returned'] },
-  { key: 'rejected', label: 'Rejected', statuses: ['Rejected'] },
-];
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function AllRequests() {
+  const { t } = useLang();
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState('all');
+
+  const STATUS_TABS = [
+    { key: 'all', label: t('allRequests'), statuses: null },
+    { key: 'pending', label: t('pendingRequests'), statuses: ['Pending Lecturer', 'Pending Head'] },
+    { key: 'approved', label: t('approved'), statuses: ['Approved', 'Ready for pickup', 'Borrowed'] },
+    { key: 'returned', label: t('returned'), statuses: ['Returned'] },
+    { key: 'rejected', label: t('rejected'), statuses: ['Rejected'] },
+  ];
 
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['allRequests'],
@@ -63,8 +65,8 @@ export default function AllRequests() {
     return (
       <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">All Requests</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Complete list of all equipment borrowing requests.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('allRequests')}</h1>
+          <p className="mt-0.5 text-sm text-slate-500">{t('allRequestsDesc')}</p>
         </div>
         <hr className="border-slate-200" />
         <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg">
@@ -72,9 +74,9 @@ export default function AllRequests() {
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
               <FileText className="w-6 h-6 text-red-500" />
             </div>
-            <p className="text-sm font-medium text-slate-900">Unable to load requests</p>
+            <p className="text-sm font-medium text-slate-900">{t('unableLoadRequests')}</p>
             <p className="text-xs text-slate-500 max-w-sm">
-              {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+              {error?.message || t('failedConnectServer')}
             </p>
           </div>
         </div>
@@ -87,8 +89,8 @@ export default function AllRequests() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">All Requests</h1>
-        <p className="mt-0.5 text-sm text-slate-500">Complete list of all equipment borrowing requests.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">{t('allRequests')}</h1>
+        <p className="mt-0.5 text-sm text-slate-500">{t('allRequestsDesc')}</p>
       </div>
 
       <hr className="border-slate-200" />
@@ -98,7 +100,7 @@ export default function AllRequests() {
         <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3">
           <div className="flex items-center gap-2 text-amber-700">
             <Clock3 className="w-4 h-4" />
-            <p className="text-xs font-semibold uppercase tracking-wide">Pending Queue</p>
+            <p className="text-xs font-semibold uppercase tracking-wide">{t('pendingQueue')}</p>
           </div>
           <p className="mt-1 text-2xl font-bold text-amber-900">{pendingCount}</p>
         </div>
@@ -106,7 +108,7 @@ export default function AllRequests() {
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3">
           <div className="flex items-center gap-2 text-blue-700">
             <CheckCircle2 className="w-4 h-4" />
-            <p className="text-xs font-semibold uppercase tracking-wide">Approved Flow</p>
+            <p className="text-xs font-semibold uppercase tracking-wide">{t('approvedFlow')}</p>
           </div>
           <p className="mt-1 text-2xl font-bold text-blue-900">{approvedCount}</p>
         </div>
@@ -114,7 +116,7 @@ export default function AllRequests() {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
           <div className="flex items-center gap-2 text-emerald-700">
             <RotateCcw className="w-4 h-4" />
-            <p className="text-xs font-semibold uppercase tracking-wide">Returned</p>
+            <p className="text-xs font-semibold uppercase tracking-wide">{t('returned')}</p>
           </div>
           <p className="mt-1 text-2xl font-bold text-emerald-900">{returnedCount}</p>
         </div>
@@ -147,7 +149,7 @@ export default function AllRequests() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
           <Input
-            placeholder="Search by equipment or borrower..."
+            placeholder={t('searchByEquipmentOrBorrower')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 bg-white border-slate-200"
@@ -158,19 +160,19 @@ export default function AllRequests() {
       {/* Table */}
       <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/70">
-          <p className="text-sm font-medium text-slate-700">Showing {filteredRequests.length} requests</p>
+          <p className="text-sm font-medium text-slate-700">{t('showingRequests')}: {filteredRequests.length}</p>
           <Badge variant="secondary" className="text-xs">{selectedTab.label}</Badge>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-slate-100">
-                <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Borrower</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Return Date</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Created</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('borrowDate')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('returnDate')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('created')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,8 +181,8 @@ export default function AllRequests() {
                   <TableCell colSpan={6} className="py-20">
                     <div className="text-center">
                       <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-sm font-medium text-slate-600">No requests found</p>
-                      <p className="text-xs text-slate-400">Try adjusting your search or filter.</p>
+                      <p className="text-sm font-medium text-slate-600">{t('noRequestsFound')}</p>
+                      <p className="text-xs text-slate-400">{t('adjustSearchOrFilter')}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -189,7 +191,7 @@ export default function AllRequests() {
                   <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50">
                     <TableCell>
                       <p className="text-sm font-medium text-slate-800">{request.equipment_name}</p>
-                      <p className="text-xs text-slate-400">Qty: {request.quantity}</p>
+                      <p className="text-xs text-slate-400">{t('qty')}: {request.quantity}</p>
                     </TableCell>
                     <TableCell>
                       <p className="text-sm font-medium text-slate-800">{request.borrower_name}</p>

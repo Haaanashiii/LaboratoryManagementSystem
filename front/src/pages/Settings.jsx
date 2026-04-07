@@ -118,13 +118,13 @@ export default function Settings() {
 
   const roleLabel = (role) => {
     const map = {
-      student: 'Student',
-      admin: 'Administrator',
-      lecturer: 'Lecturer',
-      head_of_lab: 'Head of Lab',
-      lab_assistant: 'Lab Assistant',
+      student: t('student'),
+      admin: t('administrator'),
+      lecturer: t('lecturer'),
+      head_of_lab: t('head_of_lab'),
+      lab_assistant: t('lab_assistant'),
     };
-    return map[role] || role?.replace(/_/g, ' ') || 'User';
+    return map[role] || role?.replace(/_/g, ' ') || t('user');
   };
 
   return (
@@ -148,10 +148,10 @@ export default function Settings() {
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-widest mb-1 text-blue-200">Account Settings</p>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-1 text-blue-200">{t('accountSettings')}</p>
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h1 className="text-2xl sm:text-3xl font-bold text-white">
-                  {user?.name || 'User'}
+                  {user?.name || t('user')}
                 </h1>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 border border-white/30 text-white">
                   {roleLabel(user?.role)}
@@ -171,7 +171,7 @@ export default function Settings() {
               variant="ghost"
             >
               <Edit className="w-3.5 h-3.5" />
-              Edit Profile
+              {t('editProfile')}
             </Button>
           </div>
         </div>
@@ -189,8 +189,8 @@ export default function Settings() {
           isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white border-slate-200'
         }`}>
           <div className={`px-6 py-4 border-b ${isDark ? 'border-white/[0.08]' : 'border-slate-100'}`}>
-            <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Preferences</h2>
-            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Personalize how the app looks and behaves.</p>
+            <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{t('preferences')}</h2>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{t('personalizeApp')}</p>
           </div>
 
           {/* Dark mode toggle */}
@@ -200,8 +200,8 @@ export default function Settings() {
                 <Moon className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-slate-500'}`} />
               </div>
               <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Dark Mode</p>
-                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Switch between light and dark theme</p>
+                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{t('darkMode')}</p>
+                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('switchTheme')}</p>
               </div>
             </div>
             <button
@@ -225,9 +225,9 @@ export default function Settings() {
                 <Globe className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
               </div>
               <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Language</p>
+                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{t('language')}</p>
                 <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Currently: <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{lang === 'en' ? 'English' : 'Indonesian'}</span>
+                  {t('currently')} <span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{lang === 'en' ? t('langEnglish') : t('langIndonesian')}</span>
                 </p>
               </div>
             </div>
@@ -239,7 +239,7 @@ export default function Settings() {
                   : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              {lang === 'en' ? 'Switch to ID' : 'Switch to EN'}
+              {lang === 'en' ? t('switchToID') : t('switchToEN')}
             </button>
           </div>
         </div>
@@ -249,8 +249,8 @@ export default function Settings() {
           isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white border-slate-200'
         }`}>
           <div className={`px-6 py-4 border-b ${isDark ? 'border-white/[0.08]' : 'border-slate-100'}`}>
-            <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Account</h2>
-            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Manage your account details and security.</p>
+            <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{t('account')}</h2>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{t('manageAccountDetails')}</p>
           </div>
 
           {/* Profile Information — expanded card */}
@@ -265,9 +265,9 @@ export default function Settings() {
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{user?.name || 'User'}</p>
+              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{user?.name || t('user')}</p>
               <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user?.email || '—'}</p>
-              <p className={`text-[11px] mt-1 font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Tap to edit your profile →</p>
+              <p className={`text-[11px] mt-1 font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('tapToEditProfile')} →</p>
             </div>
             <ChevronRight className={`w-4 h-4 shrink-0 transition-colors ${isDark ? 'text-slate-600 group-hover:text-slate-400' : 'text-slate-300 group-hover:text-slate-500'}`} />
           </div>
@@ -280,8 +280,8 @@ export default function Settings() {
               <Bell className={`w-4 h-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Notifications</p>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Control how you receive alerts and updates</p>
+              <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{t('notifications')}</p>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('controlAlertsUpdates')}</p>
             </div>
             <ChevronRight className={`w-4 h-4 shrink-0 transition-colors ${isDark ? 'text-slate-600 group-hover:text-slate-400' : 'text-slate-300 group-hover:text-slate-500'}`} />
           </div>
@@ -295,17 +295,17 @@ export default function Settings() {
             <div className={`px-6 py-4 border-b ${isDark ? 'border-amber-800/30' : 'border-amber-200'}`}>
               <div className="flex items-center gap-2">
                 <Wrench className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-                <h2 className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Admin Controls</h2>
+                <h2 className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{t('adminControls')}</h2>
               </div>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-500' : 'text-amber-600'}`}>These settings are only visible to administrators.</p>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-500' : 'text-amber-600'}`}>{t('adminOnlySettings')}</p>
             </div>
 
             <div className="px-6 py-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>Maintenance Mode</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>{t('maintenanceMode')}</p>
                   <p className={`text-xs mt-1 max-w-xs ${isDark ? 'text-amber-500' : 'text-amber-700'}`}>
-                    When enabled, only authenticated admins can access the system.
+                    {t('maintenanceModeDesc')}
                   </p>
                 </div>
 
@@ -329,7 +329,7 @@ export default function Settings() {
                     />
                   </span>
                   <span className={`text-sm font-semibold ${maintenanceData?.maintenanceMode ? (isDark ? 'text-amber-300' : 'text-amber-700') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
-                    {maintenanceData?.maintenanceMode ? 'ON' : 'OFF'}
+                    {maintenanceData?.maintenanceMode ? t('on') : t('off')}
                   </span>
                 </label>
               </div>
@@ -337,7 +337,7 @@ export default function Settings() {
               {toggleMaintenanceMutation.error && (
                 <div className={`mt-3 flex items-center gap-2 text-xs rounded-lg px-3 py-2 ${isDark ? 'bg-red-950/50 text-red-400' : 'bg-red-50 text-red-600'}`}>
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  {toggleMaintenanceMutation.error.message || 'Failed to update maintenance mode.'}
+                  {toggleMaintenanceMutation.error.message || t('failedUpdateMaintenanceMode')}
                 </div>
               )}
             </div>
@@ -361,12 +361,12 @@ export default function Settings() {
 
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Equimon</p>
+                <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{t('appName')}</p>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                   isDark ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-600 border-blue-100'
                 }`}>v1.0.0</span>
               </div>
-              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Laboratory Management System · San Miguel University</p>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('versionTagline')} · San Miguel University</p>
               <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Built with React · Node.js · MongoDB</p>
             </div>
 
@@ -391,8 +391,8 @@ export default function Settings() {
               <LogOut className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <p className="font-semibold">Sign out</p>
-              <p className={`text-[11px] mt-0.5 font-normal ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>You will be returned to the login screen</p>
+              <p className="font-semibold">{t('signOut')}</p>
+              <p className={`text-[11px] mt-0.5 font-normal ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('returnToLogin')}</p>
             </div>
           </button>
         </div>
@@ -403,7 +403,7 @@ export default function Settings() {
 
         {/* ── VERSION FOOTER ── */}
         <p className={`st-fade-up st-fade-up-7 text-center text-xs pb-2 mt-5 ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
-          Equimon Laboratory Management System · v1.0.0
+          {t('appName')} {t('versionTagline')} · v1.0.0
         </p>
       </div>
     </div>

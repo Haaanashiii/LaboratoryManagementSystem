@@ -11,13 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
+import { useLang } from '@/components/i18n/LangContext';
 
 const roles = [
-  { value: 'student',      label: 'Student',       color: 'bg-blue-50 text-blue-700 border-blue-200',    dot: '#3b82f6', icon: GraduationCap },
-  { value: 'lecturer',     label: 'Lecturer',      color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: UsersIcon },
-  { value: 'lab_assistant',label: 'Lab Assistant', color: 'bg-amber-50 text-amber-700 border-amber-200',  dot: '#f59e0b', icon: Cpu },
-  { value: 'head_of_lab',  label: 'Head of Lab',   color: 'bg-violet-50 text-violet-700 border-violet-200', dot: '#8b5cf6', icon: UserCog },
-  { value: 'admin',        label: 'Admin',          color: 'bg-red-50 text-red-700 border-red-200',       dot: '#ef4444', icon: ShieldCheck },
+  { value: 'student',      labelKey: 'student', color: 'bg-blue-50 text-blue-700 border-blue-200', dot: '#3b82f6', icon: GraduationCap },
+  { value: 'lecturer',     labelKey: 'lecturer', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: UsersIcon },
+  { value: 'lab_assistant',labelKey: 'lab_assistant', color: 'bg-amber-50 text-amber-700 border-amber-200', dot: '#f59e0b', icon: Cpu },
+  { value: 'head_of_lab',  labelKey: 'head_of_lab', color: 'bg-violet-50 text-violet-700 border-violet-200', dot: '#8b5cf6', icon: UserCog },
+  { value: 'admin',        labelKey: 'admin', color: 'bg-red-50 text-red-700 border-red-200', dot: '#ef4444', icon: ShieldCheck },
 ];
 
 const STAFF_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
@@ -60,6 +61,7 @@ const validateRoleEmailDomain = (email, role) => {
 };
 
 export default function Users() {
+  const { t } = useLang();
   const [search, setSearch] = useState('');
   const [activeRole, setActiveRole] = useState('');
   const [deletingUser, setDeletingUser] = useState(null);
@@ -157,6 +159,8 @@ export default function Users() {
     return roles.find(r => r.value === role) || roles.find(r => r.value === 'student');
   };
 
+  const getRoleLabel = (roleValue) => t(roleValue || 'student');
+
   const activeRoleConfig = activeRole ? getRoleConfig(activeRole) : null;
   const displayedUsers = activeRole ? (filteredUsersByRole[activeRole] || []) : filteredUsers;
   const totalPages = Math.max(1, Math.ceil(displayedUsers.length / PAGE_SIZE));
@@ -241,7 +245,7 @@ export default function Users() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">User Management</h1>
-          <p className="mt-0.5 text-sm text-slate-500">{users.length} total registered users</p>
+          <p className="mt-0.5 text-sm text-slate-500">{users.length} {t('totalRegisteredUsers')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -251,7 +255,7 @@ export default function Users() {
             onClick={() => setIsAddOpen(true)}
           >
             <UserPlus className="h-3.5 w-3.5" />
-            Add User
+            {t('addUser')}
           </Button>
           <Button
             size="sm"
@@ -259,7 +263,7 @@ export default function Users() {
             onClick={() => setIsInviteOpen(true)}
           >
             <Mail className="h-3.5 w-3.5" />
-            Invite
+            {t('invite')}
           </Button>
         </div>
       </div>
@@ -285,7 +289,7 @@ export default function Users() {
                 <RoleIcon className="h-4 w-4" style={isActive ? { color: role.dot } : { color: '#64748b' }} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-500 truncate">{role.label}</p>
+                <p className="text-xs text-slate-500 truncate">{getRoleLabel(role.value)}</p>
                 <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
               </div>
             </button>
@@ -302,7 +306,7 @@ export default function Users() {
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeRoleConfig.dot }} />
             )}
             <p className="text-sm font-medium text-slate-800">
-              {activeRoleConfig ? activeRoleConfig.label : 'All Users'}
+              {activeRoleConfig ? getRoleLabel(activeRoleConfig.value) : t('allUsers')}
             </p>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
               {displayedUsers.length}
@@ -312,14 +316,14 @@ export default function Users() {
                 onClick={() => setActiveRole('')}
                 className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
               >
-                Clear
+                {t('clear')}
               </button>
             )}
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search users..."
+              placeholder={t('searchUsers')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 pl-8 text-xs"
@@ -337,9 +341,9 @@ export default function Users() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <UserPlus className="h-5 w-5 text-red-400" />
               </div>
-              <p className="text-sm font-medium text-slate-800">Unable to load users</p>
+              <p className="text-sm font-medium text-slate-800">{t('unableLoadUsers')}</p>
               <p className="max-w-xs text-center text-xs text-slate-500">
-                {error?.message || 'Failed to connect to the server.'}
+                {error?.message || t('failedConnectServer')}
               </p>
             </div>
           ) : (
@@ -347,11 +351,11 @@ export default function Users() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">User</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Email</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Role</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-slate-500">Actions</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('user')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('email')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('role')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-slate-500">{t('action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -363,7 +367,7 @@ export default function Users() {
                             <UsersIcon className="h-4 w-4 text-slate-400" />
                           </div>
                           <p className="text-sm text-slate-500">
-                            {activeRoleConfig ? `No ${activeRoleConfig.label.toLowerCase()} users found` : 'No users found'}
+                            {t('noUsersFound')}
                           </p>
                         </div>
                       </TableCell>
@@ -395,7 +399,7 @@ export default function Users() {
                           <TableCell className="text-xs text-slate-500">{user.email}</TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${roleConfig.color}`}>
-                              {roleConfig.label}
+                              {getRoleLabel(roleConfig.value)}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -433,7 +437,7 @@ export default function Users() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
                   <p className="text-xs text-slate-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedUsers.length)} of {displayedUsers.length} users
+                    {t('showingUsers')}: {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedUsers.length)} {t('ofLabel')} {displayedUsers.length}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button
@@ -479,12 +483,12 @@ export default function Users() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Mail className="h-4 w-4 text-blue-500" />
-              Invite New User
+              {t('inviteNewUser')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Email Address</Label>
+              <Label className="text-xs font-medium text-slate-700">{t('emailAddress')}</Label>
               <Input
                 type="email"
                 value={inviteEmail}
@@ -497,31 +501,31 @@ export default function Users() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Role</Label>
+              <Label className="text-xs font-medium text-slate-700">{t('role')}</Label>
               <Select value={inviteRole} onValueChange={setInviteRole}>
                 <SelectTrigger className="h-9 text-sm bg-white text-slate-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white text-slate-900 border-slate-200">
                   {roles.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                    <SelectItem key={role.value} value={role.value}>{getRoleLabel(role.value)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-400">
-                Required domain: <span className="font-medium text-slate-600">@{getAllowedDomainForRole(inviteRole)}</span>
+                {t('requiredDomain')} <span className="font-medium text-slate-600">@{getAllowedDomainForRole(inviteRole)}</span>
               </p>
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(false)}>{t('cancel')}</Button>
             <Button
               size="sm"
               onClick={handleInvite}
               disabled={!inviteEmail || !inviteValidation.isValid || inviteMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {inviteMutation.isPending ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Sending…</> : 'Send Invite'}
+              {inviteMutation.isPending ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{t('sending')}</> : t('sendInvite')}
             </Button>
           </DialogFooter>
         </DialogContent>
