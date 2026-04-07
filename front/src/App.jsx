@@ -133,6 +133,7 @@ function App() {
               <Route path="catalog/admin" element={<AdminCatalog />} />
             </Route>
             <Route path="all-requests" element={<AllRequests />} />
+            <Route path="all-approval-history" element={<AllRequests />} />
             <Route path="functions-approval-history" element={<FunctionsApprovalHistory />} />
             
             {/* Inventory */}

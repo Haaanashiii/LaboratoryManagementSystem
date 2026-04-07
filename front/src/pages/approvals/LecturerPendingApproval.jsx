@@ -52,10 +52,11 @@ export default function LecturerApprovals() {
   };
 
   const handleSubmit = () => {
+    const normalizedRemarks = remarks.trim();
     actionMutation.mutate({
       id: selectedRequest.id,
       action: action,
-      remarks: remarks
+      remarks: normalizedRemarks
     });
   };
 
@@ -204,7 +205,7 @@ export default function LecturerApprovals() {
             <Button variant="outline" onClick={closeDialog}>{t('cancel')}</Button>
             <Button
               onClick={handleSubmit}
-              disabled={actionMutation.isPending || (action === 'reject' && !remarks)}
+              disabled={actionMutation.isPending || (action === 'reject' && !remarks.trim())}
               className={action === 'approve'
                 ? 'bg-slate-900 hover:bg-slate-700'
                 : 'bg-red-600 hover:bg-red-700'

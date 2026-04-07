@@ -1,10 +1,30 @@
 const User = require('../models/User');
+const { validatePasswordPolicy } = require('../utils/passwordPolicy');
 const {
   parseEmail,
   isDevBypassEmail,
   isAllowedRegistrationDomain,
   isAllowedDomainForRole
 } = require('../utils/emailPolicy');
+
+const DEFAULT_ADMIN_CREATED_PASSWORD = 'Default123';
+
+const isPasswordUsedByOtherUsers = async (password, excludeUserId = null) => {
+  const usersCursor = User.find({}, 'password').select('+password').cursor();
+
+  for await (const existingUser of usersCursor) {
+    if (excludeUserId && existingUser._id.toString() === String(excludeUserId)) {
+      continue;
+    }
+
+    const isReusedPassword = await existingUser.comparePassword(password);
+    if (isReusedPassword) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -99,10 +119,27 @@ exports.createUser = async (req, res, next) => {
       });
     }
 
+    const resolvedPassword = password || DEFAULT_ADMIN_CREATED_PASSWORD;
+    const policy = validatePasswordPolicy(resolvedPassword);
+    if (!policy.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: policy.errors[0]
+      });
+    }
+
+    const isPasswordReused = await isPasswordUsedByOtherUsers(resolvedPassword);
+    if (isPasswordReused) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is already used by another account. Please choose a more unique password.'
+      });
+    }
+
     // Create user
     const user = await User.create({
       email: parsedEmail.normalizedEmail,
-      password: password || 'default123', // Default password
+      password: resolvedPassword,
       name,
       role: normalizedRole,
       department,
@@ -148,7 +185,25 @@ exports.updateUser = async (req, res, next) => {
     if (user.role === 'admin' && req.user.role === 'admin' && nextRole === 'admin') {
       if (role) user.role = role;
       if (status) user.status = status;
-      if (password) user.password = password;
+      if (password) {
+        const policy = validatePasswordPolicy(password);
+        if (!policy.isValid) {
+          return res.status(400).json({
+            success: false,
+            message: policy.errors[0]
+          });
+        }
+
+        const isPasswordReused = await isPasswordUsedByOtherUsers(password, user._id);
+        if (isPasswordReused) {
+          return res.status(400).json({
+            success: false,
+            message: 'Password is already used by another account. Please choose a more unique password.'
+          });
+        }
+
+        user.password = password;
+      }
       await user.save();
 
       return res.json({
@@ -167,7 +222,25 @@ exports.updateUser = async (req, res, next) => {
     if (req.user.role === 'admin') {
       if (role) user.role = role;
       if (status) user.status = status;
-      if (password) user.password = password;
+      if (password) {
+        const policy = validatePasswordPolicy(password);
+        if (!policy.isValid) {
+          return res.status(400).json({
+            success: false,
+            message: policy.errors[0]
+          });
+        }
+
+        const isPasswordReused = await isPasswordUsedByOtherUsers(password, user._id);
+        if (isPasswordReused) {
+          return res.status(400).json({
+            success: false,
+            message: 'Password is already used by another account. Please choose a more unique password.'
+          });
+        }
+
+        user.password = password;
+      }
     }
 
     await user.save();

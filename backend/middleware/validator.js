@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require('express-validator');
+const { validatePasswordPolicy } = require('../utils/passwordPolicy');
 
 // Middleware to check validation results
 exports.validate = (req, res, next) => {
@@ -15,7 +16,13 @@ exports.validate = (req, res, next) => {
 // User validation rules
 exports.registerValidation = [
   body('email').isEmail().withMessage('Please provide a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('password').custom((value) => {
+    const policy = validatePasswordPolicy(value);
+    if (!policy.isValid) {
+      throw new Error(policy.errors[0]);
+    }
+    return true;
+  }),
   body('name').trim().notEmpty().withMessage('Name is required')
 ];
 

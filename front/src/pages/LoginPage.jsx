@@ -10,6 +10,58 @@ import { useAuth } from '@/components/hooks/useAuth.js';
 import BanterLoader from '@/components/ui/BanterLoader';
 
 const ADMIN_ACCESS_ROLES = ['lecturer', 'head', 'head_of_lab', 'lab_assistant', 'admin'];
+const MIN_SIGNUP_PASSWORD_LENGTH = 6;
+const MIN_SIGNUP_UNIQUE_CHARS = 5;
+
+const countUniqueChars = (value) => new Set(String(value || '')).size;
+
+const getSignupPasswordStrength = (password) => {
+  const value = String(password || '');
+  const checks = {
+    minLength: value.length >= MIN_SIGNUP_PASSWORD_LENGTH,
+    hasUppercase: /[A-Z]/.test(value),
+    uniqueChars: countUniqueChars(value) >= MIN_SIGNUP_UNIQUE_CHARS,
+    hasNumber: /\d/.test(value),
+    hasSymbol: /[^A-Za-z0-9]/.test(value),
+  };
+
+  const basePolicyMet = checks.minLength && checks.hasUppercase && checks.uniqueChars;
+  const score = Object.values(checks).filter(Boolean).length;
+
+  if (!value) {
+    return {
+      label: 'Enter password',
+      tone: 'slate',
+      segments: 0,
+      checks,
+    };
+  }
+
+  if (!basePolicyMet) {
+    return {
+      label: score <= 2 ? 'Weak' : 'Fair',
+      tone: 'red',
+      segments: score <= 2 ? 1 : 2,
+      checks,
+    };
+  }
+
+  if (checks.hasNumber && checks.hasSymbol) {
+    return {
+      label: 'Strong',
+      tone: 'emerald',
+      segments: 4,
+      checks,
+    };
+  }
+
+  return {
+    label: 'Medium',
+    tone: 'blue',
+    segments: 3,
+    checks,
+  };
+};
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -33,6 +85,17 @@ export default function LoginPage() {
   const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [signupErrors, setSignupErrors] = useState({});
   const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const passwordStrength = getSignupPasswordStrength(signupForm.password);
+
+  const openSignupModal = () => {
+    setSignupStep(0);
+    setShowSignup(true);
+  };
+
+  const closeSignupModal = () => {
+    setShowSignup(false);
+    setSignupStep(0);
+  };
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -44,10 +107,9 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, isLoading, navigate, user]);
 
-  // Lock body scroll when signup modal is open; reset step on close
+  // Lock body scroll when signup modal is open.
   useEffect(() => {
     document.body.style.overflow = showSignup ? 'hidden' : '';
-    if (!showSignup) setSignupStep(0);
     return () => { document.body.style.overflow = ''; };
   }, [showSignup]);
 
@@ -106,7 +168,13 @@ export default function LoginPage() {
     if (!signupForm.email) newErrors.email = t('errorEmailRequired');
     else if (!/\S+@\S+\.\S+/.test(signupForm.email)) newErrors.email = t('errorEmailInvalid');
     if (!signupForm.password) newErrors.password = t('errorPasswordRequired');
-    else if (signupForm.password.length < 6) newErrors.password = t('errorPasswordLength');
+    else if (signupForm.password.length < MIN_SIGNUP_PASSWORD_LENGTH) {
+      newErrors.password = `Password must be at least ${MIN_SIGNUP_PASSWORD_LENGTH} characters.`;
+    } else if (!/[A-Z]/.test(signupForm.password)) {
+      newErrors.password = 'Password must include at least one uppercase letter.';
+    } else if (countUniqueChars(signupForm.password) < MIN_SIGNUP_UNIQUE_CHARS) {
+      newErrors.password = `Password must include at least ${MIN_SIGNUP_UNIQUE_CHARS} unique characters.`;
+    }
     if (!signupForm.confirmPassword) newErrors.confirmPassword = t('errorConfirmPassword');
     else if (signupForm.password !== signupForm.confirmPassword) newErrors.confirmPassword = t('errorPasswordMismatch');
     setSignupErrors(newErrors);
@@ -335,7 +403,7 @@ export default function LoginPage() {
             {/* Sign Up — opens sliding modal */}
             <button
               type="button"
-              onClick={() => setShowSignup(true)}
+              onClick={openSignupModal}
               className="w-full mt-3 py-3 h-12 rounded-xl font-semibold border-2 border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 transition-all duration-300"
             >
               {t('signUp')}
@@ -351,7 +419,7 @@ export default function LoginPage() {
         className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-500 ${
           showSignup ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
-        onClick={() => setShowSignup(false)}
+        onClick={closeSignupModal}
       />
 
       {/* Drawer — slides in from the right */}
@@ -364,7 +432,7 @@ export default function LoginPage() {
         <div className="relative w-full h-full overflow-hidden">
         {/* Close Button */}
         <button
-          onClick={() => setShowSignup(false)}
+          onClick={closeSignupModal}
           className="absolute top-6 right-6 text-slate-500 hover:text-slate-900 transition-colors p-1 rounded-lg hover:bg-slate-100 z-10"
           aria-label="Close sign-up"
         >
@@ -398,7 +466,7 @@ export default function LoginPage() {
             </Button>
             <button
               type="button"
-              onClick={() => setShowSignup(false)}
+              onClick={closeSignupModal}
               className="w-full mt-3 py-3 h-12 rounded-xl font-semibold border-2 border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 transition-all duration-300 animate-[fadeInUp_0.5s_ease_0.45s_both]"
             >
               {t('Back to Login')}
@@ -502,6 +570,37 @@ export default function LoginPage() {
                 </button>
               </div>
               {signupErrors.password && <p className="mt-1 text-sm text-red-600">{signupErrors.password}</p>}
+              {!signupErrors.password && signupForm.password && (
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-500">Password strength</p>
+                    <p className={`text-xs font-semibold ${
+                      passwordStrength.tone === 'emerald'
+                        ? 'text-emerald-600'
+                        : passwordStrength.tone === 'blue'
+                        ? 'text-blue-600'
+                        : 'text-red-600'
+                    }`}>
+                      {passwordStrength.label}
+                    </p>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                    <span
+                      className={`block h-full rounded-full transition-all duration-300 ${
+                        passwordStrength.tone === 'emerald'
+                          ? 'bg-emerald-500'
+                          : passwordStrength.tone === 'blue'
+                          ? 'bg-blue-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${(passwordStrength.segments / 4) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Use at least 6 characters, 1 uppercase letter, and 5 unique characters.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Confirm Password Field */}
@@ -538,7 +637,7 @@ export default function LoginPage() {
             {/* Back to Sign In */}
             <button
               type="button"
-              onClick={() => setShowSignup(false)}
+              onClick={closeSignupModal}
               className="w-full mt-3 py-3 h-12 rounded-xl font-semibold border-2 border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 transition-all duration-300"
             >
               {t('Back to Login')}

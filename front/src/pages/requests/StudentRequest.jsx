@@ -598,6 +598,13 @@ export default function MyRequests() {
                 </div>
               )}
 
+              {selectedRequest.status === 'rejected' && selectedRequest.rejection_reason && (
+                <div className={`px-4 py-3 rounded-xl border ${isDark ? 'bg-red-950/20 border-red-900/30' : 'bg-red-50 border-red-100'}`}>
+                  <p className={`text-xs mb-1 font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Rejection Reason</p>
+                  <p className={`text-xs leading-relaxed ${isDark ? 'text-red-300' : 'text-red-800'}`}>{selectedRequest.rejection_reason}</p>
+                </div>
+              )}
+
               {/* Progress tracker inside dialog */}
               {renderProgressTracker(selectedRequest)}
             </div>

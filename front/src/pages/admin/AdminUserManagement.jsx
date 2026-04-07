@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { useLang } from '@/components/i18n/LangContext';
 
@@ -72,6 +72,9 @@ export default function Users() {
   const [showViewPassword, setShowViewPassword] = useState(false);
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('student');
   const [editingUser, setEditingUser] = useState(null);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -131,6 +134,16 @@ export default function Users() {
     }
   });
 
+  const inviteMutation = useMutation({
+    mutationFn: ({ email, role }) => api.users.inviteUser(email, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsInviteOpen(false);
+      setInviteEmail('');
+      setInviteRole('student');
+    }
+  });
+
   useEffect(() => { setCurrentPage(1); }, [search, activeRole]);
 
   const filteredUsers = users.filter(user =>
@@ -159,6 +172,7 @@ export default function Users() {
   const totalPages = Math.max(1, Math.ceil(displayedUsers.length / PAGE_SIZE));
   const paginatedUsers = displayedUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const addValidation = validateRoleEmailDomain(addForm.email, addForm.role);
+  const inviteValidation = validateRoleEmailDomain(inviteEmail, inviteRole);
 
   const openEditDialog = (user) => {
     setEditingUser(user);
@@ -222,7 +236,16 @@ export default function Users() {
   const handleAddUser = () => {
     addUserMutation.mutate({
       ...addForm,
-      password: addForm.password || 'default123'
+      password: addForm.password || 'Default123'
+    });
+  };
+
+  const handleInvite = () => {
+    if (!inviteValidation.isValid || !inviteEmail.trim()) return;
+
+    inviteMutation.mutate({
+      email: inviteEmail.trim(),
+      role: inviteRole
     });
   };
 
@@ -502,9 +525,9 @@ export default function Users() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white text-slate-900 border-slate-200">
-                  {roles.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
-                  ))}
+                    {roles.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>{getRoleLabel(role.value)}</SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-400">
@@ -558,7 +581,7 @@ export default function Users() {
                   </SelectTrigger>
                   <SelectContent className="bg-white text-slate-900 border-slate-200">
                     {SELECTABLE_ROLES.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                      <SelectItem key={role.value} value={role.value}>{getRoleLabel(role.value)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -589,7 +612,7 @@ export default function Users() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-600">
                 Password
-                <span className="ml-1.5 font-normal text-slate-400">(defaults to <code className="rounded bg-slate-100 px-1 text-slate-600">default123</code> if blank)</span>
+                <span className="ml-1.5 font-normal text-slate-400">(defaults to <code className="rounded bg-slate-100 px-1 text-slate-600">Default123</code> if blank)</span>
               </Label>
               <div className="relative">
                 <Input
@@ -672,7 +695,7 @@ export default function Users() {
               <p className="truncate text-xs text-slate-500">{editingUser?.email}</p>
             </div>
             <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleConfig(editingUser?.role).color}`}>
-              {getRoleConfig(editingUser?.role).label}
+              {getRoleLabel(getRoleConfig(editingUser?.role).value)}
             </span>
           </div>
 
@@ -698,7 +721,7 @@ export default function Users() {
                     <SelectTrigger className="h-9 text-sm bg-white text-slate-900"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-white text-slate-900 border-slate-200">
                       {SELECTABLE_ROLES.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                        <SelectItem key={role.value} value={role.value}>{getRoleLabel(role.value)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

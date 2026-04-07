@@ -7,6 +7,7 @@ const {
   isAllowedRegistrationDomain,
   isAllowedDomainForRole
 } = require('../utils/emailPolicy');
+const { validatePasswordPolicy } = require('../utils/passwordPolicy');
 
 const ADMIN_PORTAL_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
 const STUDENT_PORTAL_DOMAIN = 'student.its.ac.id';
@@ -40,6 +41,18 @@ exports.register = async (req, res, next) => {
         success: false,
         message: 'User already exists'
       });
+    }
+
+    // Enforce signup password uniqueness against existing accounts.
+    const existingUsersCursor = User.find({}, 'password').select('+password').cursor();
+    for await (const existingUser of existingUsersCursor) {
+      const isReusedPassword = await existingUser.comparePassword(password);
+      if (isReusedPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password is already used by another account. Please choose a more unique password.'
+        });
+      }
     }
 
     // Create user
@@ -390,11 +403,27 @@ exports.logout = async (req, res, next) => {
 exports.updatePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    const normalizedCurrentPassword = String(currentPassword || '');
+    const normalizedNewPassword = String(newPassword || '');
+
+    if (!normalizedCurrentPassword || !normalizedNewPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (normalizedCurrentPassword === normalizedNewPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password'
+      });
+    }
 
     const user = await User.findById(req.user.id).select('+password');
 
     // Check current password
-    const isMatch = await user.comparePassword(currentPassword);
+    const isMatch = await user.comparePassword(normalizedCurrentPassword);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -402,8 +431,24 @@ exports.updatePassword = async (req, res, next) => {
       });
     }
 
+    const isSamePassword = await user.comparePassword(normalizedNewPassword);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password'
+      });
+    }
+
+    const policy = validatePasswordPolicy(normalizedNewPassword);
+    if (!policy.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: policy.errors[0]
+      });
+    }
+
     // Update password
-    user.password = newPassword;
+    user.password = normalizedNewPassword;
     await user.save();
 
     // Generate new token with id and role

@@ -8,13 +8,37 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Search, History, CheckCircle, XCircle } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
-import { format } from 'date-fns';
+import { format, parseISO, startOfWeek } from 'date-fns';
+import { useLang } from '@/components/i18n/LangContext';
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 const STATUS_FILTERS = [
   { key: 'all',      label: 'All',      statuses: null },
   { key: 'approved', label: 'Approved', statuses: ['head_approved', 'ready_pickup', 'borrowed', 'returned'] },
   { key: 'rejected', label: 'Rejected', statuses: ['rejected'] },
 ];
+
+const APPROVED_STATUSES = ['head_approved', 'ready_pickup', 'borrowed', 'returned'];
+
+const activityChartConfig = {
+  approved: {
+    label: 'Approved',
+    color: '#22c55e',
+  },
+  rejected: {
+    label: 'Rejected',
+    color: '#ef4444',
+  },
+};
 
 export default function HeadApprovalHistory() {
   const { t } = useLang();

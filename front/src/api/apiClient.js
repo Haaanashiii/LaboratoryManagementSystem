@@ -98,14 +98,51 @@ export const clearStoredAuth = clearAuthStorage;
 
 const resolveApiAssetUrl = (value) => {
   if (!value) return value;
-  if (/^https?:\/\//i.test(value)) return value;
+
+  const normalizedValue = String(value).trim().replace(/\\/g, '/');
+  if (!normalizedValue) return normalizedValue;
+  if (/^https?:\/\//i.test(normalizedValue)) return normalizedValue;
 
   const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
-  if (value.startsWith('/')) {
-    return `${apiOrigin}${value}`;
+  if (normalizedValue.startsWith('/')) {
+    return `${apiOrigin}${normalizedValue}`;
   }
 
-  return `${apiOrigin}/${value}`;
+  return `${apiOrigin}/${normalizedValue}`;
+};
+
+const normalizeEquipmentImages = (item = {}) => {
+  const rawImages = [];
+
+  if (Array.isArray(item.images)) {
+    rawImages.push(...item.images);
+  }
+  if (Array.isArray(item.images_urls)) {
+    rawImages.push(...item.images_urls);
+  }
+
+  // Support legacy/single-image fields used by older records.
+  rawImages.push(item.image, item.image_url);
+
+  const normalized = rawImages
+    .map((img) => {
+      if (!img) return null;
+      if (typeof img === 'string') return resolveApiAssetUrl(img);
+
+      // Some payloads may store image objects like { url } or { path }.
+      if (typeof img === 'object') {
+        return resolveApiAssetUrl(img.url || img.path || img.src || '');
+      }
+
+      return null;
+    })
+    .filter(Boolean);
+
+  const uniqueImages = [...new Set(normalized)];
+  return {
+    image_url: uniqueImages[0] || '',
+    images_urls: uniqueImages,
+  };
 };
 
 // Helper for making authenticated requests to the real backend
@@ -430,26 +467,30 @@ export const api = {
     Equipment: {
       list: async () => {
         const data = await request('/equipment');
-        return data.data.map(item => ({
-          ...item,
-          id: item._id || item.id,
-          image_url: resolveApiAssetUrl(item.image),
-          images_urls: item.images ? item.images.map(img => resolveApiAssetUrl(img)) : [],
-          total_quantity: item.quantity,
-          available_quantity: item.available,
-        }));
+        return data.data.map(item => {
+          const normalizedImages = normalizeEquipmentImages(item);
+          return {
+            ...item,
+            ...normalizedImages,
+            id: item._id || item.id,
+            total_quantity: item.quantity,
+            available_quantity: item.available,
+          };
+        });
       },
       filter: async (filters) => {
         const params = new URLSearchParams(filters).toString();
         const data = await request(`/equipment?${params}`);
-        return data.data.map(item => ({
-          ...item,
-          id: item._id || item.id,
-          image_url: resolveApiAssetUrl(item.image),
-          images_urls: item.images ? item.images.map(img => resolveApiAssetUrl(img)) : [],
-          total_quantity: item.quantity,
-          available_quantity: item.available,
-        }));
+        return data.data.map(item => {
+          const normalizedImages = normalizeEquipmentImages(item);
+          return {
+            ...item,
+            ...normalizedImages,
+            id: item._id || item.id,
+            total_quantity: item.quantity,
+            available_quantity: item.available,
+          };
+        });
       },
       create: async (formData) => {
         const images = formData.images_urls ? formData.images_urls.filter(Boolean) : [];

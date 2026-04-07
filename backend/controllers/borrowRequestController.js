@@ -204,6 +204,20 @@ exports.createBorrowRequest = async (req, res, next) => {
   try {
     const { equipment, quantity, purpose, borrow_date, return_date, lecturer_email, agree_policy } = req.body;
 
+    const blockingStatuses = ['pending_lecturer', 'pending_head', 'head_approved', 'ready_pickup', 'borrowed'];
+    const existingActiveRequest = await BorrowRequest.findOne({
+      student: req.user.id,
+      equipment,
+      status: { $in: blockingStatuses }
+    }).select('_id status createdAt');
+
+    if (existingActiveRequest) {
+      return res.status(409).json({
+        success: false,
+        message: 'You already have an active request for this equipment. Please wait for the current request to be completed or rejected.'
+      });
+    }
+
     if (agree_policy !== true) {
       return res.status(400).json({
         success: false,
@@ -289,6 +303,7 @@ exports.createBorrowRequest = async (req, res, next) => {
 exports.lecturerAction = async (req, res, next) => {
   try {
     const { action, remarks } = req.body; // action: 'approve' or 'reject'
+    const normalizedRemarks = String(remarks || '').trim();
 
     const request = await BorrowRequest.findById(req.params.id);
 
@@ -330,13 +345,20 @@ exports.lecturerAction = async (req, res, next) => {
       request.status = 'pending_head';
       request.lecturer = req.user.id;
       request.lecturer_approved_at = Date.now();
-      request.lecturer_remarks = remarks;
+      request.lecturer_remarks = normalizedRemarks;
       request.stock_reserved = true;
     } else if (action === 'reject') {
+      if (!normalizedRemarks) {
+        return res.status(400).json({
+          success: false,
+          message: 'Rejection reason is required'
+        });
+      }
+
       request.status = 'rejected';
       request.rejected_by = req.user.id;
       request.rejected_at = Date.now();
-      request.rejection_reason = remarks;
+      request.rejection_reason = normalizedRemarks;
     }
 
     await request.save();
@@ -371,6 +393,7 @@ exports.lecturerAction = async (req, res, next) => {
 exports.headAction = async (req, res, next) => {
   try {
     const { action, remarks } = req.body;
+    const normalizedRemarks = String(remarks || '').trim();
 
     const request = await BorrowRequest.findById(req.params.id).populate('equipment');
 
@@ -401,8 +424,15 @@ exports.headAction = async (req, res, next) => {
       request.status = 'head_approved';
       request.head_of_lab = req.user.id;
       request.head_approved_at = Date.now();
-      request.head_remarks = remarks;
+      request.head_remarks = normalizedRemarks;
     } else if (action === 'reject') {
+      if (!normalizedRemarks) {
+        return res.status(400).json({
+          success: false,
+          message: 'Rejection reason is required'
+        });
+      }
+
       if (request.stock_reserved) {
         request.equipment.available += request.quantity;
         await request.equipment.save();
@@ -412,7 +442,7 @@ exports.headAction = async (req, res, next) => {
       request.status = 'rejected';
       request.rejected_by = req.user.id;
       request.rejected_at = Date.now();
-      request.rejection_reason = remarks;
+      request.rejection_reason = normalizedRemarks;
     }
 
     await request.save();

@@ -40,7 +40,7 @@ export default function HeadCatalog() {
     {
       title: 'Approval history',
       description: 'Review outcomes across the lab pipeline.',
-      href: '/all-approval-history',
+      href: '/head-approval-history',
       icon: History,
       iconClass: 'bg-indigo-50 text-indigo-600',
     },

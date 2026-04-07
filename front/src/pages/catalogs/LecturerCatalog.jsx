@@ -33,14 +33,14 @@ export default function LecturerCatalog() {
     {
       title: 'Approval history',
       description: 'Track past approvals and remarks.',
-      href: '/approval-history',
+      href: '/lecturer-approval-history',
       icon: History,
       iconClass: 'bg-slate-500/10 text-slate-200 border border-slate-500/30',
     },
     {
       title: 'All requests',
       description: 'Scan request trends across your classes.',
-      href: '/all-approval-history',
+      href: '/all-requests',
       icon: BarChart3,
       iconClass: 'bg-indigo-500/10 text-indigo-200 border border-indigo-500/30',
     },

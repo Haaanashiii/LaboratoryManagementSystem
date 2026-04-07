@@ -7,6 +7,9 @@ import BanterLoader from '@/components/ui/BanterLoader';
 import { addDays, format } from 'date-fns';
 import { useTheme } from '@/components/hooks/ThemeContext';
 import { useLang } from '@/components/i18n/LangContext';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,6 +73,14 @@ const pageStyles = `
 const PAGE_SIZE = 10;
 const RECENT_WINDOW_DAYS = 30;
 const RECENTLY_BORROWED_STATUSES = ['borrowed', 'returned'];
+const ACTIVE_BLOCKING_STATUSES = ['pending_lecturer', 'pending_head', 'head_approved', 'ready_pickup', 'borrowed'];
+const PENDING_STAGE_LABELS = {
+  pending_lecturer: 'Pending lecturer approval',
+  pending_head: 'Pending head approval',
+  head_approved: 'Approved and waiting for release',
+  ready_pickup: 'Ready for pickup',
+  borrowed: 'Currently borrowed',
+};
 
 const STATUS_FILTERS = [
   { key: 'all',      label: 'All',       statuses: null },
@@ -85,6 +96,24 @@ const getEquipmentId = (request) => {
   if (!request) return null;
   if (typeof request.equipment === 'string') return request.equipment;
   return request.equipment?._id || request.equipment?.id || null;
+};
+
+const getDefaultBorrowAgainForm = (request) => ({
+  quantity: String(request?.quantity || 1),
+  purpose: '',
+  borrow_date: format(new Date(), 'yyyy-MM-dd'),
+  return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+  agree_policy: false,
+});
+
+const getRequestTimestamp = (request) => {
+  return new Date(
+    request?.updatedAt ||
+    request?.created_date ||
+    request?.createdAt ||
+    request?.borrow_date ||
+    0
+  ).getTime();
 };
 
 const isRecentlyBorrowed = (request) => {
@@ -110,7 +139,8 @@ export default function ApprovalHistory() {
   const [page, setPage] = useState(1);
   const [borrowAgainMessage, setBorrowAgainMessage] = useState(null);
   const [confirmBorrowAgainRequest, setConfirmBorrowAgainRequest] = useState(null);
-  const [borrowAgainReason, setBorrowAgainReason] = useState('');
+  const [borrowAgainForm, setBorrowAgainForm] = useState(getDefaultBorrowAgainForm(null));
+  const [borrowAgainQuantityNotice, setBorrowAgainQuantityNotice] = useState('');
   const { isDark } = useTheme();
   const queryClient = useQueryClient();
 
@@ -125,27 +155,72 @@ export default function ApprovalHistory() {
     enabled: !!user && user.role === 'student',
   });
 
+  const { data: equipmentList = [] } = useQuery({
+    queryKey: ['equipmentListForBorrowAgain'],
+    queryFn: () => api.entities.Equipment.list(),
+    enabled: !!user && user.role === 'student',
+  });
+
+  const equipmentById = new Map(
+    equipmentList
+      .filter((item) => item?.id)
+      .map((item) => [String(item.id), item])
+  );
+
+  const activeRequestByEquipment = requests.reduce((acc, request) => {
+    if (!ACTIVE_BLOCKING_STATUSES.includes(request.status)) {
+      return acc;
+    }
+
+    const equipmentId = getEquipmentId(request);
+    if (!equipmentId) {
+      return acc;
+    }
+
+    const key = String(equipmentId);
+    const existing = acc.get(key);
+    if (!existing || getRequestTimestamp(request) > getRequestTimestamp(existing)) {
+      acc.set(key, request);
+    }
+    return acc;
+  }, new Map());
+
   const borrowAgainMutation = useMutation({
-    mutationFn: ({ request, reason }) => {
+    mutationFn: ({ request, formData }) => {
       const equipmentId = getEquipmentId(request);
       if (!equipmentId) {
-        throw new Error(t('unableIdentifyEquipment'));
+        throw new Error('Unable to identify equipment for this request.');
       }
 
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const returnDate = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+      const activeRequest = activeRequestByEquipment.get(String(equipmentId));
+      if (activeRequest && activeRequest.id !== request.id) {
+        throw new Error('This equipment already has an active request. Please check your pending requests.');
+      }
+
+      const parsedQuantity = Number.parseInt(String(formData.quantity), 10);
+      if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+        throw new Error('Please enter a valid quantity (minimum 1).');
+      }
+
+      if (!formData.purpose?.trim()) {
+        throw new Error('Purpose is required.');
+      }
+
+      if (!formData.agree_policy) {
+        throw new Error('You must agree to the replacement policy before submitting.');
+      }
 
       return api.entities.BorrowRequest.create({
         equipment: equipmentId,
-        quantity: request.quantity || 1,
-        purpose: `Borrow again reason: ${reason.trim()}`,
-        borrow_date: today,
-        return_date: returnDate,
-        agree_policy: true,
+        quantity: parsedQuantity,
+        purpose: formData.purpose.trim(),
+        borrow_date: formData.borrow_date,
+        return_date: formData.return_date,
+        agree_policy: formData.agree_policy,
       });
     },
     onSuccess: () => {
-      setBorrowAgainMessage({ type: 'success', text: t('borrowSubmitted') });
+      setBorrowAgainMessage({ type: 'success', text: 'Borrow request submitted. You can track it in Pending.' });
       queryClient.invalidateQueries({ queryKey: ['myRequests'] });
       setStatusFilter('pending');
       setPage(1);
@@ -153,7 +228,7 @@ export default function ApprovalHistory() {
     onError: (mutationError) => {
       setBorrowAgainMessage({
         type: 'error',
-        text: mutationError?.message || t('borrowSubmitFailed'),
+        text: mutationError?.message || 'Failed to submit borrow request. Please try again.',
       });
     },
   });
@@ -324,8 +399,14 @@ export default function ApprovalHistory() {
           pagedRequests.map((request) => {
             const isRejected = request.status === 'rejected';
             const isReturned = request.status === 'returned';
-            const canBorrowAgain = RECENTLY_BORROWED_STATUSES.includes(request.status) && !!getEquipmentId(request);
-            const isBorrowAgainLoading = borrowAgainMutation.isPending && borrowAgainMutation.variables?.id === request.id;
+            const equipmentId = getEquipmentId(request);
+            const activeRequest = equipmentId ? activeRequestByEquipment.get(String(equipmentId)) : null;
+            const hasBlockingActiveRequest = !!activeRequest && activeRequest.id !== request.id;
+            const pendingSignalText = hasBlockingActiveRequest
+              ? PENDING_STAGE_LABELS[activeRequest.status] || 'Pending'
+              : null;
+            const canBorrowAgain = RECENTLY_BORROWED_STATUSES.includes(request.status) && !!equipmentId;
+            const isBorrowAgainLoading = borrowAgainMutation.isPending && borrowAgainMutation.variables?.request?.id === request.id;
 
             return (
               <div
@@ -394,6 +475,26 @@ export default function ApprovalHistory() {
                         </div>
                       )}
 
+                      {isRejected && request.rejection_reason && (
+                        <div className={`mt-3 rounded-xl px-3 py-2.5 text-xs flex items-start gap-2 ${
+                          isDark ? 'bg-red-950/40 text-red-300 border border-red-900/40' : 'bg-red-50 text-red-700 border border-red-100'
+                        }`}>
+                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <span><span className="font-semibold">Rejection reason: </span>{request.rejection_reason}</span>
+                        </div>
+                      )}
+
+                      {hasBlockingActiveRequest && (
+                        <div className={`mt-3 rounded-xl px-3 py-2.5 text-xs flex items-start gap-2 ${
+                          isDark ? 'bg-amber-500/10 text-amber-200 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <span>
+                            Active request in progress: <span className="font-semibold">{pendingSignalText}</span>. Borrow again is disabled until this one is completed or rejected.
+                          </span>
+                        </div>
+                      )}
+
                       {canBorrowAgain && (
                         <div className="mt-3 flex items-center justify-end">
                           <button
@@ -401,9 +502,10 @@ export default function ApprovalHistory() {
                             onClick={() => {
                               setBorrowAgainMessage(null);
                               setConfirmBorrowAgainRequest(request);
-                              setBorrowAgainReason('');
+                              setBorrowAgainForm(getDefaultBorrowAgainForm(request));
+                              setBorrowAgainQuantityNotice('');
                             }}
-                            disabled={borrowAgainMutation.isPending}
+                            disabled={borrowAgainMutation.isPending || hasBlockingActiveRequest}
                             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
                               isDark
                                 ? 'bg-blue-600 text-white hover:bg-blue-500'
@@ -477,38 +579,124 @@ export default function ApprovalHistory() {
         onOpenChange={(open) => {
           if (!open) {
             setConfirmBorrowAgainRequest(null);
-            setBorrowAgainReason('');
+            setBorrowAgainForm(getDefaultBorrowAgainForm(null));
+            setBorrowAgainQuantityNotice('');
           }
         }}
       >
         <AlertDialogContent className={isDark ? 'bg-[#111118] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('borrowAgainTitle')}</AlertDialogTitle>
+            <AlertDialogTitle>Borrow Again</AlertDialogTitle>
             <AlertDialogDescription className={isDark ? 'text-slate-400' : 'text-slate-500'}>
               Are you sure you want to borrow {confirmBorrowAgainRequest?.equipment_name || 'this equipment'} again?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-1">
-            <label className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              {t('reasonForBorrowingAgain')}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className={`text-[11px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                Quantity
+              </Label>
+              <Input
+                type="number"
+                min="1"
+                inputMode="numeric"
+                value={borrowAgainForm.quantity}
+                onChange={(e) => {
+                  const nextQuantity = e.target.value;
+                  setBorrowAgainForm((prev) => ({ ...prev, quantity: nextQuantity }));
+
+                  if (!confirmBorrowAgainRequest) {
+                    return;
+                  }
+
+                  const equipmentId = getEquipmentId(confirmBorrowAgainRequest);
+                  const availableQty = Number(equipmentById.get(String(equipmentId))?.available_quantity ?? 0);
+                  const parsedQuantity = Number.parseInt(nextQuantity, 10);
+
+                  if (nextQuantity === '') {
+                    setBorrowAgainQuantityNotice('Please enter a quantity.');
+                    return;
+                  }
+
+                  if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+                    setBorrowAgainQuantityNotice('Please enter a valid quantity (minimum 1).');
+                    return;
+                  }
+
+                  if (availableQty > 0 && parsedQuantity > availableQty) {
+                    setBorrowAgainQuantityNotice(`Quantity exceeded. Only ${availableQty} item${availableQty === 1 ? '' : 's'} available.`);
+                    return;
+                  }
+
+                  setBorrowAgainQuantityNotice('');
+                }}
+                className={`rounded-md text-sm ${isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
+              />
+              {borrowAgainQuantityNotice && (
+                <p className="text-[11px] text-red-500">{borrowAgainQuantityNotice}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className={`text-[11px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Borrow Date
+                </Label>
+                <Input
+                  type="date"
+                  value={borrowAgainForm.borrow_date}
+                  onChange={(e) => setBorrowAgainForm((prev) => ({ ...prev, borrow_date: e.target.value }))}
+                  className={`rounded-md text-sm ${isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
+                  style={isDark ? { colorScheme: 'dark' } : { colorScheme: 'light' }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className={`text-[11px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Return Date
+                </Label>
+                <Input
+                  type="date"
+                  value={borrowAgainForm.return_date}
+                  onChange={(e) => setBorrowAgainForm((prev) => ({ ...prev, return_date: e.target.value }))}
+                  className={`rounded-md text-sm ${isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
+                  style={isDark ? { colorScheme: 'dark' } : { colorScheme: 'light' }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className={`text-[11px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                Purpose
+              </Label>
+              <Textarea
+                value={borrowAgainForm.purpose}
+                onChange={(e) => setBorrowAgainForm((prev) => ({ ...prev, purpose: e.target.value }))}
+                placeholder="Briefly explain why you need this equipment..."
+                rows={3}
+                className={`rounded-md text-sm resize-none ${isDark ? 'bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
+              />
+            </div>
+
+            <label className={`flex items-start gap-2 rounded-md border px-3 py-2 text-xs ${
+              isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
+            }`}>
+              <input
+                type="checkbox"
+                className="mt-0.5 h-3.5 w-3.5"
+                checked={borrowAgainForm.agree_policy}
+                onChange={(e) => setBorrowAgainForm((prev) => ({ ...prev, agree_policy: e.target.checked }))}
+              />
+              <span>
+                Damaged or lost items must be replaced by the borrower. I understand and accept this responsibility.
+              </span>
             </label>
-            <textarea
-              value={borrowAgainReason}
-              onChange={(e) => setBorrowAgainReason(e.target.value)}
-              placeholder={t('enterReason')}
-              rows={3}
-              className={`w-full rounded-md border px-3 py-2 text-sm resize-none outline-none transition-colors ${
-                isDark
-                  ? 'bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/60'
-                  : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-400'
-              }`}
-            />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
                 setConfirmBorrowAgainRequest(null);
-                setBorrowAgainReason('');
+                setBorrowAgainForm(getDefaultBorrowAgainForm(null));
+                setBorrowAgainQuantityNotice('');
               }}
               className={isDark ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10' : ''}
             >
@@ -520,20 +708,38 @@ export default function ApprovalHistory() {
                   return;
                 }
                 const requestToSubmit = confirmBorrowAgainRequest;
-                const reasonToSubmit = borrowAgainReason.trim();
-                if (!reasonToSubmit) {
+                const parsedQuantity = Number.parseInt(String(borrowAgainForm.quantity), 10);
+                if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+                  setBorrowAgainMessage({ type: 'error', text: 'Please enter a valid quantity.' });
                   return;
                 }
+
+                if (!borrowAgainForm.purpose.trim()) {
+                  setBorrowAgainMessage({ type: 'error', text: 'Purpose is required.' });
+                  return;
+                }
+
+                if (!borrowAgainForm.agree_policy) {
+                  setBorrowAgainMessage({ type: 'error', text: 'Please agree to the replacement policy before submitting.' });
+                  return;
+                }
+
+                if (borrowAgainForm.return_date <= borrowAgainForm.borrow_date) {
+                  setBorrowAgainMessage({ type: 'error', text: 'Return date must be after borrow date.' });
+                  return;
+                }
+
                 setConfirmBorrowAgainRequest(null);
                 setBorrowAgainMessage(null);
-                setBorrowAgainReason('');
-                borrowAgainMutation.mutate({ request: requestToSubmit, reason: reasonToSubmit });
+                setBorrowAgainForm(getDefaultBorrowAgainForm(null));
+                setBorrowAgainQuantityNotice('');
+                borrowAgainMutation.mutate({ request: requestToSubmit, formData: borrowAgainForm });
               }}
-              disabled={borrowAgainMutation.isPending || !borrowAgainReason.trim()}
+              disabled={borrowAgainMutation.isPending || !borrowAgainForm.purpose.trim() || !borrowAgainForm.agree_policy}
               className="inline-flex items-center gap-1.5"
             >
               {borrowAgainMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-              {borrowAgainMutation.isPending ? t('submitting') : t('yesBorrowAgain')}
+              {borrowAgainMutation.isPending ? t('submitting') : 'Submit Request'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -339,7 +339,7 @@ Query:
 #### POST /
 Body:
 - email, name
-- password? (default: default123)
+- password? (default: Default123)
 - role? (default: student)
 - department?, studentId?, phone?
 
