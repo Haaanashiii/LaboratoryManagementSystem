@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff, Mail, Phone, Building2, Hash, KeyRound } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 
 const roles = [
@@ -19,6 +18,9 @@ const roles = [
   { value: 'head_of_lab',  label: 'Head of Lab',   color: 'bg-violet-50 text-violet-700 border-violet-200', dot: '#8b5cf6', icon: UserCog },
   { value: 'admin',        label: 'Admin',          color: 'bg-red-50 text-red-700 border-red-200',       dot: '#ef4444', icon: ShieldCheck },
 ];
+
+// Roles available for assignment — admin is excluded from create/edit forms
+const SELECTABLE_ROLES = roles.filter((r) => r.value !== 'admin');
 
 const STAFF_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
 const PAGE_SIZE = 10;
@@ -63,7 +65,10 @@ export default function Users() {
   const [search, setSearch] = useState('');
   const [activeRole, setActiveRole] = useState('');
   const [deletingUser, setDeletingUser] = useState(null);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [viewingUser, setViewingUser] = useState(null);
+  const [showViewPassword, setShowViewPassword] = useState(false);
+  const [showAddPassword, setShowAddPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,8 +81,6 @@ export default function Users() {
     status: 'active',
     password: ''
   });
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('student');
   const [addForm, setAddForm] = useState({
     name: '',
     email: '',
@@ -92,16 +95,6 @@ export default function Users() {
   const { data: users = [], isLoading, isError, error } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.entities.User.list(),
-  });
-
-  const inviteMutation = useMutation({
-    mutationFn: ({ email, role }) => api.users.inviteUser(email, role),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setIsInviteOpen(false);
-      setInviteEmail('');
-      setInviteRole('student');
-    }
   });
 
   const updateMutation = useMutation({
@@ -160,7 +153,6 @@ export default function Users() {
   const displayedUsers = activeRole ? (filteredUsersByRole[activeRole] || []) : filteredUsers;
   const totalPages = Math.max(1, Math.ceil(displayedUsers.length / PAGE_SIZE));
   const paginatedUsers = displayedUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const inviteValidation = validateRoleEmailDomain(inviteEmail, inviteRole);
   const addValidation = validateRoleEmailDomain(addForm.email, addForm.role);
 
   const openEditDialog = (user) => {
@@ -221,10 +213,6 @@ export default function Users() {
     setDeletingUser(null);
   };
 
-  const handleInvite = () => {
-    inviteMutation.mutate({ email: inviteEmail, role: inviteRole });
-  };
-
   const handleAddUser = () => {
     addUserMutation.mutate({
       ...addForm,
@@ -241,25 +229,14 @@ export default function Users() {
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">User Management</h1>
           <p className="mt-0.5 text-sm text-slate-500">{users.length} total registered users</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => setIsAddOpen(true)}
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            Add User
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
-            onClick={() => setIsInviteOpen(true)}
-          >
-            <Mail className="h-3.5 w-3.5" />
-            Invite
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
+          onClick={() => setIsAddOpen(true)}
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          Add User
+        </Button>
       </div>
 
       {/* ── Role stat pills ── */}
@@ -347,6 +324,7 @@ export default function Users() {
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
                     <TableHead className="text-xs font-medium text-slate-500">User</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Email</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Department</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Role</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
                     <TableHead className="text-right text-xs font-medium text-slate-500">Actions</TableHead>
@@ -355,7 +333,7 @@ export default function Users() {
                 <TableBody>
                   {displayedUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-14 text-center">
+                      <TableCell colSpan={6} className="py-14 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
                             <UsersIcon className="h-4 w-4 text-slate-400" />
@@ -387,10 +365,17 @@ export default function Users() {
                               >
                                 {initials}
                               </div>
-                              <span className="text-sm font-medium text-slate-900">{user.name || '—'}</span>
+                              <button
+                                type="button"
+                                onClick={() => setViewingUser(user)}
+                                className="text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors text-left"
+                              >
+                                {user.name || '—'}
+                              </button>
                             </div>
                           </TableCell>
                           <TableCell className="text-xs text-slate-500">{user.email}</TableCell>
+                          <TableCell className="text-xs text-slate-500">{user.department || '—'}</TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${roleConfig.color}`}>
                               {roleConfig.label}
@@ -471,128 +456,215 @@ export default function Users() {
         </CardContent>
       </Card>
 
-      {/* ── Invite Dialog ── */}
-      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-        <DialogContent className="sm:max-w-md bg-white text-slate-900">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Mail className="h-4 w-4 text-blue-500" />
-              Invite New User
+      {/* ── View User Dialog ── */}
+      <Dialog open={!!viewingUser} onOpenChange={() => setViewingUser(null)}>
+        <DialogContent className="sm:max-w-sm rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
+                <Eye className="h-4 w-4 text-slate-600" />
+              </div>
+              User Details
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Email Address</Label>
-              <Input
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="user@its.ac.id"
-                className="h-9 text-sm"
-              />
-              {!inviteValidation.isValid && (
-                <p className="text-xs text-red-600">{inviteValidation.message}</p>
-              )}
+
+          {viewingUser && (
+            <div className="py-4 space-y-1">
+              {/* Avatar + name banner */}
+              <div className="flex flex-col items-center gap-2 pb-4">
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-white shadow"
+                  style={{ backgroundColor: getRoleConfig(viewingUser.role).dot }}
+                >
+                  {(viewingUser.name || 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-900">{viewingUser.name || '—'}</p>
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleConfig(viewingUser.role).color}`}>
+                    {getRoleConfig(viewingUser.role).label}
+                  </span>
+                </div>
+              </div>
+
+              {/* Detail rows */}
+              <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <div className="flex items-center gap-2.5">
+                  <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Email</p>
+                    <p className="truncate text-xs text-slate-800">{viewingUser.email || '—'}</p>
+                  </div>
+                </div>
+                <div className="h-px bg-slate-100" />
+                <div className="flex items-center gap-2.5">
+                  <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Department</p>
+                    <p className="truncate text-xs text-slate-800">{viewingUser.department || '—'}</p>
+                  </div>
+                </div>
+                <div className="h-px bg-slate-100" />
+                <div className="flex items-center gap-2.5">
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Phone</p>
+                    <p className="truncate text-xs text-slate-800">{viewingUser.phone || '—'}</p>
+                  </div>
+                </div>
+                {viewingUser.role === 'student' && (
+                  <>
+                    <div className="h-px bg-slate-100" />
+                    <div className="flex items-center gap-2.5">
+                      <Hash className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Student ID</p>
+                        <p className="truncate text-xs text-slate-800">{viewingUser.studentId || '—'}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div className="h-px bg-slate-100" />
+                <div className="flex items-start gap-2.5">
+                  <KeyRound className="h-3.5 w-3.5 shrink-0 mt-0.5 text-slate-400" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Password</p>
+                    <p className="text-xs text-slate-800 font-mono">{'•'.repeat(10)}</p>
+                    <p className="text-[10px] text-amber-600 mt-0.5">
+                      Passwords are one-way encrypted (bcrypt) and cannot be retrieved. Use “Edit User” to set a new password.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Role</Label>
-              <Select value={inviteRole} onValueChange={setInviteRole}>
-                <SelectTrigger className="h-9 text-sm bg-white text-slate-900">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white text-slate-900 border-slate-200">
-                  {roles.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-400">
-                Required domain: <span className="font-medium text-slate-600">@{getAllowedDomainForRole(inviteRole)}</span>
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
-            <Button
-              size="sm"
-              onClick={handleInvite}
-              disabled={!inviteEmail || !inviteValidation.isValid || inviteMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {inviteMutation.isPending ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Sending…</> : 'Send Invite'}
-            </Button>
+          )}
+
+          <DialogFooter className="border-t border-slate-100 pt-4">
+            <Button size="sm" variant="outline" onClick={() => setViewingUser(null)} className="text-xs w-full">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ── Add User Dialog ── */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-white text-slate-900">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <UserPlus className="h-4 w-4 text-blue-500" />
-              Add User
+      <Dialog open={isAddOpen} onOpenChange={(open) => { if (!open) { setIsAddOpen(false); setAddForm({ name: '', email: '', password: '', role: 'student', department: '', phone: '' }); } }}>
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                <UserPlus className="h-4 w-4 text-blue-600" />
+              </div>
+              Add New User
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Full Name</Label>
-              <Input
-                value={addForm.name}
-                onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="John Doe"
-                className="h-9 text-sm"
-              />
+
+          <div className="py-4 space-y-4">
+            {/* Name + Email row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-600">Full Name <span className="text-red-500">*</span></Label>
+                <Input
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Juan dela Cruz"
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-600">Role <span className="text-red-500">*</span></Label>
+                <Select value={addForm.role} onValueChange={(value) => setAddForm((prev) => ({ ...prev, role: value }))}>
+                  <SelectTrigger className="h-9 text-sm bg-white text-slate-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-slate-900 border-slate-200">
+                    {SELECTABLE_ROLES.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+            {/* Email */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Email Address</Label>
+              <Label className="text-xs font-medium text-slate-600">
+                Email Address <span className="text-red-500">*</span>
+                <span className="ml-1.5 font-normal text-slate-400">— must be @{getAllowedDomainForRole(addForm.role)}</span>
+              </Label>
               <Input
                 type="email"
                 value={addForm.email}
                 onChange={(e) => setAddForm((prev) => ({ ...prev, email: e.target.value }))}
-                placeholder="user@its.ac.id"
+                placeholder={`user@${getAllowedDomainForRole(addForm.role)}`}
                 className="h-9 text-sm"
               />
-              {!addValidation.isValid && (
-                <p className="text-xs text-red-600">{addValidation.message}</p>
+              {!addValidation.isValid && addForm.email && (
+                <p className="flex items-center gap-1 text-xs text-red-600">
+                  <AlertTriangle className="h-3 w-3" />{addValidation.message}
+                </p>
               )}
             </div>
+
+            {/* Password */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Password <span className="text-slate-400 font-normal">(optional)</span></Label>
+              <Label className="text-xs font-medium text-slate-600">
+                Password
+                <span className="ml-1.5 font-normal text-slate-400">(defaults to <code className="rounded bg-slate-100 px-1 text-slate-600">default123</code> if blank)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showAddPassword ? 'text' : 'password'}
+                  value={addForm.password}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, password: e.target.value }))}
+                  placeholder="Set a custom password…"
+                  className="h-9 pr-9 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAddPassword((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Phone — shown for all roles */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-slate-600">Phone <span className="font-normal text-slate-400">(optional)</span></Label>
               <Input
-                type="text"
-                value={addForm.password}
-                onChange={(e) => setAddForm((prev) => ({ ...prev, password: e.target.value }))}
-                placeholder="default123"
+                value={addForm.phone}
+                onChange={(e) => setAddForm((prev) => ({ ...prev, phone: e.target.value }))}
+                placeholder="+63 912 345 6789"
                 className="h-9 text-sm"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Role</Label>
-              <Select value={addForm.role} onValueChange={(value) => setAddForm((prev) => ({ ...prev, role: value }))}>
-                <SelectTrigger className="h-9 text-sm bg-white text-slate-900">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white text-slate-900 border-slate-200">
-                  {roles.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-400">
-                Required domain: <span className="font-medium text-slate-600">@{getAllowedDomainForRole(addForm.role)}</span>
-              </p>
-            </div>
+
+            {/* Student-only: department */}
+            {addForm.role === 'student' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-600">Department <span className="font-normal text-slate-400">(optional)</span></Label>
+                <Input
+                  value={addForm.department}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, department: e.target.value }))}
+                  placeholder="e.g. Information Technology"
+                  className="h-9 text-sm"
+                />
+              </div>
+            )}
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+
+          <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
+            <Button variant="outline" size="sm" onClick={() => setIsAddOpen(false)} className="text-xs">
+              Cancel
+            </Button>
             <Button
               size="sm"
               onClick={handleAddUser}
               disabled={!addForm.name || !addForm.email || !addValidation.isValid || addUserMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 text-xs hover:bg-blue-700"
             >
-              {addUserMutation.isPending ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Creating…</> : 'Create User'}
+              {addUserMutation.isPending
+                ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Creating…</>
+                : <><UserPlus className="mr-1.5 h-3.5 w-3.5" />Create User</>}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -600,57 +672,67 @@ export default function Users() {
 
       {/* ── Edit User Dialog ── */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-white text-slate-900">
-          <DialogHeader>
-            <DialogTitle className="text-base">Edit User</DialogTitle>
-          </DialogHeader>
-          <div className="py-3">
-            {/* user identity strip */}
-            <div className="mb-4 flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-                style={{ backgroundColor: getRoleConfig(editingUser?.role).dot }}
-              >
-                {(editingUser?.name || 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
+                <Pencil className="h-4 w-4 text-slate-600" />
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-slate-900">{editingUser?.name}</p>
-                <p className="truncate text-xs text-slate-500">{editingUser?.email}</p>
+              Edit User
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Identity card */}
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+              style={{ backgroundColor: getRoleConfig(editingUser?.role).dot }}
+            >
+              {(editingUser?.name || 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-900">{editingUser?.name || '—'}</p>
+              <p className="truncate text-xs text-slate-500">{editingUser?.email}</p>
+            </div>
+            <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleConfig(editingUser?.role).color}`}>
+              {getRoleConfig(editingUser?.role).label}
+            </span>
+          </div>
+
+          <div className="py-4 space-y-4">
+            {/* Name + Role row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-600">Full Name</Label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Full name"
+                  disabled={editingUser?.role === 'admin'}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-600">Role</Label>
+                {editingUser?.role === 'admin' ? (
+                  <Input value="Admin" disabled className="h-9 text-sm bg-slate-50" />
+                ) : (
+                  <Select value={editForm.role} onValueChange={(value) => setEditForm((prev) => ({ ...prev, role: value }))}>
+                    <SelectTrigger className="h-9 text-sm bg-white text-slate-900"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-white text-slate-900 border-slate-200">
+                      {SELECTABLE_ROLES.map((role) => (
+                        <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
-            <div className="space-y-3">
+            {/* Status + Email row */}
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-700">Email</Label>
-                <Input value={editingUser?.email || ''} disabled className="h-9 text-sm bg-slate-50" />
-              </div>
-
-              {editForm.role !== 'admin' && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-slate-700">Name</Label>
-                  <Input
-                    value={editForm.name}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Full name"
-                    className="h-9 text-sm"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-700">Role</Label>
-                <Select value={editForm.role} onValueChange={(value) => setEditForm((prev) => ({ ...prev, role: value }))}>
-                  <SelectTrigger className="h-9 text-sm bg-white text-slate-900"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white text-slate-900 border-slate-200">
-                    {roles.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-700">Status</Label>
+                <Label className="text-xs font-medium text-slate-600">Status</Label>
                 <Select value={editForm.status} onValueChange={(value) => setEditForm((prev) => ({ ...prev, status: value }))}>
                   <SelectTrigger className="h-9 text-sm bg-white text-slate-900"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-white text-slate-900 border-slate-200">
@@ -660,62 +742,84 @@ export default function Users() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-600">Email</Label>
+                <Input value={editingUser?.email || ''} disabled className="h-9 text-sm bg-slate-50 text-slate-400" />
+              </div>
+            </div>
 
-              {editForm.role === 'student' && (
-                <>
+            {/* Student-only fields */}
+            {editForm.role === 'student' && (
+              <div className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                <p className="text-xs font-medium text-blue-700">Student Details</p>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-700">Department</Label>
-                    <Input
-                      value={editForm.department}
-                      onChange={(e) => setEditForm((prev) => ({ ...prev, department: e.target.value }))}
-                      placeholder="Department"
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-700">Student ID</Label>
+                    <Label className="text-xs font-medium text-slate-600">Student ID</Label>
                     <Input
                       value={editForm.studentId}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, studentId: e.target.value }))}
-                      placeholder="Student ID"
-                      className="h-9 text-sm"
+                      placeholder="e.g. 5026231234"
+                      className="h-9 text-sm bg-white"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-700">Phone</Label>
+                    <Label className="text-xs font-medium text-slate-600">Phone</Label>
                     <Input
                       value={editForm.phone}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
-                      placeholder="Phone number"
-                      className="h-9 text-sm"
+                      placeholder="+63 912 345 6789"
+                      className="h-9 text-sm bg-white"
                     />
                   </div>
-                </>
-              )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-600">Department</Label>
+                  <Input
+                    value={editForm.department}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, department: e.target.value }))}
+                    placeholder="e.g. Information Technology"
+                    className="h-9 text-sm bg-white"
+                  />
+                </div>
+              </div>
+            )}
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-700">
-                  New Password <span className="font-normal text-slate-400">(leave blank to keep current)</span>
-                </Label>
+            {/* Password */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-slate-600">
+                New Password
+                <span className="ml-1.5 font-normal text-slate-400">(leave blank to keep current)</span>
+              </Label>
+              <div className="relative">
                 <Input
-                  type="text"
+                  type={showEditPassword ? 'text' : 'password'}
                   value={editForm.password}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
                   placeholder="••••••••"
-                  className="h-9 text-sm"
+                  className="h-9 pr-9 text-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowEditPassword((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditingUser(null)}>Cancel</Button>
+
+          <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
+            <Button variant="outline" size="sm" onClick={() => setEditingUser(null)} className="text-xs">Cancel</Button>
             <Button
               size="sm"
               onClick={handleUpdateRole}
               disabled={updateMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 text-xs hover:bg-blue-700"
             >
-              {updateMutation.isPending ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Updating…</> : 'Save Changes'}
+              {updateMutation.isPending
+                ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Saving…</>
+                : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -723,7 +827,7 @@ export default function Users() {
 
       {/* ── Delete Confirmation Dialog ── */}
       <Dialog open={!!deletingUser} onOpenChange={() => setDeletingUser(null)}>
-        <DialogContent className="sm:max-w-sm bg-white text-slate-900">
+        <DialogContent className="sm:max-w-sm rounded-2xl bg-white text-slate-900">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <AlertTriangle className="h-4 w-4 text-red-500" />

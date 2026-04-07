@@ -1,16 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Search, History, CheckCircle, XCircle } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
-import { format } from 'date-fns';
+import { format, parseISO, startOfWeek } from 'date-fns';
+import {
+  LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
+
+const APPROVED_STATUSES = ['head_approved', 'ready_pickup', 'borrowed', 'returned'];
+
+const activityChartConfig = {
+  approved: { label: 'Approved', color: '#22c55e' },
+  rejected: { label: 'Rejected', color: '#ef4444' },
+};
 
 const STATUS_FILTERS = [
   { key: 'all',      label: 'All',      statuses: null },
-  { key: 'approved', label: 'Approved', statuses: ['head_approved', 'ready_pickup', 'borrowed', 'returned'] },
+  { key: 'approved', label: 'Approved', statuses: APPROVED_STATUSES },
   { key: 'rejected', label: 'Rejected', statuses: ['rejected'] },
 ];
 
@@ -44,9 +56,22 @@ export default function HeadApprovalHistory() {
     );
 
   const approvedCount = myActedRequests.filter(r =>
-    ['head_approved', 'ready_pickup', 'borrowed', 'returned'].includes(r.status)
+    APPROVED_STATUSES.includes(r.status)
   ).length;
   const rejectedCount = myActedRequests.filter(r => r.status === 'rejected').length;
+
+  // Line chart: group by week-start, count approved vs rejected
+  const activityChartData = useMemo(() => {
+    const buckets = {};
+    myActedRequests.forEach((r) => {
+      if (!r.head_approved_at) return;
+      const weekKey = format(startOfWeek(parseISO(r.head_approved_at), { weekStartsOn: 1 }), 'MMM d');
+      if (!buckets[weekKey]) buckets[weekKey] = { week: weekKey, approved: 0, rejected: 0 };
+      if (APPROVED_STATUSES.includes(r.status)) buckets[weekKey].approved += 1;
+      else if (r.status === 'rejected') buckets[weekKey].rejected += 1;
+    });
+    return Object.values(buckets).sort((a, b) => new Date(a.week) - new Date(b.week));
+  }, [myActedRequests]);
 
   if (isLoading) {
     return (
@@ -103,6 +128,64 @@ export default function HeadApprovalHistory() {
       </div>
 
       <hr className="border-slate-200" />
+
+      {/* Activity Line Chart */}
+      {activityChartData.length > 0 && (
+        <Card className="border-slate-200 shadow-none">
+          <CardHeader className="pb-2 pt-5 px-5">
+            <p className="text-sm font-semibold text-slate-900">Approval Activity</p>
+            <p className="mt-0.5 text-xs text-slate-500">Weekly approved vs rejected decisions</p>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            <ChartContainer config={activityChartConfig} className="w-full" style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={activityChartData} margin={{ top: 4, right: 16, bottom: 0, left: -16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="week"
+                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
+                    content={<ChartTooltipContent labelKey="week" />}
+                  />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="approved"
+                    name="Approved"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#22c55e' }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="rejected"
+                    name="Rejected"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#ef4444' }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters + Search */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">

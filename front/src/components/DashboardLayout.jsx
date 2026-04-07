@@ -380,60 +380,60 @@ export default function DashboardLayout() {
 
         {/* Main content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Navbar - Simplified for sidebar layout */}
-          <header className="flex-shrink-0 bg-white border-b border-slate-200">
-            <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
-              {/* Mobile Menu Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden"
-              >
-                <Menu className="w-6 h-6 text-slate-600" />
-              </Button>
+          {/* Top Navbar — shadcn style */}
+          <header className="flex-shrink-0 h-14 border-b border-slate-200 bg-white px-4 flex items-center gap-2">
+            {/* Mobile: open sidebar */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="lg:hidden flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
 
-              {/* Sidebar collapse toggle (desktop) */}
+            {/* Desktop: collapse/expand sidebar */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed
+                ? <MenuUnfoldOutlined style={{ fontSize: 16 }} />
+                : <MenuFoldOutlined style={{ fontSize: 16 }} />}
+            </button>
+
+            {/* Separator */}
+            <div className="hidden lg:block h-5 w-px bg-slate-200" />
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Right actions */}
+            <div className="flex items-center gap-1">
+              {/* Date / time */}
+              <div className="hidden sm:flex items-center gap-2.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 mr-1">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                  {headerDate}
+                </span>
+                <span className="h-3.5 w-px bg-slate-200" />
+                <span className="flex items-center gap-1.5 tabular-nums font-medium text-slate-900">
+                  <Clock className="h-3.5 w-3.5 text-slate-400" />
+                  {headerTime}
+                </span>
+              </div>
+
+              {/* Language toggle */}
               <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                onClick={toggleLang}
+                title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
+                className="flex h-8 w-auto items-center gap-1 rounded-md px-2.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
               >
-                {sidebarCollapsed ? <MenuUnfoldOutlined style={{ fontSize: 20 }} /> : <MenuFoldOutlined style={{ fontSize: 20 }} />}
+                <Globe className="h-4 w-4" />
+                <span>{lang.toUpperCase()}</span>
               </button>
 
-              {/* Page title or breadcrumb can go here */}
-              <div className="flex-1"></div>
-
-              {/* Right Side Actions */}
-              <div className="flex items-center gap-2">
-                {/* Language Switcher */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="flex items-center gap-1 px-3"
-                  onClick={toggleLang}
-                  title={lang === 'en' ? 'Switch to Indonesian' : 'Switch to English'}
-                >
-                  <Globe className="w-5 h-5 text-slate-600" />
-                  <span className="text-xs font-medium text-slate-600">{lang.toUpperCase()}</span>
-                </Button>
-
-                {/* Notification Bell */}
-                {notificationsBell}
-
-                {/* Date/Time Display */}
-                <div className="flex items-center gap-3 h-auto px-3 py-2 rounded-md border border-slate-200 bg-slate-50">
-                  <div className="hidden sm:flex items-center gap-2 text-slate-700">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs font-medium">{headerDate}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-900">
-                    <Clock className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-semibold tabular-nums">{headerTime}</span>
-                  </div>
-                </div>
-              </div>
+              {/* Notifications */}
+              {notificationsBell}
             </div>
           </header>
 

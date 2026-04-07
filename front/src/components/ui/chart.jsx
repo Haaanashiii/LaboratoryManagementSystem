@@ -76,7 +76,7 @@ const ChartTooltipContent = ({ active, payload, labelKey, hideLabel }) => {
               style={{ backgroundColor: entry.fill || entry.color }}
             />
             <span className="text-sm text-slate-600">
-              {entry.dataKey}: <span className="font-medium text-slate-900">{entry.value}</span>
+              {entry.name || entry.dataKey}: <span className="font-medium text-slate-900">{entry.value}</span>
             </span>
           </div>
         ))}

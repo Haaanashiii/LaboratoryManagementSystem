@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, RadialBarChart, RadialBar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
+import { format, subDays, parseISO, isValid } from 'date-fns';
 import { api } from '@/api/apiClient';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Users, Package, FileText, CheckCircle, ShieldCheck,
-  Settings, ArrowRight, ArrowUpRight, AlertTriangle, Clock,
+  Users, Package, FileText, CheckCircle,
+  TrendingUp, AlertTriangle, Clock, Activity,
+  ArrowUpRight, ArrowRight, ShieldAlert, BarChart2,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
@@ -21,7 +22,7 @@ const REQUEST_STATUS_COLORS = {
   pending_lecturer: '#f59e0b',
   pending_head: '#f97316',
   head_approved: '#3b82f6',
-  ready_pickup: '#6366f1',
+  ready_pickup: '#2563eb',
   borrowed: '#22c55e',
   returned: '#94a3b8',
   rejected: '#ef4444',
@@ -30,30 +31,18 @@ const REQUEST_STATUS_COLORS = {
 const STATUS_LABELS = {
   pending_lecturer: 'Pending Lecturer',
   pending_head: 'Pending Head',
-  head_approved: 'Head Approved',
+  head_approved: 'Approved',
   ready_pickup: 'Ready Pickup',
   borrowed: 'Borrowed',
   returned: 'Returned',
   rejected: 'Rejected',
 };
 
-const STATUS_BADGE_CLASS = {
-  borrowed: 'bg-green-50 text-green-700 border-green-200',
-  head_approved: 'bg-blue-50 text-blue-700 border-blue-200',
-  ready_pickup: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  pending_lecturer: 'bg-amber-50 text-amber-700 border-amber-200',
-  pending_head: 'bg-orange-50 text-orange-700 border-orange-200',
-  returned: 'bg-slate-50 text-slate-600 border-slate-200',
-  rejected: 'bg-red-50 text-red-700 border-red-200',
-};
-
-const CAT_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#6366f1', '#ec4899', '#14b8a6', '#8b5cf6'];
-
 const ROLE_COLORS = {
   student: '#3b82f6',
   lecturer: '#22c55e',
   lab_assistant: '#f59e0b',
-  head_of_lab: '#6366f1',
+  head_of_lab: '#2563eb',
   admin: '#ef4444',
 };
 
@@ -65,52 +54,77 @@ const ROLE_LABELS = {
   admin: 'Admin',
 };
 
-// ─── small helpers ────────────────────────────────────────────────────────────
-function SectionLabel({ title, description, action }) {
-  return (
-    <div className="flex items-start justify-between gap-2">
-      <div>
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
-        {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
-      </div>
-      {action}
-    </div>
-  );
-}
+const CHART_TOOLTIP_STYLE = {
+  backgroundColor: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)',
+  fontSize: '12px',
+  padding: '8px 12px',
+};
 
-function StatCard({ title, value, icon: Icon, accentBg, accentText, onClick }) {
+// ─── helpers ─────────────────────────────────────────────────────────────────
+function StatCard({ title, value, icon: Icon, color, sub, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group relative rounded-xl border border-slate-200 bg-white p-5 text-left transition-all hover:border-slate-300 hover:shadow-sm"
+      className="group relative flex flex-col gap-4 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 text-left transition-all duration-200 hover:border-slate-300 hover:shadow-md"
     >
-      <div className="flex items-start justify-between">
-        <div className={`rounded-lg p-2 ${accentBg}`}>
-          <Icon className={`h-4 w-4 ${accentText}`} />
+      <div
+        className="absolute inset-y-0 left-0 w-1 rounded-l-xl"
+        style={{ backgroundColor: color }}
+      />
+      <div className="flex items-start justify-between pl-2">
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${color}18` }}
+        >
+          <Icon className="h-4.5 w-4.5" style={{ color }} />
         </div>
-        <ArrowUpRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-slate-500" />
+        <ArrowUpRight className="h-4 w-4 text-slate-300 transition-colors duration-200 group-hover:text-slate-500" />
       </div>
-      <p className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
-      <p className="mt-1 text-sm text-slate-500">{title}</p>
+      <div className="pl-2">
+        <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+        <p className="mt-0.5 text-sm font-medium text-slate-500">{title}</p>
+        {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+      </div>
     </button>
   );
 }
 
-const tooltipStyle = {
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  fontSize: '12px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-  padding: '8px 12px',
-};
+function EmptyState({ message }) {
+  return (
+    <div className="flex h-[220px] flex-col items-center justify-center gap-2 text-slate-400">
+      <BarChart2 className="h-8 w-8 opacity-30" />
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
+
+function DonutLegend({ items }) {
+  return (
+    <div className="mt-3 space-y-2">
+      {items.map((item) => (
+        <div key={item.name} className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: item.color ?? item.fill }}
+            />
+            <span className="text-slate-600">{item.name}</span>
+          </div>
+          <span className="font-semibold tabular-nums text-slate-900">{item.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── main component ───────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLang();
-
-  const [trendPeriod, setTrendPeriod] = useState('30');
 
   // ── queries ──
   const { data: currentUser } = useQuery({
@@ -138,23 +152,9 @@ export default function AdminDashboard() {
     queryFn: () => api.entities.Stats.dashboard(),
   });
 
-  const { data: rawTrends = [] } = useQuery({
-    queryKey: ['adminBorrowingTrends', trendPeriod],
-    queryFn: () =>
-      api.entities.Stats.adminBorrowingTrends({
-        groupBy: trendPeriod === '90' ? 'week' : 'day',
-        period: parseInt(trendPeriod, 10),
-      }),
-  });
-
   const { data: mostBorrowed = [] } = useQuery({
     queryKey: ['mostBorrowed'],
     queryFn: () => api.entities.Stats.adminMostBorrowed(8),
-  });
-
-  const { data: lateReturnUsers = [] } = useQuery({
-    queryKey: ['lateReturnUsers'],
-    queryFn: () => api.entities.Stats.adminLateReturnUsers(8),
   });
 
   // ── mutation ──
@@ -165,40 +165,27 @@ export default function AdminDashboard() {
 
   // ── derived data ──
   const pendingDamageReports = React.useMemo(
-    () => allRequests.filter(
-      (item) => item.return_condition === 'Damaged' && item.damage_status === 'pending_verification'
-    ),
-    [allRequests]
-  );
-
-  const trendChartData = React.useMemo(
     () =>
-      rawTrends.map((p) => ({
-        label: p.label,
-        Total: p.total_requests,
-        Approved: p.approved_requests,
-        Rejected: p.rejected_requests,
-      })),
-    [rawTrends]
+      allRequests.filter(
+        (item) =>
+          item.return_condition === 'Damaged' &&
+          item.damage_status === 'pending_verification'
+      ),
+    [allRequests]
   );
 
   const requestStatusData = React.useMemo(() => {
     const r = dashboardStats?.requests;
     if (!r) return [];
     return Object.entries(STATUS_LABELS)
-      .map(([key, label]) => ({ name: label, value: r[key] ?? 0, color: REQUEST_STATUS_COLORS[key], key }))
+      .map(([key, label]) => ({
+        name: label,
+        value: r[key] ?? 0,
+        color: REQUEST_STATUS_COLORS[key],
+        key,
+      }))
       .filter((s) => s.value > 0);
   }, [dashboardStats]);
-
-  const categoryData = React.useMemo(
-    () =>
-      (dashboardStats?.equipmentByCategory || []).map((c, i) => ({
-        name: c.category || 'Other',
-        count: c.count,
-        fill: CAT_COLORS[i % CAT_COLORS.length],
-      })),
-    [dashboardStats]
-  );
 
   const userRoleData = React.useMemo(() => {
     const u = dashboardStats?.users;
@@ -208,336 +195,346 @@ export default function AdminDashboard() {
       .filter((r) => r.value > 0);
   }, [dashboardStats]);
 
-  const lateReturnChartData = React.useMemo(
+  const overdueItems = React.useMemo(() => {
+    const now = new Date();
+    return allRequests
+      .filter((r) => r.status === 'borrowed' && new Date(r.return_date) < now)
+      .sort((a, b) => new Date(a.return_date) - new Date(b.return_date));
+  }, [allRequests]);
+
+  const mostBorrowedChartData = React.useMemo(
     () =>
-      lateReturnUsers.slice(0, 6).map((u) => ({
-        name: u.borrower_name?.split(' ')[0] ?? 'User',
-        late: u.late_return_count,
-        days: u.total_late_days,
+      mostBorrowed.slice(0, 6).map((item) => ({
+        name: (() => {
+          const n = item.item_name ?? item.equipment_name ?? '—';
+          return n.length > 18 ? `${n.slice(0, 17)}…` : n;
+        })(),
+        fullName: item.item_name ?? item.equipment_name ?? '—',
+        count: item.total_borrow_count,
       })),
-    [lateReturnUsers]
+    [mostBorrowed]
   );
 
-  const equipUtilData = React.useMemo(() => {
-    const eq = dashboardStats?.equipment;
-    if (!eq) return [];
-    const borrowed = eq.total - eq.available;
-    return [
-      { name: 'Available', value: eq.available, fill: '#22c55e' },
-      { name: 'Borrowed', value: borrowed > 0 ? borrowed : 0, fill: '#3b82f6' },
-    ];
-  }, [dashboardStats]);
+  // Area chart: requests created per day over last 14 days
+  const activityChartData = React.useMemo(() => {
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const d = subDays(new Date(), 13 - i);
+      return { date: format(d, 'MMM d'), label: format(d, 'yyyy-MM-dd'), count: 0 };
+    });
 
+    allRequests.forEach((req) => {
+      const raw = req.created_at ?? req.createdAt ?? req.date;
+      if (!raw) return;
+      const parsed = typeof raw === 'string' ? parseISO(raw) : new Date(raw);
+      if (!isValid(parsed)) return;
+      const label = format(parsed, 'yyyy-MM-dd');
+      const slot = days.find((d) => d.label === label);
+      if (slot) slot.count += 1;
+    });
+
+    return days;
+  }, [allRequests]);
+
+  const totalRequests = allRequests.length;
   const totalUsers = users.length;
   const totalEquipment = equipment.length;
-  const availableEquipment = equipment.filter((e) => e.available > 0).length;
   const activeRequests = allRequests.filter(
     (r) => r.status !== 'returned' && r.status !== 'rejected'
   ).length;
+  const availableEquipment = equipment.filter((e) => e.available > 0).length;
+  const utilizationRate =
+    totalEquipment > 0
+      ? Math.round(((totalEquipment - availableEquipment) / totalEquipment) * 100)
+      : 0;
 
   const getTimeGreeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return t('goodMorning');
-    if (h < 18) return t('goodAfternoon');
-    return t('goodEvening');
+    if (h < 12) return t('goodMorning') || 'Good morning';
+    if (h < 18) return t('goodAfternoon') || 'Good afternoon';
+    return t('goodEvening') || 'Good evening';
   };
-
-  const topBorrowMax = mostBorrowed[0]?.total_borrow_count ?? 1;
 
   // ── render ──
   return (
-    <div className="w-full space-y-3 px-2 py-2">
+    <div className="w-full space-y-5 px-2 py-3">
 
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              {getTimeGreeting()}, {currentUser?.name?.split(' ')[0] || 'Admin'}
-            </h1>
-            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-              Admin
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            {getTimeGreeting()},{' '}
+            <span className="text-blue-600">
+              {currentUser?.name?.split(' ')[0] || 'Admin'}
             </span>
-          </div>
-          <p className="mt-1 text-sm text-slate-500">Here's what's happening in your lab today.</p>
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Lab overview — {format(new Date(), 'EEEE, MMMM d, yyyy')}
+          </p>
         </div>
-        {pendingDamageReports.length > 0 && (
-          <button
-            onClick={() => document.getElementById('damage-section')?.scrollIntoView({ behavior: 'smooth' })}
-            className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
-          >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            {pendingDamageReports.length} damage report{pendingDamageReports.length !== 1 ? 's' : ''} pending
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {pendingDamageReports.length > 0 && (
+            <button
+              onClick={() =>
+                document.getElementById('damage-section')?.scrollIntoView({ behavior: 'smooth' })
+              }
+              className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {pendingDamageReports.length} damage{' '}
+              {pendingDamageReports.length !== 1 ? 'reports' : 'report'}
+            </button>
+          )}
+          {overdueItems.length > 0 && (
+            <span className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
+              <Clock className="h-3.5 w-3.5" />
+              {overdueItems.length} overdue
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          title={t('totalUsers')}
+          title="Total Users"
           value={totalUsers}
           icon={Users}
-          accentBg="bg-blue-50"
-          accentText="text-blue-600"
+          color="#2563eb"
+          sub="Registered accounts"
           onClick={() => navigate('/users')}
         />
         <StatCard
-          title={t('totalEquipment')}
+          title="Total Equipment"
           value={totalEquipment}
           icon={Package}
-          accentBg="bg-violet-50"
-          accentText="text-violet-600"
+          color="#0ea5e9"
+          sub={`${availableEquipment} available`}
           onClick={() => navigate('/inventory')}
         />
         <StatCard
-          title={t('availableEquipment')}
-          value={availableEquipment}
-          icon={CheckCircle}
-          accentBg="bg-emerald-50"
-          accentText="text-emerald-600"
-          onClick={() => navigate(CATALOG_ROUTES_BY_ROLE.admin)}
-        />
-        <StatCard
-          title={t('activeRequests')}
+          title="Active Requests"
           value={activeRequests}
           icon={FileText}
-          accentBg="bg-amber-50"
-          accentText="text-amber-600"
+          color="#f59e0b"
+          sub={`${totalRequests} total requests`}
           onClick={() => navigate('/all-requests')}
+        />
+        <StatCard
+          title="Utilization"
+          value={`${utilizationRate}%`}
+          icon={Activity}
+          color="#22c55e"
+          sub="Equipment in use"
+          onClick={() => navigate(CATALOG_ROUTES_BY_ROLE.admin)}
         />
       </div>
 
-      {/* ── Charts Row: Trend + Status Donut ── */}
+      {/* ── Row 1: Activity area chart + Request status donut ── */}
       <div className="grid gap-4 lg:grid-cols-3">
 
-        {/* Borrowing Trend */}
+        {/* Borrow Activity — Area Chart */}
         <Card className="border-slate-200 shadow-none lg:col-span-2">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel
-              title="Borrowing Trends"
-              description="Request volume over time"
-              action={
-                <Tabs value={trendPeriod} onValueChange={setTrendPeriod} defaultValue="30">
-                  <TabsList className="h-7">
-                    <TabsTrigger value="7" className="h-5 px-2 text-xs">7d</TabsTrigger>
-                    <TabsTrigger value="30" className="h-5 px-2 text-xs">30d</TabsTrigger>
-                    <TabsTrigger value="90" className="h-5 px-2 text-xs">90d</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              }
-            />
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {trendChartData.length === 0 ? (
-              <div className="flex h-[220px] items-center justify-center text-sm text-slate-400">
-                No trend data for this period
+          <CardHeader className="px-6 pt-5 pb-2">
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold text-slate-900">
+                  Borrow Activity
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                  Requests created over the last 14 days
+                </CardDescription>
               </div>
+              <span className="flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600">
+                <TrendingUp className="h-3 w-3" />
+                14-day trend
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-6 pb-5">
+            {activityChartData.every((d) => d.count === 0) ? (
+              <EmptyState message="No activity data found" />
             ) : (
               <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={trendChartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <AreaChart
+                  data={activityChartData}
+                  margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
+                >
                   <defs>
-                    <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.12} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gradApproved" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.12} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    <linearGradient id="activityGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
                     axisLine={false}
                     tickLine={false}
-                    interval="preserveStartEnd"
+                    interval={1}
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
                     axisLine={false}
                     tickLine={false}
                     allowDecimals={false}
                   />
-                  <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
-                  <Area type="monotone" dataKey="Total" stroke="#3b82f6" strokeWidth={2} fill="url(#gradTotal)" dot={false} />
-                  <Area type="monotone" dataKey="Approved" stroke="#22c55e" strokeWidth={2} fill="url(#gradApproved)" dot={false} />
+                  <Tooltip
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    formatter={(value) => [value, 'Requests']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    name="Requests"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    fill="url(#activityGrad)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#2563eb', strokeWidth: 0 }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Request Status Donut */}
+        {/* Request Status — Donut */}
         <Card className="border-slate-200 shadow-none">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel title="Request Status" description="Current distribution" />
+          <CardHeader className="px-6 pt-5 pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-900">Request Status</CardTitle>
+            <CardDescription className="text-xs text-slate-500">Current distribution</CardDescription>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             {requestStatusData.length === 0 ? (
-              <div className="flex h-[220px] items-center justify-center text-sm text-slate-400">
-                No requests yet
-              </div>
+              <EmptyState message="No requests yet" />
             ) : (
-              <div>
-                <ResponsiveContainer width="100%" height={150}>
+              <>
+                <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
                     <Pie
                       data={requestStatusData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={46}
-                      outerRadius={70}
+                      innerRadius={50}
+                      outerRadius={72}
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
                     >
                       {requestStatusData.map((entry, i) => (
-                        <Cell key={`cell-${i}`} fill={entry.color} />
+                        <Cell key={`rs-${i}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="mt-3 space-y-2">
-                  {requestStatusData.map((s) => (
-                    <div key={s.key} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                        <span className="text-slate-600">{s.name}</span>
-                      </div>
-                      <span className="font-semibold text-slate-900">{s.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                <DonutLegend items={requestStatusData} />
+              </>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* ── Bottom Row: Category Bar + Most Borrowed + Quick Actions ── */}
+      {/* ── Row 2: Most Borrowed Bar + Users by Role ── */}
       <div className="grid gap-4 lg:grid-cols-3">
 
-        {/* Equipment by Category */}
-        <Card className="border-slate-200 shadow-none">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel title="Equipment by Category" description="Inventory breakdown" />
+        {/* Most Borrowed — Ranked list */}
+        <Card className="border-slate-200 shadow-none lg:col-span-2">
+          <CardHeader className="px-6 pt-5 pb-0">
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold text-slate-900">
+                  Most Borrowed Equipment
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                  Top items by total borrow count
+                </CardDescription>
+              </div>
+              <button
+                onClick={() => navigate('/inventory')}
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                View all <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
           </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {categoryData.length === 0 ? (
-              <div className="flex h-[180px] items-center justify-center text-sm text-slate-400">No data</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(180, categoryData.length * 36)}>
-                <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
-                  <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tick={{ fontSize: 11, fill: '#64748b' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={88}
-                  />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="count" name="Items" radius={[0, 4, 4, 0]} maxBarSize={16}>
-                    {categoryData.map((entry, i) => (
-                      <Cell key={`cell-${i}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Most Borrowed */}
-        <Card className="border-slate-200 shadow-none">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel title="Most Borrowed" description="Top equipment by usage" />
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {mostBorrowed.length === 0 ? (
-              <div className="flex h-[180px] items-center justify-center text-sm text-slate-400">No data</div>
+          <CardContent className="px-6 pb-4 pt-4">
+            {mostBorrowedChartData.length === 0 ? (
+              <EmptyState message="No borrow data yet" />
             ) : (
               <div className="space-y-3">
-                {mostBorrowed.slice(0, 7).map((item, i) => (
-                  <div key={item._id ?? i} className="flex items-center gap-3">
-                    <span className="w-4 shrink-0 text-xs font-medium text-slate-400">{i + 1}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-slate-800">
-                        {item.item_name ?? item.equipment_name ?? '—'}
-                      </p>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full bg-blue-500 transition-all"
-                          style={{ width: `${Math.min(100, (item.total_borrow_count / topBorrowMax) * 100)}%` }}
-                        />
+                {mostBorrowedChartData.map((item, i) => {
+                  const max = mostBorrowedChartData[0]?.count || 1;
+                  const pct = Math.round((item.count / max) * 100);
+                  const rankColors = ['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
+                  const barColor = rankColors[i] ?? '#e5e7eb';
+                  const isTop = i === 0;
+                  return (
+                    <div key={item.name} className="group flex items-center gap-3">
+                      {/* Rank badge */}
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                          isTop
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+
+                      {/* Name + bar */}
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <p
+                            className={`truncate text-xs font-medium ${
+                              isTop ? 'text-slate-900' : 'text-slate-700'
+                            }`}
+                          >
+                            {item.fullName}
+                          </p>
+                          <span
+                            className={`shrink-0 tabular-nums text-xs font-semibold ${
+                              isTop ? 'text-blue-600' : 'text-slate-500'
+                            }`}
+                          >
+                            {item.count}×
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%`, backgroundColor: barColor }}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <span className="shrink-0 text-xs text-slate-500">{item.total_borrow_count}×</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
+        {/* Users by Role — Donut */}
         <Card className="border-slate-200 shadow-none">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel title="Quick Actions" />
-          </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-2">
-            {[
-              { label: t('manageUsers'), sub: `${totalUsers} ${t('users')}`, icon: Users, path: '/users', bg: 'bg-blue-50', text: 'text-blue-600' },
-              { label: t('manageInventory'), sub: `${totalEquipment} ${t('items')}`, icon: Package, path: '/inventory', bg: 'bg-violet-50', text: 'text-violet-600' },
-              { label: 'Audit Logs', sub: 'Security activity', icon: ShieldCheck, path: '/admin-audit-logs', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-              { label: t('systemSettings'), sub: t('configuration'), icon: Settings, path: '/settings', bg: 'bg-slate-100', text: 'text-slate-600' },
-            ].map((a) => (
-              <button
-                key={a.label}
-                onClick={() => navigate(a.path)}
-                className="flex w-full items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 text-left transition-colors hover:border-slate-200 hover:bg-slate-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-md p-1.5 ${a.bg}`}>
-                    <a.icon className={`h-3.5 w-3.5 ${a.text}`} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-slate-800">{a.label}</p>
-                    <p className="text-xs text-slate-400">{a.sub}</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
-              </button>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Extra Charts: Users by Role + Late Returns + Equipment Utilization ── */}
-      <div className="grid gap-4 lg:grid-cols-3">
-
-        {/* Users by Role */}
-        <Card className="border-slate-200 shadow-none">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel title="Users by Role" description="Active user distribution" />
+          <CardHeader className="px-6 pt-5 pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-900">Users by Role</CardTitle>
+            <CardDescription className="text-xs text-slate-500">Account type breakdown</CardDescription>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             {userRoleData.length === 0 ? (
-              <div className="flex h-[200px] items-center justify-center text-sm text-slate-400">No data</div>
+              <EmptyState message="No user data" />
             ) : (
-              <div>
-                <ResponsiveContainer width="100%" height={140}>
+              <>
+                <ResponsiveContainer width="100%" height={155}>
                   <PieChart>
                     <Pie
                       data={userRoleData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={65}
+                      innerRadius={45}
+                      outerRadius={66}
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
@@ -546,112 +543,144 @@ export default function AdminDashboard() {
                         <Cell key={`role-${i}`} fill={entry.fill} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="mt-2 space-y-1.5">
-                  {userRoleData.map((r) => (
-                    <div key={r.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: r.fill }} />
-                        <span className="text-slate-600">{r.name}</span>
+                <DonutLegend items={userRoleData.map((r) => ({ ...r, color: r.fill }))} />
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Row 3: Overdue + Equipment Utilization bar ── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+
+        {/* Overdue Items */}
+        <Card className="border-slate-200 shadow-none">
+          <CardHeader className="px-6 pt-5 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold text-slate-900">
+                  Overdue Borrows
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500">
+                  Items past their return date
+                </CardDescription>
+              </div>
+              {overdueItems.length > 0 && (
+                <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-600">
+                  {overdueItems.length}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-4">
+            {overdueItems.length === 0 ? (
+              <div className="flex h-[160px] flex-col items-center justify-center gap-2 text-slate-400">
+                <CheckCircle className="h-7 w-7 opacity-30" />
+                <p className="text-sm">All items returned on time</p>
+              </div>
+            ) : (
+              <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1">
+                {overdueItems.slice(0, 8).map((item) => {
+                  const daysOver = Math.floor(
+                    (Date.now() - new Date(item.return_date)) / 86_400_000
+                  );
+                  const urgency =
+                    daysOver > 7
+                      ? 'bg-red-100 border-red-200 text-red-700'
+                      : 'bg-orange-50 border-orange-200 text-orange-700';
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-slate-800">
+                          {item.equipment_name}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">{item.borrower_name}</p>
                       </div>
-                      <span className="font-semibold text-slate-900">{r.value}</span>
+                      <span
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${urgency}`}
+                      >
+                        {daysOver}d
+                      </span>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Late Return Users */}
+        {/* Equipment Utilization — stacked bar */}
         <Card className="border-slate-200 shadow-none">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel title="Late Return Offenders" description="Users with most overdue returns" />
+          <CardHeader className="px-6 pt-5 pb-3">
+            <CardTitle className="text-sm font-semibold text-slate-900">
+              Equipment Utilization
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              Available vs borrowed breakdown
+            </CardDescription>
           </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {lateReturnChartData.length === 0 ? (
-              <div className="flex h-[200px] items-center justify-center text-sm text-slate-400">No late returns recorded</div>
+          <CardContent className="px-6 pb-5">
+            {totalEquipment === 0 ? (
+              <EmptyState message="No equipment data" />
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(180, lateReturnChartData.length * 36)}>
-                <BarChart data={lateReturnChartData} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
-                  <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tick={{ fontSize: 11, fill: '#64748b' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={64}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value, name) => [value, name === 'late' ? 'Late returns' : 'Total late days']}
-                  />
-                  <Bar dataKey="late" name="late" fill="#ef4444" radius={[0, 4, 4, 0]} maxBarSize={14} />
-                  <Bar dataKey="days" name="days" fill="#fca5a5" radius={[0, 4, 4, 0]} maxBarSize={14} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Equipment Utilization */}
-        <Card className="border-slate-200 shadow-none">
-          <CardHeader className="pb-2 pt-5 px-5">
-            <SectionLabel title="Equipment Utilization" description="Available vs currently borrowed" />
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {equipUtilData.length === 0 || (equipUtilData[0].value === 0 && equipUtilData[1].value === 0) ? (
-              <div className="flex h-[200px] items-center justify-center text-sm text-slate-400">No equipment data</div>
-            ) : (
-              <div>
-                <ResponsiveContainer width="100%" height={140}>
-                  <PieChart>
-                    <Pie
-                      data={equipUtilData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={65}
-                      paddingAngle={3}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
-                      {equipUtilData.map((entry, i) => (
-                        <Cell key={`util-${i}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="mt-3 space-y-3">
-                  {equipUtilData.map((e) => (
-                    <div key={e.name}>
-                      <div className="mb-1 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: e.fill }} />
-                          <span className="text-slate-600">{e.name}</span>
-                        </div>
-                        <span className="font-semibold text-slate-900">{e.value}</span>
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{
-                            width: `${totalEquipment > 0 ? Math.round((e.value / totalEquipment) * 100) : 0}%`,
-                            backgroundColor: e.fill,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  <p className="pt-1 text-center text-xs text-slate-400">
-                    {totalEquipment > 0
-                      ? `${Math.round(((totalEquipment - (equipUtilData[0]?.value ?? 0)) / totalEquipment) * 100)}% utilization rate`
-                      : '—'}
+              <div className="space-y-5">
+                {/* Big utilization number */}
+                <div className="flex items-end gap-3">
+                  <p className="text-4xl font-bold tracking-tight text-slate-900">
+                    {utilizationRate}%
                   </p>
+                  <p className="mb-1 text-sm text-slate-500">utilization rate</p>
+                </div>
+
+                {/* Stacked progress */}
+                <div>
+                  <div className="mb-2 flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-l-full transition-all duration-500"
+                      style={{
+                        width: `${utilizationRate}%`,
+                        backgroundColor: '#2563eb',
+                      }}
+                    />
+                    <div
+                      className="h-full flex-1 rounded-r-full transition-all duration-500"
+                      style={{ backgroundColor: '#22c55e' }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>0%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+
+                {/* Breakdown */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                      <span className="h-2 w-2 rounded-full bg-blue-500" />
+                      Borrowed
+                    </div>
+                    <p className="mt-1.5 text-2xl font-bold text-slate-900">
+                      {totalEquipment - availableEquipment}
+                    </p>
+                    <p className="text-xs text-slate-400">items out</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      Available
+                    </div>
+                    <p className="mt-1.5 text-2xl font-bold text-slate-900">
+                      {availableEquipment}
+                    </p>
+                    <p className="text-xs text-slate-400">items ready</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -661,38 +690,50 @@ export default function AdminDashboard() {
 
       {/* ── Pending Damage Verification ── */}
       {pendingDamageReports.length > 0 && (
-        <Card id="damage-section" className="border-amber-200 bg-amber-50/30 shadow-none">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <SectionLabel
-              title={
-                <span className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  Pending Damage Verification
-                </span>
-              }
-              action={
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                  {pendingDamageReports.length} pending
-                </span>
-              }
-            />
+        <Card id="damage-section" className="border-amber-200 shadow-none">
+          <CardHeader className="px-6 pt-5 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100">
+                  <ShieldAlert className="h-4 w-4 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-semibold text-slate-900">
+                    Pending Damage Verification
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-500">
+                    Review and verify reported equipment damage
+                  </CardDescription>
+                </div>
+              </div>
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                {pendingDamageReports.length} pending
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-amber-100">
               {pendingDamageReports.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{item.equipment_name}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Borrower: {item.borrower_name}</p>
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-3 px-6 py-4 lg:flex-row lg:items-center lg:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">{item.equipment_name}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Borrower: {item.borrower_name}
+                    </p>
                     {item.damage_details && (
-                      <p className="mt-1.5 text-sm text-slate-600">{item.damage_details}</p>
+                      <p className="mt-1.5 max-w-prose text-sm text-slate-600">
+                        {item.damage_details}
+                      </p>
                     )}
                     {item.damage_image_url && (
                       <a
                         href={`http://localhost:3000${item.damage_image_url}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-1 inline-block text-xs text-blue-600 hover:underline"
+                        className="mt-1 inline-block text-xs font-medium text-blue-600 hover:underline"
                       >
                         View damage image →
                       </a>
@@ -701,9 +742,11 @@ export default function AdminDashboard() {
                   <div className="flex shrink-0 items-center gap-2">
                     <Button
                       size="sm"
-                      className="h-7 bg-emerald-600 px-3 text-xs hover:bg-emerald-700"
+                      className="h-7 bg-emerald-600 px-4 text-xs hover:bg-emerald-700"
                       disabled={verifyDamageMutation.isPending}
-                      onClick={() => verifyDamageMutation.mutate({ id: item.id, action: 'verify' })}
+                      onClick={() =>
+                        verifyDamageMutation.mutate({ id: item.id, action: 'verify' })
+                      }
                     >
                       Verify
                     </Button>
@@ -712,7 +755,9 @@ export default function AdminDashboard() {
                       variant="outline"
                       className="h-7 px-3 text-xs"
                       disabled={verifyDamageMutation.isPending}
-                      onClick={() => verifyDamageMutation.mutate({ id: item.id, action: 'reject' })}
+                      onClick={() =>
+                        verifyDamageMutation.mutate({ id: item.id, action: 'reject' })
+                      }
                     >
                       Reject
                     </Button>
@@ -723,51 +768,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       )}
-
-      {/* ── Recent Requests ── */}
-      <Card className="border-slate-200 shadow-none">
-        <CardHeader className="pb-3 pt-5 px-5">
-          <SectionLabel
-            title="Recent Requests"
-            description="Latest borrow activity across all users"
-            action={
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 gap-1 px-2 text-xs text-slate-500 hover:text-slate-700"
-                onClick={() => navigate('/all-requests')}
-              >
-                View all <ArrowRight className="h-3 w-3" />
-              </Button>
-            }
-          />
-        </CardHeader>
-        <CardContent className="p-0">
-          {allRequests.length === 0 ? (
-            <div className="py-12 text-center text-sm text-slate-400">No requests yet.</div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {allRequests.slice(0, 5).map((request) => (
-                <div key={request.id} className="flex items-center gap-4 px-5 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900">{request.equipment_name}</p>
-                    <p className="mt-0.5 truncate text-xs text-slate-400">
-                      {t('student_label')}: {request.student_email}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${
-                      STATUS_BADGE_CLASS[request.status] ?? 'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}
-                  >
-                    {String(request.status ?? '').replace(/_/g, ' ')}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
     </div>
   );

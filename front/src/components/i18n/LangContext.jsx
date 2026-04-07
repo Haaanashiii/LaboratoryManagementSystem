@@ -12,6 +12,7 @@ const translations = {
     cancel: 'Cancel',
     dashboard: 'Dashboard',
     inventory: 'Inventory',
+    addEquipment: 'Add Equipment',
     allRequests: 'All Requests',
     users: 'Users',
     reports: 'Reports',
@@ -326,6 +327,15 @@ const translations = {
     approvedRequests: 'Approved Requests',
     readyForPrep: 'Ready for Prep',
     pendingReturns: 'Pending Returns',
+    // Sidebar group labels
+    sidebarGroupApplication: 'Application',
+    sidebarGroupPlatform: 'Platform',
+    sidebarGroupSystem: 'System',
+    sidebarGroupApprovals: 'Approvals',
+    sidebarGroupManagement: 'Management',
+    sidebarGroupOperations: 'Operations',
+    sidebarGroupCatalog: 'Catalog',
+    sidebarGroupMyActivity: 'My Activity',
   },
   id: {
     appSubtitle: 'Sistem Manajemen Laboratorium',
@@ -601,6 +611,15 @@ const translations = {
     approvedRequests: 'Permintaan Disetujui',
     readyForPrep: 'Siap Disiapkan',
     pendingReturns: 'Menunggu Pengembalian',
+    // Sidebar group labels
+    sidebarGroupApplication: 'Aplikasi',
+    sidebarGroupPlatform: 'Platform',
+    sidebarGroupSystem: 'Sistem',
+    sidebarGroupApprovals: 'Persetujuan',
+    sidebarGroupManagement: 'Manajemen',
+    sidebarGroupOperations: 'Operasi',
+    sidebarGroupCatalog: 'Katalog',
+    sidebarGroupMyActivity: 'Aktivitas Saya',
 
     // Login Page
     welcomeToEquimon: 'Selamat datang di Equimon',

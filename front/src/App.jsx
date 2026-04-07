@@ -12,7 +12,7 @@ import RoleRoute from './components/RoleRoute'
 import Dashboard from './pages/dashboards/MainDashboard'
 
 // User Management
-import Users from './pages/users'
+import Users from './pages/admin/AdminUserManagement'
 
 // Approvals
 import LecturerApprovals from './pages/approvals/LecturerPendingApproval'
@@ -32,6 +32,7 @@ import FunctionsApprovalHistory from './pages/approvals/MyApprovalHistory'
 
 // Inventory
 import Inventory from './pages/inventory/Inventory'
+import AddEquipmentPage from './pages/inventory/AddEquipmentPage'
 import MyRequests from './pages/requests/StudentRequest'
 import EquipmentPrep from './pages/inventory/EquipmentPreparation'
 import Returns from './pages/inventory/Returns'
@@ -136,6 +137,7 @@ function App() {
             
             {/* Inventory */}
             <Route path="inventory" element={<Inventory />} />
+            <Route path="inventory/add-equipment" element={<AddEquipmentPage />} />
             <Route path="requests" element={<MyRequests />} />
             <Route path="equipment-prep" element={<EquipmentPrep />} />
             <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>
