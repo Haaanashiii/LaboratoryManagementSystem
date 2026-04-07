@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 
 const roles = [
@@ -66,6 +66,7 @@ export default function Users() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -165,6 +166,7 @@ export default function Users() {
 
   const openEditDialog = (user) => {
     setEditingUser(user);
+    setShowEditPassword(false);
     setEditForm({
       name: user.name || '',
       role: user.role || 'student',
@@ -599,7 +601,15 @@ export default function Users() {
       </Dialog>
 
       {/* ── Edit User Dialog ── */}
-      <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+      <Dialog
+        open={!!editingUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingUser(null);
+            setShowEditPassword(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-white text-slate-900">
           <DialogHeader>
             <DialogTitle className="text-base">Edit User</DialogTitle>
@@ -697,13 +707,23 @@ export default function Users() {
                 <Label className="text-xs font-medium text-slate-700">
                   New Password <span className="font-normal text-slate-400">(leave blank to keep current)</span>
                 </Label>
-                <Input
-                  type="text"
-                  value={editForm.password}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
-                  placeholder="••••••••"
-                  className="h-9 text-sm"
-                />
+                <div className="relative">
+                  <Input
+                    type={showEditPassword ? 'text' : 'password'}
+                    value={editForm.password}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
+                    placeholder="••••••••"
+                    className="h-9 pr-10 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword((prev) => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:text-slate-700"
+                    aria-label={showEditPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

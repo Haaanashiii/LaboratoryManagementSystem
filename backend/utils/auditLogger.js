@@ -1,12 +1,29 @@
 const AuditLog = require('../models/AuditLog');
 
+const normalizeIp = (value) => {
+  if (!value) return null;
+
+  const ip = String(value).trim();
+  if (!ip) return null;
+
+  if (ip === '::1') return '127.0.0.1';
+  if (ip.startsWith('::ffff:')) return ip.slice(7);
+
+  return ip;
+};
+
 const getClientIp = (req) => {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.length > 0) {
-    return forwarded.split(',')[0].trim();
+  const ipFromExpress = normalizeIp(req.ip);
+  if (ipFromExpress) {
+    return ipFromExpress;
   }
 
-  return req.ip || req.connection?.remoteAddress || null;
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return normalizeIp(forwarded.split(',')[0]);
+  }
+
+  return normalizeIp(req.connection?.remoteAddress);
 };
 
 // Centralized audit logger keeps action tracking consistent across controllers.

@@ -16,6 +16,17 @@ const ACTION_OPTIONS = [
   'damage_verified'
 ];
 
+const normalizeIpForDisplay = (value) => {
+  if (!value) return '-';
+
+  const ip = String(value).trim();
+  if (!ip) return '-';
+  if (ip === '::1') return '127.0.0.1';
+  if (ip.startsWith('::ffff:')) return ip.slice(7);
+
+  return ip;
+};
+
 export default function AdminAuditLogs() {
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState({
@@ -144,19 +155,20 @@ export default function AdminAuditLogs() {
                 <th className="text-left px-4 py-3 font-medium">Action</th>
                 <th className="text-left px-4 py-3 font-medium">Status</th>
                 <th className="text-left px-4 py-3 font-medium">Entity</th>
+                <th className="text-left px-4 py-3 font-medium">IP Address</th>
                 <th className="text-left px-4 py-3 font-medium">Details</th>
               </tr>
               </thead>
               <tbody>
               {isLoading && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={6}>Loading logs...</td>
+                  <td className="px-4 py-6 text-slate-500" colSpan={7}>Loading logs...</td>
                 </tr>
               )}
 
               {!isLoading && logs.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={6}>No logs found for current filters.</td>
+                  <td className="px-4 py-6 text-slate-500" colSpan={7}>No logs found for current filters.</td>
                 </tr>
               )}
 
@@ -175,6 +187,7 @@ export default function AdminAuditLogs() {
                     </span>
                   </td>
                   <td className="px-4 py-3">{log.entity_type}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{normalizeIpForDisplay(log.ip_address)}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {log.details ? JSON.stringify(log.details) : '-'}
                   </td>

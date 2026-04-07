@@ -32,6 +32,39 @@ const { initSocket } = require('./socket');
 const app = express();
 let server;
 
+const parseTrustProxySetting = (value) => {
+  if (!value) return false;
+
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized || normalized === 'false' || normalized === '0' || normalized === 'off') {
+    return false;
+  }
+
+  if (normalized === 'true' || normalized === '1' || normalized === 'on') {
+    return true;
+  }
+
+  if (normalized === 'loopback' || normalized === 'linklocal' || normalized === 'uniquelocal') {
+    return normalized;
+  }
+
+  const asNumber = Number(normalized);
+  if (Number.isInteger(asNumber) && asNumber >= 0) {
+    return asNumber;
+  }
+
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+};
+
+const trustProxySetting = parseTrustProxySetting(process.env.TRUST_PROXY);
+if (trustProxySetting !== false) {
+  app.set('trust proxy', trustProxySetting);
+  console.log(`ℹ️  Express trust proxy enabled: ${JSON.stringify(trustProxySetting)}`);
+}
+
 // Optional: Force Node's DNS resolver (useful when SRV lookups fail due to
 // broken/blocked system DNS configuration).
 if (process.env.DNS_SERVERS) {

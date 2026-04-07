@@ -71,6 +71,10 @@ A complete RESTful API for managing laboratory equipment inventory and borrowing
    
    # CORS
    CORS_ORIGIN=http://localhost:5173
+
+  # Proxy trust (set when running behind reverse proxy/load balancer)
+  # Examples: true, 1, loopback, 2, 10.0.0.0/8,192.168.0.0/16
+  TRUST_PROXY=false
    ```
 
 4. **Start MongoDB**

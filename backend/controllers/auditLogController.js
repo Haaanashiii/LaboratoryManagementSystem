@@ -40,18 +40,43 @@ const asDisplayText = (value) => {
   return String(value);
 };
 
+const normalizeExportDateFormat = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+
+  if (normalized === 'numeric') return 'numeric';
+  if (normalized === 'long') return 'long';
+  return 'short';
+};
+
 const getDayKey = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 'Invalid Date' : date.toISOString().slice(0, 10);
 };
 
-const formatDayLabel = (dayKey) => {
+const formatDayLabel = (dayKey, format = 'short') => {
   if (dayKey === 'Invalid Date') return 'Invalid Date';
   const date = new Date(`${dayKey}T00:00:00.000Z`);
+
+  if (format === 'numeric') {
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  }
+
+  if (format === 'long') {
+    return date.toLocaleDateString(undefined, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+
   return date.toLocaleDateString(undefined, {
-    weekday: 'long',
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
   });
 };
@@ -147,7 +172,9 @@ exports.exportAuditLogsPdf = async (req, res, next) => {
       start_date,
       end_date,
       limit,
+      date_format,
     } = req.query;
+    const exportDateFormat = normalizeExportDateFormat(date_format);
 
     const requestedLimit = parseInt(limit, 10);
     const safeLimit = Number.isFinite(requestedLimit)
@@ -197,6 +224,7 @@ exports.exportAuditLogsPdf = async (req, res, next) => {
     doc.font('Helvetica').fontSize(9).fillColor('#64748B').text(
       `Applied filters: ${appliedFilters.length ? appliedFilters.join(' | ') : 'None'}`
     );
+    doc.font('Helvetica').fontSize(9).fillColor('#64748B').text(`Date format: ${exportDateFormat}`);
     doc.moveDown(0.8);
 
     const tableStartX = doc.page.margins.left;
@@ -229,7 +257,7 @@ exports.exportAuditLogsPdf = async (req, res, next) => {
         doc.addPage();
       }
 
-      const dayLabel = formatDayLabel(dayKey);
+      const dayLabel = formatDayLabel(dayKey, exportDateFormat);
       doc.font('Helvetica-Bold').fontSize(11).fillColor('#1E293B').text(`Date: ${dayLabel} (${dayLogs.length} record${dayLogs.length === 1 ? '' : 's'})`);
       doc.moveDown(0.2);
 

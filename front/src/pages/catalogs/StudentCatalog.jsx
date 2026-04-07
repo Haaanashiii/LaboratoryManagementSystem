@@ -18,7 +18,7 @@ import { useCatalogData } from './useCatalogData';
 import { useTheme } from '@/components/hooks/ThemeContext';
 
 const getDefaultBorrowForm = () => ({
-  quantity: 1,
+  quantity: '1',
   purpose: '',
   borrow_date: format(new Date(), 'yyyy-MM-dd'),
   return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
@@ -34,6 +34,7 @@ export default function StudentCatalog() {
   const [successPhase, setSuccessPhase] = useState(0); // 0 = check only, 1 = check moved + text shown
   const [borrowForm, setBorrowForm] = useState(getDefaultBorrowForm());
   const [borrowImgIdx, setBorrowImgIdx] = useState(0);
+  const [borrowQuantityNotice, setBorrowQuantityNotice] = useState('');
 
   const {
     search,
@@ -81,13 +82,32 @@ export default function StudentCatalog() {
     if (!selectedEquipment) {
       return;
     }
-    createRequestMutation.mutate({ equipment: selectedEquipment.id, ...borrowForm });
+
+    const availableQty = Number(selectedEquipment.available_quantity ?? 0);
+    const parsedQuantity = Number.parseInt(String(borrowForm.quantity), 10);
+
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+      setBorrowQuantityNotice('Please enter a valid quantity (minimum 1).');
+      return;
+    }
+
+    if (parsedQuantity > availableQty) {
+      setBorrowQuantityNotice(`Quantity exceeded. Only ${availableQty} item${availableQty === 1 ? '' : 's'} available.`);
+      return;
+    }
+
+    createRequestMutation.mutate({
+      equipment: selectedEquipment.id,
+      ...borrowForm,
+      quantity: parsedQuantity,
+    });
   };
 
   const closeBorrowDialog = () => {
     setSelectedEquipment(null);
     setBorrowImgIdx(0);
     setBorrowForm(getDefaultBorrowForm());
+    setBorrowQuantityNotice('');
   };
 
   const handleViewEquipmentBorrow = (equipment) => {
@@ -96,7 +116,13 @@ export default function StudentCatalog() {
     setBorrowImgIdx(0);
     setSelectedEquipment(equipment);
     setBorrowForm(getDefaultBorrowForm());
+    setBorrowQuantityNotice('');
   };
+
+  const selectedAvailableQty = Number(selectedEquipment?.available_quantity ?? 0);
+  const parsedBorrowQuantity = Number.parseInt(String(borrowForm.quantity), 10);
+  const isBorrowQuantityInvalid = !Number.isFinite(parsedBorrowQuantity) || parsedBorrowQuantity < 1;
+  const isBorrowQuantityExceeded = Number.isFinite(parsedBorrowQuantity) && parsedBorrowQuantity > selectedAvailableQty;
 
   // Auto-advance image carousel in borrow dialog
   useEffect(() => {
@@ -440,12 +466,39 @@ export default function StudentCatalog() {
                     <Input
                       type="number"
                       min="1"
-                      max={selectedEquipment?.available_quantity}
+                      inputMode="numeric"
                       value={borrowForm.quantity}
-                      onChange={(e) => setBorrowForm({ ...borrowForm, quantity: parseInt(e.target.value, 10) || 1 })}
+                      onChange={(e) => {
+                        const nextQuantity = e.target.value;
+                        setBorrowForm({ ...borrowForm, quantity: nextQuantity });
+
+                        const parsedQuantity = Number.parseInt(nextQuantity, 10);
+                        if (nextQuantity === '') {
+                          setBorrowQuantityNotice('Please enter a quantity.');
+                          return;
+                        }
+
+                        if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+                          setBorrowQuantityNotice('Please enter a valid quantity (minimum 1).');
+                          return;
+                        }
+
+                        if (parsedQuantity > Number(selectedEquipment?.available_quantity ?? 0)) {
+                          const availableQty = Number(selectedEquipment?.available_quantity ?? 0);
+                          setBorrowQuantityNotice(`Quantity exceeded. Only ${availableQty} item${availableQty === 1 ? '' : 's'} available.`);
+                          return;
+                        }
+
+                        setBorrowQuantityNotice('');
+                      }}
                       className={`rounded-lg text-xs font-semibold h-8 w-full ${isDark ? 'bg-white/5 border-white/10 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'}`}
                       style={isDark ? { color: '#e2e8f0' } : undefined}
                     />
+                    {(borrowQuantityNotice || isBorrowQuantityExceeded) && (
+                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
+                        {borrowQuantityNotice || `Quantity exceeded. Only ${selectedAvailableQty} item${selectedAvailableQty === 1 ? '' : 's'} available.`}
+                      </p>
+                    )}
                   </div>
 
                   {/* Dates row */}
@@ -535,7 +588,7 @@ export default function StudentCatalog() {
                   )}
                   <Button
                     onClick={handleBorrowSubmit}
-                    disabled={createRequestMutation.isPending || !borrowForm.purpose || !borrowForm.agree_policy}
+                    disabled={createRequestMutation.isPending || !borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded}
                     className={`flex-[2] h-8 rounded-lg text-white text-xs font-semibold transition-all disabled:opacity-35 ${isDark ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.35)]' : 'bg-slate-900 hover:bg-blue-600 shadow-[0_4px_16px_rgba(0,0,0,0.18)]'}`}
                   >
                     {createRequestMutation.isPending ? (

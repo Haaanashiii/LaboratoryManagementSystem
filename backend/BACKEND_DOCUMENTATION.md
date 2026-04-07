@@ -55,6 +55,7 @@ Required:
 Optional:
 - MAX_FILE_SIZE: upload size limit in bytes (default 5242880)
 - DNS_SERVERS: comma-separated DNS servers for SRV resolution issues
+- TRUST_PROXY: Express trust proxy setting for real client IP extraction behind reverse proxies (examples: true, 1, loopback, 2, 10.0.0.0/8)
 - ADMIN_EMAIL: used in production auto-admin creation (if no admin exists)
 - ADMIN_PASSWORD: used in production auto-admin creation
 - ENABLE_DEV_EMAIL_BYPASS:
@@ -310,6 +311,21 @@ Query params:
 - page (default 1)
 - limit (default 20, max 100)
 Response includes pagination meta.
+
+#### GET /export/pdf
+Query params:
+- user
+- action_type
+- status
+- start_date
+- end_date
+- limit (default 5000, max 5000)
+- date_format:
+  - short (default)
+  - numeric
+  - long
+Behavior:
+- groups records by day and renders day headers based on date_format
 
 ### 9.4 User Routes (/api/users)
 All routes: protect + authorize(admin, head_of_lab)
