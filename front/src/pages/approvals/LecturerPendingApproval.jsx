@@ -8,8 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Package, Calendar, User, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function LecturerApprovals() {
+  const { t } = useLang();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [action, setAction] = useState(null); // 'approve' or 'reject'
@@ -69,8 +71,8 @@ export default function LecturerApprovals() {
     return (
       <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Pending Lecturer Approvals</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Requests awaiting your review</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('pendingApprovals')}</h1>
+          <p className="mt-0.5 text-sm text-slate-500">{t('requestsAwaitingReview')}</p>
         </div>
         <hr className="border-slate-200" />
         <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg">
@@ -78,9 +80,9 @@ export default function LecturerApprovals() {
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
               <XCircle className="w-6 h-6 text-red-500" />
             </div>
-            <p className="text-sm font-medium text-slate-900">Unable to load requests</p>
+            <p className="text-sm font-medium text-slate-900">{t('unableLoadRequests')}</p>
             <p className="text-xs text-slate-500 max-w-sm">
-              {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+              {error?.message || t('failedConnectServer')}
             </p>
           </div>
         </div>
@@ -93,8 +95,8 @@ export default function LecturerApprovals() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Pending Approvals</h1>
-        <p className="mt-0.5 text-sm text-slate-500">Review and verify student equipment borrowing requests.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">{t('pendingApprovals')}</h1>
+        <p className="mt-0.5 text-sm text-slate-500">{t('pendingApprovalsDesc')}</p>
       </div>
 
       <hr className="border-slate-200" />
@@ -102,8 +104,8 @@ export default function LecturerApprovals() {
       {requests.length === 0 ? (
         <div className="py-20 text-center">
           <CheckCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm font-medium text-slate-600">All caught up!</p>
-          <p className="text-xs text-slate-400">No pending requests require your verification.</p>
+          <p className="text-sm font-medium text-slate-600">{t('allCaughtUp')}</p>
+          <p className="text-xs text-slate-400">{t('noPendingRequestsRequireVerification')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -117,7 +119,7 @@ export default function LecturerApprovals() {
                     </div>
                     <div>
                       <h3 className="font-medium text-slate-900 text-sm leading-tight">{request.equipment_name}</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Qty: {request.quantity}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{t('qty')}: {request.quantity}</p>
                       <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5" />
@@ -140,7 +142,7 @@ export default function LecturerApprovals() {
                       onClick={() => openRejectDialog(request)}
                     >
                       <XCircle className="w-3.5 h-3.5 mr-1" />
-                      Reject
+                      {t('reject')}
                     </Button>
                     <Button
                       size="sm"
@@ -148,14 +150,14 @@ export default function LecturerApprovals() {
                       onClick={() => openApproveDialog(request)}
                     >
                       <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                      Verify
+                      {t('verify')}
                     </Button>
                   </div>
                 </div>
 
                 {request.purpose && (
                   <div className="mt-3 pt-3 border-t border-slate-100">
-                    <p className="text-xs text-slate-400 mb-0.5">Purpose</p>
+                    <p className="text-xs text-slate-400 mb-0.5">{t('purpose')}</p>
                     <p className="text-sm text-slate-700">{request.purpose}</p>
                   </div>
                 )}
@@ -170,7 +172,7 @@ export default function LecturerApprovals() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {action === 'approve' ? 'Verify Request' : 'Reject Request'}
+              {action === 'approve' ? t('verifyRequest') : t('rejectRequest')}
             </DialogTitle>
           </DialogHeader>
 
@@ -184,14 +186,14 @@ export default function LecturerApprovals() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Remarks {action === 'reject' && <span className="text-red-500">*</span>}
+                {t('remarks')} {action === 'reject' && <span className="text-red-500">*</span>}
               </label>
               <Textarea
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder={action === 'approve'
-                  ? "Optional: Add any notes or instructions..."
-                  : "Please provide a reason for rejection..."
+                  ? t('optionalAddNotesInstructions')
+                  : t('provideRejectionReason')
                 }
                 rows={3}
               />
@@ -199,7 +201,7 @@ export default function LecturerApprovals() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeDialog}>{t('cancel')}</Button>
             <Button
               onClick={handleSubmit}
               disabled={actionMutation.isPending || (action === 'reject' && !remarks)}
@@ -209,11 +211,11 @@ export default function LecturerApprovals() {
               }
             >
               {actionMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('processing')}</>
               ) : action === 'approve' ? (
-                'Verify & Forward'
+                t('verifyAndForward')
               ) : (
-                'Reject Request'
+                t('rejectRequest')
               )}
             </Button>
           </DialogFooter>

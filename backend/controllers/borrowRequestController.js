@@ -462,12 +462,30 @@ exports.prepareEquipment = async (req, res, next) => {
       });
     }
 
-    // Validate availability before marking ready for pickup.
-    if (request.equipment.available < request.quantity) {
-      return res.status(400).json({
-        success: false,
-        message: 'Equipment no longer available in requested quantity'
-      });
+    // Backward compatibility: if this request predates stock reservation,
+    // reserve it at prepare time. Otherwise, skip duplicate availability checks.
+    if (!request.stock_reserved) {
+      const updatedEquipment = await Equipment.findOneAndUpdate(
+        {
+          _id: request.equipment,
+          available: { $gte: request.quantity }
+        },
+        {
+          $inc: { available: -request.quantity }
+        },
+        {
+          new: true
+        }
+      );
+
+      if (!updatedEquipment) {
+        return res.status(400).json({
+          success: false,
+          message: 'Equipment no longer available in requested quantity'
+        });
+      }
+
+      request.stock_reserved = true;
     }
 
     request.status = 'ready_pickup';

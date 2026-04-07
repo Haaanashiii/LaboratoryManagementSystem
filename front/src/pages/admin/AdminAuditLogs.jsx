@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { useLang } from '@/components/i18n/LangContext';
 
 const ACTION_OPTIONS = [
   'all',
@@ -16,7 +17,19 @@ const ACTION_OPTIONS = [
   'damage_verified'
 ];
 
+const normalizeIpForDisplay = (value) => {
+  if (!value) return '-';
+
+  const ip = String(value).trim();
+  if (!ip) return '-';
+  if (ip === '::1') return '127.0.0.1';
+  if (ip.startsWith('::ffff:')) return ip.slice(7);
+
+  return ip;
+};
+
 export default function AdminAuditLogs() {
+  const { t } = useLang();
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState({
     user: '',
@@ -56,7 +69,7 @@ export default function AdminAuditLogs() {
       anchor.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      alert(error.message || 'Failed to export audit logs PDF.');
+      alert(error.message || t('failedExportAuditPdf'));
     } finally {
       setIsExporting(false);
     }
@@ -65,12 +78,12 @@ export default function AdminAuditLogs() {
   return (
     <div className="max-w-7xl mx-auto space-y-4 py-4 px-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Admin Audit Logs</h1>
-        <p className="text-sm text-slate-600 mt-1">Track login attempts, borrow activity, returns, and damage verification actions.</p>
+        <h1 className="text-2xl font-bold text-slate-900">{t('adminAuditLogsTitle')}</h1>
+        <p className="text-sm text-slate-600 mt-1">{t('adminAuditLogsDesc')}</p>
       </div>
 
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <span className="font-semibold">Important:</span> Audit log data is automatically deleted after 7 days. Export regularly to keep a long-term record.
+        <span className="font-semibold">{t('important')}</span> {t('auditRetentionNotice')}
       </div>
 
       <div className="flex justify-end gap-2">
@@ -79,13 +92,13 @@ export default function AdminAuditLogs() {
           disabled={isExporting}
           className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-70"
         >
-          {isExporting ? 'Exporting...' : 'Export PDF'}
+          {isExporting ? t('exporting') : t('exportPdf')}
         </Button>
         <Button
           onClick={() => refetch()}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
-          Refresh Logs
+          {t('refreshLogs')}
         </Button>
       </div>
 
@@ -94,7 +107,7 @@ export default function AdminAuditLogs() {
           <div className="w-full flex justify-center">
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Input
-                placeholder="Filter by user email or id"
+                placeholder={t('filterByUserEmailOrId')}
                 value={filters.user}
                 onChange={(event) => setFilters((prev) => ({ ...prev, user: event.target.value }))}
                 className="w-full md:w-[320px]"
@@ -102,7 +115,7 @@ export default function AdminAuditLogs() {
 
               <Select value={filters.action_type} onValueChange={(value) => setFilters((prev) => ({ ...prev, action_type: value }))}>
                 <SelectTrigger className="w-full md:w-[260px]">
-                  <SelectValue placeholder="Action type" />
+                  <SelectValue placeholder={t('actionType')} />
                 </SelectTrigger>
                 <SelectContent>
                   {ACTION_OPTIONS.map((action) => (
@@ -139,24 +152,25 @@ export default function AdminAuditLogs() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">Timestamp</th>
-                <th className="text-left px-4 py-3 font-medium">User</th>
-                <th className="text-left px-4 py-3 font-medium">Action</th>
-                <th className="text-left px-4 py-3 font-medium">Status</th>
-                <th className="text-left px-4 py-3 font-medium">Entity</th>
-                <th className="text-left px-4 py-3 font-medium">Details</th>
+                <th className="text-left px-4 py-3 font-medium">{t('timestamp')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('user')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('action')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('status')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('entity')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('ipAddress')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('details')}</th>
               </tr>
               </thead>
               <tbody>
               {isLoading && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={6}>Loading logs...</td>
+                  <td className="px-4 py-6 text-slate-500" colSpan={7}>{t('loadingLogs')}</td>
                 </tr>
               )}
 
               {!isLoading && logs.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={6}>No logs found for current filters.</td>
+                  <td className="px-4 py-6 text-slate-500" colSpan={7}>{t('noLogsFoundForFilters')}</td>
                 </tr>
               )}
 
@@ -175,6 +189,7 @@ export default function AdminAuditLogs() {
                     </span>
                   </td>
                   <td className="px-4 py-3">{log.entity_type}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{normalizeIpForDisplay(log.ip_address)}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {log.details ? JSON.stringify(log.details) : '-'}
                   </td>

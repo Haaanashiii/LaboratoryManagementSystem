@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Package, ChevronLeft, ChevronRight, MapPin, Layers, BoxSelect } from 'lucide-react';
 import { useTheme } from '@/components/hooks/ThemeContext';
+import { useLang } from '@/components/i18n/LangContext';
 
 /* ─── tiny helpers ────────────────────────────────────────────── */
 const conditionMeta = {
@@ -40,6 +41,7 @@ export default function EquipmentViewModal({
   isPending = false,
 }) {
   const { isDark } = useTheme();
+  const { t } = useLang();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const allImages =
@@ -75,7 +77,7 @@ export default function EquipmentViewModal({
 
   const actionHandler   = onPrimaryAction || onBorrow;
   const isBorrowAction  = !onPrimaryAction && typeof onBorrow === 'function';
-  const actionLabel     = onPrimaryAction ? (primaryActionLabel || 'Take action') : 'Borrow';
+  const actionLabel     = onPrimaryAction ? (primaryActionLabel || t('takeAction')) : t('borrow');
 
   const stockColor =
     available === 0  ? { dark: '#f87171', light: '#dc2626' } :
@@ -88,10 +90,10 @@ export default function EquipmentViewModal({
                        '#22c55e';
 
   const stockLabel =
-    available === 0  ? 'Out of stock' :
-    isPending        ? 'Borrow pending' :
-    isBorrowAction   ? 'Available to borrow' :
-                       'In stock';
+    available === 0  ? t('outOfStock') :
+    isPending        ? t('borrowPending') :
+    isBorrowAction   ? t('availableToBorrow') :
+               t('inStock');
 
   /* theme tokens */
   const T = isDark ? {
@@ -193,7 +195,7 @@ export default function EquipmentViewModal({
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-3">
               <Package className="w-16 h-16" style={{ color: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.45)' }} />
-              <span className="text-xs font-medium" style={{ color: T.label }}>No image</span>
+              <span className="text-xs font-medium" style={{ color: T.label }}>{t('noImage')}</span>
             </div>
           )}
 
@@ -213,13 +215,13 @@ export default function EquipmentViewModal({
           {/* nav arrows */}
           {hasMultipleImages && (
             <>
-              <button onClick={prev} aria-label="Previous image"
+              <button onClick={prev} aria-label={t('previousImage')}
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-90"
                 style={{ background: T.navBg, border: `1px solid ${T.navBorder}`, color: T.navColor, backdropFilter: 'blur(8px)' }}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button onClick={next} aria-label="Next image"
+              <button onClick={next} aria-label={t('nextImage')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-90"
                 style={{ background: T.navBg, border: `1px solid ${T.navBorder}`, color: T.navColor, backdropFilter: 'blur(8px)' }}
               >
@@ -235,7 +237,7 @@ export default function EquipmentViewModal({
                 <button
                   key={i}
                   onClick={() => setCurrentImageIndex(i)}
-                  aria-label={`Go to image ${i + 1}`}
+                  aria-label={`${t('image')} ${i + 1}`}
                   className="rounded-full transition-all"
                   style={{
                     width: i === currentImageIndex ? '1.25rem' : '0.4rem',
@@ -294,9 +296,9 @@ export default function EquipmentViewModal({
           {/* stats row */}
           <div className="grid grid-cols-3 divide-x px-0" style={{ borderBottom: `1px solid ${T.divider}`, '--tw-divide-opacity': 1 }}>
             {[
-              { label: 'Total', value: total },
-              { label: 'Available', value: available, accent: true },
-              { label: 'In Use', value: total - available },
+              { label: t('total'), value: total },
+              { label: t('availableLabel'), value: available, accent: true },
+              { label: t('inUse'), value: total - available },
             ].map(({ label, value, accent }) => (
               <div key={label} className="flex flex-col items-center py-2.5 gap-0.5" style={{ borderRight: `1px solid ${T.divider}` }}>
                 <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: T.label }}>{label}</span>
@@ -321,7 +323,7 @@ export default function EquipmentViewModal({
                   >
                     <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: '#3b82f6' }} />
                     <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: T.label }}>Location</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: T.label }}>{t('location')}</p>
                       <p className="text-sm font-medium truncate" style={{ color: T.value }}>{equipment.location}</p>
                     </div>
                   </div>
@@ -333,7 +335,7 @@ export default function EquipmentViewModal({
                   >
                     <Layers className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: '#8b5cf6' }} />
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: T.label }}>Condition</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: T.label }}>{t('condition')}</p>
                       <span
                         className="text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-block"
                         style={conditionStyle(equipment.condition, isDark)}
@@ -349,7 +351,7 @@ export default function EquipmentViewModal({
             {/* availability bar */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: T.label }}>Availability</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: T.label }}>{t('availability')}</span>
                 <span className="text-xs font-bold tabular-nums" style={{ color: T.stockLabel }}>
                   {available === 0 ? '0%' : `${availPct}%`}
                 </span>
@@ -382,8 +384,8 @@ export default function EquipmentViewModal({
                 }
               >
                 {isPending ? (
-                  <><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />Borrow Pending</>
-                ) : isBorrowAction && available === 0 ? 'Unavailable' : actionLabel}
+                  <><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />{t('borrowPending')}</>
+                ) : isBorrowAction && available === 0 ? t('unavailable') : actionLabel}
               </button>
             )}
             <button
@@ -391,7 +393,7 @@ export default function EquipmentViewModal({
               className="flex-1 sm:flex-none sm:w-auto h-9 px-4 rounded-lg font-semibold text-xs transition-all"
               style={{ background: T.closeBtnBg, border: `1px solid ${T.closeBtnBor}`, color: T.closeBtnText }}
             >
-              Dismiss
+              {t('dismiss')}
             </button>
           </div>
         </div>

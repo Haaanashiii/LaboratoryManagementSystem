@@ -8,27 +8,24 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Search, History, CheckCircle, XCircle } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
-import { format, parseISO, startOfWeek } from 'date-fns';
-import {
-  LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
-
-const APPROVED_STATUSES = ['head_approved', 'ready_pickup', 'borrowed', 'returned'];
-
-const activityChartConfig = {
-  approved: { label: 'Approved', color: '#22c55e' },
-  rejected: { label: 'Rejected', color: '#ef4444' },
-};
+import { format } from 'date-fns';
 
 const STATUS_FILTERS = [
   { key: 'all',      label: 'All',      statuses: null },
-  { key: 'approved', label: 'Approved', statuses: APPROVED_STATUSES },
+  { key: 'approved', label: 'Approved', statuses: ['head_approved', 'ready_pickup', 'borrowed', 'returned'] },
   { key: 'rejected', label: 'Rejected', statuses: ['rejected'] },
 ];
 
 export default function HeadApprovalHistory() {
+  const { t } = useLang();
   const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  const STATUS_FILTERS = [
+    { key: 'all',      label: t('allRequests'), statuses: null },
+    { key: 'approved', label: t('approved'), statuses: ['head_approved', 'ready_pickup', 'borrowed', 'returned'] },
+    { key: 'rejected', label: t('rejected'), statuses: ['rejected'] },
+  ];
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -85,8 +82,8 @@ export default function HeadApprovalHistory() {
     return (
       <div className="max-w-7xl mx-auto space-y-5 py-4 px-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Approval History</h1>
-          <p className="mt-0.5 text-sm text-slate-500">A record of all requests you have acted on.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('approvalHistory')}</h1>
+          <p className="mt-0.5 text-sm text-slate-500">{t('approvalHistoryDesc')}</p>
         </div>
         <hr className="border-slate-200" />
         <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-lg">
@@ -94,9 +91,9 @@ export default function HeadApprovalHistory() {
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
               <History className="w-6 h-6 text-red-500" />
             </div>
-            <p className="text-sm font-medium text-slate-900">Unable to load history</p>
+            <p className="text-sm font-medium text-slate-900">{t('unableLoadHistory')}</p>
             <p className="text-xs text-slate-500 max-w-sm">
-              {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+              {error?.message || t('failedConnectServer')}
             </p>
           </div>
         </div>
@@ -110,19 +107,19 @@ export default function HeadApprovalHistory() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Approval History</h1>
-          <p className="mt-0.5 text-sm text-slate-500">A record of all borrow requests you have approved or rejected.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('approvalHistory')}</h1>
+          <p className="mt-0.5 text-sm text-slate-500">{t('approvalHistoryDesc')}</p>
         </div>
 
         {/* Summary pills */}
         <div className="flex gap-2 flex-shrink-0">
           <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
             <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="text-xs font-semibold text-emerald-700">{approvedCount} Approved</span>
+            <span className="text-xs font-semibold text-emerald-700">{approvedCount} {t('approved')}</span>
           </div>
           <div className="flex items-center gap-1.5 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
             <XCircle className="w-3.5 h-3.5 text-red-500" />
-            <span className="text-xs font-semibold text-red-600">{rejectedCount} Rejected</span>
+            <span className="text-xs font-semibold text-red-600">{rejectedCount} {t('rejected')}</span>
           </div>
         </div>
       </div>
@@ -220,7 +217,7 @@ export default function HeadApprovalHistory() {
         <div className="relative max-w-xs flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
           <Input
-            placeholder="Search equipment or borrower..."
+            placeholder={t('searchEquipmentOrBorrower')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 bg-white border-slate-200"
@@ -234,13 +231,13 @@ export default function HeadApprovalHistory() {
           <Table>
             <TableHeader>
               <TableRow className="border-slate-100 bg-slate-50/60">
-                <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Borrower</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Return Date</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Acted On</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Your Remarks</TableHead>
-                <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('borrowDate')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('returnDate')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('actedOn')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('yourRemarks')}</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -250,12 +247,12 @@ export default function HeadApprovalHistory() {
                     <div className="text-center">
                       <History className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                       <p className="text-sm font-medium text-slate-600">
-                        {myActedRequests.length === 0 ? 'No reviews yet' : 'No results found'}
+                        {myActedRequests.length === 0 ? t('noReviewsYet') : t('noResultsFound')}
                       </p>
                       <p className="text-xs text-slate-400">
                         {myActedRequests.length === 0
-                          ? 'Requests you approve or reject will appear here.'
-                          : 'Try a different filter or search term.'}
+                          ? t('approvalHistoryEmptyHint')
+                          : t('tryDifferentFilterOrSearch')}
                       </p>
                     </div>
                   </TableCell>
@@ -299,7 +296,7 @@ export default function HeadApprovalHistory() {
         {filteredRequests.length > 0 && (
           <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/40">
             <p className="text-xs text-slate-400">
-              Showing {filteredRequests.length} of {myActedRequests.length} record{myActedRequests.length !== 1 ? 's' : ''}
+              {t('recordsShown')} {filteredRequests.length} {t('ofLabel')} {myActedRequests.length} {t('recordsLabel')}
             </p>
           </div>
         )}

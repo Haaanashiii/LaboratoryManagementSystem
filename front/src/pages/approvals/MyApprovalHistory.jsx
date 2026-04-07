@@ -6,6 +6,7 @@ import { Search, History, Package, Calendar, CheckCircle, RotateCcw, AlertCircle
 import BanterLoader from '@/components/ui/BanterLoader';
 import { addDays, format } from 'date-fns';
 import { useTheme } from '@/components/hooks/ThemeContext';
+import { useLang } from '@/components/i18n/LangContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -103,6 +104,7 @@ const isRecentlyBorrowed = (request) => {
 };
 
 export default function ApprovalHistory() {
+  const { t } = useLang();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -127,7 +129,7 @@ export default function ApprovalHistory() {
     mutationFn: ({ request, reason }) => {
       const equipmentId = getEquipmentId(request);
       if (!equipmentId) {
-        throw new Error('Unable to identify equipment for this request.');
+        throw new Error(t('unableIdentifyEquipment'));
       }
 
       const today = format(new Date(), 'yyyy-MM-dd');
@@ -143,7 +145,7 @@ export default function ApprovalHistory() {
       });
     },
     onSuccess: () => {
-      setBorrowAgainMessage({ type: 'success', text: 'Borrow request submitted. Check Pending to track approval.' });
+      setBorrowAgainMessage({ type: 'success', text: t('borrowSubmitted') });
       queryClient.invalidateQueries({ queryKey: ['myRequests'] });
       setStatusFilter('pending');
       setPage(1);
@@ -151,7 +153,7 @@ export default function ApprovalHistory() {
     onError: (mutationError) => {
       setBorrowAgainMessage({
         type: 'error',
-        text: mutationError?.message || 'Failed to submit borrow request. Please try again.',
+        text: mutationError?.message || t('borrowSubmitFailed'),
       });
     },
   });
@@ -201,7 +203,7 @@ export default function ApprovalHistory() {
           <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
             <History className="w-6 h-6 text-red-500" />
           </div>
-          <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>Unable to load history</p>
+          <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{t('unableLoadHistory')}</p>
           <p className={`text-xs max-w-sm ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
             {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
           </p>
@@ -222,10 +224,10 @@ export default function ApprovalHistory() {
 
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <p className="text-blue-200 text-[10px] font-semibold uppercase tracking-widest mb-1">Equipment Borrowing</p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">My History</h1>
+            <p className="text-blue-200 text-[10px] font-semibold uppercase tracking-widest mb-1">{t('equipmentBorrowing')}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">{t('myHistory')}</h1>
             <p className="text-blue-200 text-sm mt-1.5 max-w-sm">
-              A full record of all your past and current equipment borrow requests.
+              {t('myHistoryDesc')}
             </p>
           </div>
 
@@ -280,7 +282,7 @@ export default function ApprovalHistory() {
           <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
           <input
             type="text"
-            placeholder="Search equipment..."
+            placeholder={t('searchEquipment')}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className={`w-full pl-9 pr-4 py-2 text-sm rounded-xl border outline-none transition-colors ${
@@ -313,9 +315,9 @@ export default function ApprovalHistory() {
             isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50/60'
           }`}>
             <History className={`w-10 h-10 mb-3 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>No requests found</p>
+            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{t('noRequestsFound')}</p>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-              {search ? 'Try a different search term.' : 'Your request history will appear here.'}
+              {search ? t('tryDifferentFilterOrSearch') : t('approvalHistoryEmptyHint')}
             </p>
           </div>
         ) : (
@@ -360,7 +362,7 @@ export default function ApprovalHistory() {
                             {request.equipment_name}
                           </h3>
                           <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            Qty: {request.quantity}
+                            {t('qty')}: {request.quantity}
                           </p>
                         </div>
                         <StatusBadge status={request.status} />
@@ -377,7 +379,7 @@ export default function ApprovalHistory() {
                         {request.return_date && (
                           <span className="flex items-center gap-1.5">
                             <RotateCcw className="w-3.5 h-3.5" />
-                            Return: {format(new Date(request.return_date), 'MMM d, yyyy')}
+                            {t('returns')}: {format(new Date(request.return_date), 'MMM d, yyyy')}
                           </span>
                         )}
                       </div>
@@ -388,7 +390,7 @@ export default function ApprovalHistory() {
                           isDark ? 'bg-white/[0.04] text-slate-400' : 'bg-slate-50 text-slate-500 border border-slate-100'
                         }`}>
                           <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-blue-400" />
-                          <span><span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Remarks: </span>{request.lecturer_remarks}</span>
+                          <span><span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{t('remarks')}: </span>{request.lecturer_remarks}</span>
                         </div>
                       )}
 
@@ -409,7 +411,7 @@ export default function ApprovalHistory() {
                             }`}
                           >
                             {isBorrowAgainLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                            {isBorrowAgainLoading ? 'Submitting...' : 'Borrow Again'}
+                            {isBorrowAgainLoading ? t('submitting') : t('borrowAgain')}
                           </button>
                         </div>
                       )}
@@ -481,19 +483,19 @@ export default function ApprovalHistory() {
       >
         <AlertDialogContent className={isDark ? 'bg-[#111118] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Borrow Again</AlertDialogTitle>
+            <AlertDialogTitle>{t('borrowAgainTitle')}</AlertDialogTitle>
             <AlertDialogDescription className={isDark ? 'text-slate-400' : 'text-slate-500'}>
               Are you sure you want to borrow {confirmBorrowAgainRequest?.equipment_name || 'this equipment'} again?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-1">
             <label className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              Reason for borrowing again
+              {t('reasonForBorrowingAgain')}
             </label>
             <textarea
               value={borrowAgainReason}
               onChange={(e) => setBorrowAgainReason(e.target.value)}
-              placeholder="Enter your reason..."
+              placeholder={t('enterReason')}
               rows={3}
               className={`w-full rounded-md border px-3 py-2 text-sm resize-none outline-none transition-colors ${
                 isDark
@@ -531,7 +533,7 @@ export default function ApprovalHistory() {
               className="inline-flex items-center gap-1.5"
             >
               {borrowAgainMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-              {borrowAgainMutation.isPending ? 'Submitting...' : 'Yes, Borrow Again'}
+              {borrowAgainMutation.isPending ? t('submitting') : t('yesBorrowAgain')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Package, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/components/hooks/ThemeContext';
+import { useLang } from '@/components/i18n/LangContext';
 import './ViewBorrowButton.css';
 
 const cardStyles = `
@@ -323,6 +324,7 @@ const cardStyles = `
 
 export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole, isPending = false, variant = 'default' }) {
   const { isDark } = useTheme();
+  const { t } = useLang();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const isLecturer = variant === 'lecturer';
 
@@ -372,9 +374,9 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
     : (available === 0 ? 'text-red-500' : availPct <= 30 ? 'text-amber-600' : 'text-emerald-600');
 
   const availabilityLabel =
-    available === 0 ? 'Unavailable' :
-    availPct <= 30   ? 'Low stock' :
-                       'Ready';
+    available === 0 ? t('unavailable') :
+    availPct <= 30   ? t('lowStock') :
+                       t('ready');
   const availabilityTone =
     available === 0 ? 'eq-pill-danger' :
     availPct <= 30   ? 'eq-pill-warning' :
@@ -413,14 +415,14 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
                 <button
                   onClick={goToPreviousImage}
                   className="eq-nav-btn absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                  aria-label="Previous image"
+                  aria-label={t('previousImage')}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={goToNextImage}
                   className="eq-nav-btn absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                  aria-label="Next image"
+                  aria-label={t('nextImage')}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -435,7 +437,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
 
             <div className="absolute bottom-3 left-3 right-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="eq-card-meta text-[11px]">Availability</span>
+                <span className="eq-card-meta text-[11px]">{t('availability')}</span>
                 <span className={`eq-pill ${availabilityTone}`}>{availabilityLabel}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -465,14 +467,14 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
 
             <div className="grid grid-cols-2 gap-3">
               <div className="eq-stat">
-                <p className="eq-stat-label">Available now</p>
+                <p className="eq-stat-label">{t('availableNow')}</p>
                 <p className="eq-stat-value">{available}</p>
-                <p className="eq-stat-hint">Check quantity before experiments</p>
+                <p className="eq-stat-hint">{t('checkQtyBeforeExperiments')}</p>
               </div>
               <div className="eq-stat">
-                <p className="eq-stat-label">Total units</p>
+                <p className="eq-stat-label">{t('totalUnits')}</p>
                 <p className="eq-stat-value">{total}</p>
-                <p className="eq-stat-hint">Verify for lab sessions</p>
+                <p className="eq-stat-hint">{t('verifyForLabSessions')}</p>
               </div>
             </div>
 
@@ -482,7 +484,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
                 className="eq-action-btn"
                 type="button"
               >
-                View details
+                {t('viewDetails')}
               </button>
               {onBorrow && !isPending ? (
                 <button
@@ -490,15 +492,15 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
                   className="eq-action-btn eq-action-secondary"
                   type="button"
                 >
-                  Request for class
+                  {t('requestForClass')}
                 </button>
               ) : isPending ? (
                 <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#f59e0b' }}>
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  Pending
+                  {t('pendingRequests')}
                 </div>
               ) : (
-                <span className="eq-action-meta">Request for class in approvals</span>
+                <span className="eq-action-meta">{t('requestForClassInApprovals')}</span>
               )}
             </div>
           </div>
@@ -537,14 +539,14 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
               <button
                 onClick={goToPreviousImage}
                 className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/55 hover:bg-black/75 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                aria-label="Previous image"
+                aria-label={t('previousImage')}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={goToNextImage}
                 className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/55 hover:bg-black/75 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                aria-label="Next image"
+                aria-label={t('nextImage')}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -578,11 +580,11 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
           {/* Quantity chips */}
           <div className="eq-qty-row">
             <div className="eq-qty-chip">
-              <p className="eq-qty-chip-label">Total</p>
+              <p className="eq-qty-chip-label">{t('total')}</p>
               <p className="eq-qty-chip-value">{total}</p>
             </div>
             <div className="eq-qty-chip">
-              <p className="eq-qty-chip-label">Available</p>
+              <p className="eq-qty-chip-label">{t('availableLabel')}</p>
               <p className={`eq-qty-chip-value ${availTextColor}`}>{available}</p>
             </div>
           </div>
@@ -590,9 +592,9 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
           {/* Availability bar */}
           <div className="mt-auto space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="eq-avail-label">Availability</span>
+              <span className="eq-avail-label">{t('availability')}</span>
               <span className={`text-[11px] font-bold ${availTextColor}`}>
-                {available === 0 ? 'Out of stock' : `${availPct}%`}
+                {available === 0 ? t('outOfStock') : `${availPct}%`}
               </span>
             </div>
             <div className="eq-avail-track">
@@ -621,7 +623,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
                 <span className="circle" aria-hidden="true">
                   <span className="icon arrow"></span>
                 </span>
-                <span className="button-text">View & Borrow</span>
+                <span className="button-text">{t('viewAndBorrow')}</span>
               </button>
             )
           )}

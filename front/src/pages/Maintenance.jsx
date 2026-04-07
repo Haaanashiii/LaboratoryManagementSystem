@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import LightRays from './LightRays';
+import { useLang } from '@/components/i18n/LangContext';
 
 export default function Maintenance() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const [statusView, setStatusView] = useState('maintenance');
 
   useEffect(() => {
@@ -56,15 +58,15 @@ export default function Maintenance() {
         <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-slate-900/70 p-8 text-center shadow-2xl backdrop-blur-md sm:p-10">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold tracking-[0.12em] text-amber-200">
             <AlertTriangle className="h-4 w-4" />
-            {statusView === 'offline' ? 'OFFLINE' : 'MAINTENANCE'}
+            {statusView === 'offline' ? t('offline') : t('maintenance')}
           </div>
 
           {statusView === 'offline' && (
-            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Page is currently offline.</h1>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">{t('pageOffline')}</h1>
           )}
 
           {statusView === 'maintenance' && (
-            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Page is under maintenance.</h1>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">{t('pageMaintenance')}</h1>
           )}
 
           <div className="mt-6 flex items-center justify-center gap-3">
@@ -74,7 +76,7 @@ export default function Maintenance() {
               className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
             >
               <RefreshCcw className="h-4 w-4" />
-              Retry
+              {t('retry')}
             </button>
           </div>
         </div>

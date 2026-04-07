@@ -8,15 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff, Mail, Phone, Building2, Hash, KeyRound } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
+import { useLang } from '@/components/i18n/LangContext';
 
 const roles = [
-  { value: 'student',      label: 'Student',       color: 'bg-blue-50 text-blue-700 border-blue-200',    dot: '#3b82f6', icon: GraduationCap },
-  { value: 'lecturer',     label: 'Lecturer',      color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: UsersIcon },
-  { value: 'lab_assistant',label: 'Lab Assistant', color: 'bg-amber-50 text-amber-700 border-amber-200',  dot: '#f59e0b', icon: Cpu },
-  { value: 'head_of_lab',  label: 'Head of Lab',   color: 'bg-violet-50 text-violet-700 border-violet-200', dot: '#8b5cf6', icon: UserCog },
-  { value: 'admin',        label: 'Admin',          color: 'bg-red-50 text-red-700 border-red-200',       dot: '#ef4444', icon: ShieldCheck },
+  { value: 'student',      labelKey: 'student', color: 'bg-blue-50 text-blue-700 border-blue-200', dot: '#3b82f6', icon: GraduationCap },
+  { value: 'lecturer',     labelKey: 'lecturer', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: UsersIcon },
+  { value: 'lab_assistant',labelKey: 'lab_assistant', color: 'bg-amber-50 text-amber-700 border-amber-200', dot: '#f59e0b', icon: Cpu },
+  { value: 'head_of_lab',  labelKey: 'head_of_lab', color: 'bg-violet-50 text-violet-700 border-violet-200', dot: '#8b5cf6', icon: UserCog },
+  { value: 'admin',        labelKey: 'admin', color: 'bg-red-50 text-red-700 border-red-200', dot: '#ef4444', icon: ShieldCheck },
 ];
 
 // Roles available for assignment — admin is excluded from create/edit forms
@@ -62,6 +64,7 @@ const validateRoleEmailDomain = (email, role) => {
 };
 
 export default function Users() {
+  const { t } = useLang();
   const [search, setSearch] = useState('');
   const [activeRole, setActiveRole] = useState('');
   const [deletingUser, setDeletingUser] = useState(null);
@@ -71,6 +74,7 @@ export default function Users() {
   const [showEditPassword, setShowEditPassword] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -149,6 +153,8 @@ export default function Users() {
     return roles.find(r => r.value === role) || roles.find(r => r.value === 'student');
   };
 
+  const getRoleLabel = (roleValue) => t(roleValue || 'student');
+
   const activeRoleConfig = activeRole ? getRoleConfig(activeRole) : null;
   const displayedUsers = activeRole ? (filteredUsersByRole[activeRole] || []) : filteredUsers;
   const totalPages = Math.max(1, Math.ceil(displayedUsers.length / PAGE_SIZE));
@@ -157,6 +163,7 @@ export default function Users() {
 
   const openEditDialog = (user) => {
     setEditingUser(user);
+    setShowEditPassword(false);
     setEditForm({
       name: user.name || '',
       role: user.role || 'student',
@@ -227,16 +234,27 @@ export default function Users() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">User Management</h1>
-          <p className="mt-0.5 text-sm text-slate-500">{users.length} total registered users</p>
+          <p className="mt-0.5 text-sm text-slate-500">{users.length} {t('totalRegisteredUsers')}</p>
         </div>
-        <Button
-          size="sm"
-          className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
-          onClick={() => setIsAddOpen(true)}
-        >
-          <UserPlus className="h-3.5 w-3.5" />
-          Add User
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setIsAddOpen(true)}
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Add User
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
+            onClick={() => setIsInviteOpen(true)}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Invite
+          </Button>
+        </div>
       </div>
 
       {/* ── Role stat pills ── */}
@@ -260,7 +278,7 @@ export default function Users() {
                 <RoleIcon className="h-4 w-4" style={isActive ? { color: role.dot } : { color: '#64748b' }} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-500 truncate">{role.label}</p>
+                <p className="text-xs text-slate-500 truncate">{getRoleLabel(role.value)}</p>
                 <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
               </div>
             </button>
@@ -277,7 +295,7 @@ export default function Users() {
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeRoleConfig.dot }} />
             )}
             <p className="text-sm font-medium text-slate-800">
-              {activeRoleConfig ? activeRoleConfig.label : 'All Users'}
+              {activeRoleConfig ? getRoleLabel(activeRoleConfig.value) : t('allUsers')}
             </p>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
               {displayedUsers.length}
@@ -287,14 +305,14 @@ export default function Users() {
                 onClick={() => setActiveRole('')}
                 className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
               >
-                Clear
+                {t('clear')}
               </button>
             )}
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search users..."
+              placeholder={t('searchUsers')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 pl-8 text-xs"
@@ -312,9 +330,9 @@ export default function Users() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <UserPlus className="h-5 w-5 text-red-400" />
               </div>
-              <p className="text-sm font-medium text-slate-800">Unable to load users</p>
+              <p className="text-sm font-medium text-slate-800">{t('unableLoadUsers')}</p>
               <p className="max-w-xs text-center text-xs text-slate-500">
-                {error?.message || 'Failed to connect to the server.'}
+                {error?.message || t('failedConnectServer')}
               </p>
             </div>
           ) : (
@@ -324,7 +342,6 @@ export default function Users() {
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
                     <TableHead className="text-xs font-medium text-slate-500">User</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Email</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Department</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Role</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
                     <TableHead className="text-right text-xs font-medium text-slate-500">Actions</TableHead>
@@ -339,7 +356,7 @@ export default function Users() {
                             <UsersIcon className="h-4 w-4 text-slate-400" />
                           </div>
                           <p className="text-sm text-slate-500">
-                            {activeRoleConfig ? `No ${activeRoleConfig.label.toLowerCase()} users found` : 'No users found'}
+                            {t('noUsersFound')}
                           </p>
                         </div>
                       </TableCell>
@@ -378,7 +395,7 @@ export default function Users() {
                           <TableCell className="text-xs text-slate-500">{user.department || '—'}</TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${roleConfig.color}`}>
-                              {roleConfig.label}
+                              {getRoleLabel(roleConfig.value)}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -416,7 +433,7 @@ export default function Users() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
                   <p className="text-xs text-slate-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedUsers.length)} of {displayedUsers.length} users
+                    {t('showingUsers')}: {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedUsers.length)} {t('ofLabel')} {displayedUsers.length}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button
@@ -456,90 +473,56 @@ export default function Users() {
         </CardContent>
       </Card>
 
-      {/* ── View User Dialog ── */}
-      <Dialog open={!!viewingUser} onOpenChange={() => setViewingUser(null)}>
-        <DialogContent className="sm:max-w-sm rounded-2xl bg-white text-slate-900">
-          <DialogHeader className="border-b border-slate-100 pb-4">
-            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
-                <Eye className="h-4 w-4 text-slate-600" />
-              </div>
-              User Details
+      {/* ── Invite Dialog ── */}
+      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+        <DialogContent className="sm:max-w-md bg-white text-slate-900">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Mail className="h-4 w-4 text-blue-500" />
+              Invite New User
             </DialogTitle>
           </DialogHeader>
-
-          {viewingUser && (
-            <div className="py-4 space-y-1">
-              {/* Avatar + name banner */}
-              <div className="flex flex-col items-center gap-2 pb-4">
-                <div
-                  className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-white shadow"
-                  style={{ backgroundColor: getRoleConfig(viewingUser.role).dot }}
-                >
-                  {(viewingUser.name || 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-slate-900">{viewingUser.name || '—'}</p>
-                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleConfig(viewingUser.role).color}`}>
-                    {getRoleConfig(viewingUser.role).label}
-                  </span>
-                </div>
-              </div>
-
-              {/* Detail rows */}
-              <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <div className="flex items-center gap-2.5">
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Email</p>
-                    <p className="truncate text-xs text-slate-800">{viewingUser.email || '—'}</p>
-                  </div>
-                </div>
-                <div className="h-px bg-slate-100" />
-                <div className="flex items-center gap-2.5">
-                  <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Department</p>
-                    <p className="truncate text-xs text-slate-800">{viewingUser.department || '—'}</p>
-                  </div>
-                </div>
-                <div className="h-px bg-slate-100" />
-                <div className="flex items-center gap-2.5">
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Phone</p>
-                    <p className="truncate text-xs text-slate-800">{viewingUser.phone || '—'}</p>
-                  </div>
-                </div>
-                {viewingUser.role === 'student' && (
-                  <>
-                    <div className="h-px bg-slate-100" />
-                    <div className="flex items-center gap-2.5">
-                      <Hash className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Student ID</p>
-                        <p className="truncate text-xs text-slate-800">{viewingUser.studentId || '—'}</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-                <div className="h-px bg-slate-100" />
-                <div className="flex items-start gap-2.5">
-                  <KeyRound className="h-3.5 w-3.5 shrink-0 mt-0.5 text-slate-400" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Password</p>
-                    <p className="text-xs text-slate-800 font-mono">{'•'.repeat(10)}</p>
-                    <p className="text-[10px] text-amber-600 mt-0.5">
-                      Passwords are one-way encrypted (bcrypt) and cannot be retrieved. Use “Edit User” to set a new password.
-                    </p>
-                  </div>
-                </div>
-              </div>
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-slate-700">Email Address</Label>
+              <Input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="user@its.ac.id"
+                className="h-9 text-sm"
+              />
+              {!inviteValidation.isValid && (
+                <p className="text-xs text-red-600">{inviteValidation.message}</p>
+              )}
             </div>
-          )}
-
-          <DialogFooter className="border-t border-slate-100 pt-4">
-            <Button size="sm" variant="outline" onClick={() => setViewingUser(null)} className="text-xs w-full">Close</Button>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-slate-700">Role</Label>
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger className="h-9 text-sm bg-white text-slate-900">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white text-slate-900 border-slate-200">
+                  {roles.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400">
+                Required domain: <span className="font-medium text-slate-600">@{getAllowedDomainForRole(inviteRole)}</span>
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              onClick={handleInvite}
+              disabled={!inviteEmail || !inviteValidation.isValid || inviteMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {inviteMutation.isPending ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Sending…</> : 'Send Invite'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -672,14 +655,9 @@ export default function Users() {
 
       {/* ── Edit User Dialog ── */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent className="sm:max-w-lg rounded-2xl bg-white text-slate-900">
-          <DialogHeader className="border-b border-slate-100 pb-4">
-            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
-                <Pencil className="h-4 w-4 text-slate-600" />
-              </div>
-              Edit User
-            </DialogTitle>
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-white text-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-base">Edit User</DialogTitle>
           </DialogHeader>
 
           {/* Identity card */}
@@ -771,40 +749,20 @@ export default function Users() {
                       className="h-9 text-sm bg-white"
                     />
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-slate-600">Department</Label>
-                  <Input
-                    value={editForm.department}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, department: e.target.value }))}
-                    placeholder="e.g. Information Technology"
-                    className="h-9 text-sm bg-white"
-                  />
-                </div>
-              </div>
-            )}
+                </>
+              )}
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-600">
-                New Password
-                <span className="ml-1.5 font-normal text-slate-400">(leave blank to keep current)</span>
-              </Label>
-              <div className="relative">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-700">
+                  New Password <span className="font-normal text-slate-400">(leave blank to keep current)</span>
+                </Label>
                 <Input
-                  type={showEditPassword ? 'text' : 'password'}
+                  type="text"
                   value={editForm.password}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
                   placeholder="••••••••"
-                  className="h-9 pr-9 text-sm"
+                  className="h-9 text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowEditPassword((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
               </div>
             </div>
           </div>
