@@ -120,7 +120,7 @@ export default function ApprovalHistory() {
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['myRequests'],
     queryFn: () => api.entities.BorrowRequest.myRequests(),
-    enabled: !!user
+    enabled: !!user && user.role === 'student',
   });
 
   const borrowAgainMutation = useMutation({

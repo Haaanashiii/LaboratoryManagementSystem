@@ -9,16 +9,16 @@ import AdminRoute from './components/AdminRoute'
 import RoleRoute from './components/RoleRoute'
 
 // Dashboard
-import Dashboard from './pages/Dashboard'
+import Dashboard from './pages/dashboards/MainDashboard'
 
 // User Management
 import Users from './pages/users'
 
 // Approvals
-import LecturerApprovals from './pages/approvals/lecturerApprovals'
-import HeadApproval from './pages/approvals/headApproval'
-import ApprovalHistory from './pages/approvals/approvalHistory'
-import AllApprovalHistory from './pages/approvals/allApprovalHistory'
+import LecturerApprovals from './pages/approvals/LecturerPendingApproval'
+import HeadApproval from './pages/approvals/HeadFinalApproval'
+import LecturerApprovalHistory from './pages/approvals/LecturerApprovalHistory'
+import HeadApprovalHistory from './pages/approvals/HeadApprovalHistory'
 
 // Functions
 import Catalog from './pages/catalogs/CatalogRedirect'
@@ -27,14 +27,14 @@ import LecturerCatalog from './pages/catalogs/LecturerCatalog'
 import HeadCatalog from './pages/catalogs/HeadCatalog'
 import AssistantCatalog from './pages/catalogs/AssistantCatalog'
 import AdminCatalog from './pages/catalogs/AdminCatalog'
-import AllRequests from './pages/functions/allRequest'
-import FunctionsApprovalHistory from './pages/functions/approvalHistory'
+import AllRequests from './pages/requests/AllRequest'
+import FunctionsApprovalHistory from './pages/approvals/MyApprovalHistory'
 
 // Inventory
-import Inventory from './pages/inventory/inventoryy'
-import MyRequests from './pages/inventory/request'
-import EquipmentPrep from './pages/inventory/equipmentPrep'
-import Returns from './pages/inventory/returns'
+import Inventory from './pages/inventory/Inventory'
+import MyRequests from './pages/requests/StudentRequest'
+import EquipmentPrep from './pages/inventory/EquipmentPreparation'
+import Returns from './pages/inventory/Returns'
 
 // Settings
 import Settings from './pages/Settings'
@@ -111,7 +111,8 @@ function App() {
             <Route path="lecturer-approvals" element={<LecturerApprovals />} />
             <Route path="head-approvals" element={<HeadApproval />} />
             <Route path="approval-history" element={<FunctionsApprovalHistory />} />
-            <Route path="all-approval-history" element={<AllApprovalHistory />} />
+            <Route path="lecturer-approval-history" element={<LecturerApprovalHistory />} />
+            <Route path="head-approval-history" element={<HeadApprovalHistory />} />
             
             {/* Functions */}
             <Route path="catalog" element={<Catalog />} />

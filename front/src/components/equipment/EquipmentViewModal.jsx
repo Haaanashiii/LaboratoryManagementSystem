@@ -37,6 +37,7 @@ export default function EquipmentViewModal({
   onBorrow,
   primaryActionLabel,
   onPrimaryAction,
+  isPending = false,
 }) {
   const { isDark } = useTheme();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -88,6 +89,7 @@ export default function EquipmentViewModal({
 
   const stockLabel =
     available === 0  ? 'Out of stock' :
+    isPending        ? 'Borrow pending' :
     isBorrowAction   ? 'Available to borrow' :
                        'In stock';
 
@@ -157,6 +159,13 @@ export default function EquipmentViewModal({
   };
 
   return (
+    <>
+      <style>{`
+        @keyframes evm-enter {
+          from { opacity: 0; transform: scale(0.96) translateY(12px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0);    }
+        }
+      `}</style>
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
         className="w-[96vw] sm:w-[88vw] max-w-[520px] gap-0 p-0 overflow-hidden"
@@ -166,6 +175,7 @@ export default function EquipmentViewModal({
           borderRadius: '18px',
           boxShadow: T.shadow,
           maxHeight: '86vh',
+          animation: 'evm-enter 0.28s cubic-bezier(0.16,1,0.3,1) both',
         }}
       >
         {/* ── Hero image ─────────────────────────────────────── */}
@@ -360,16 +370,20 @@ export default function EquipmentViewModal({
           >
             {actionHandler && (
               <button
-                onClick={() => { actionHandler(equipment); onClose(); }}
-                disabled={isBorrowAction && available === 0}
+                onClick={() => { if (!isPending) { actionHandler(equipment); onClose(); } }}
+                disabled={isPending || (isBorrowAction && available === 0)}
                 className="flex-1 h-9 px-4 rounded-lg font-semibold text-xs transition-all"
                 style={
-                  isBorrowAction && available === 0
+                  isPending
+                    ? { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#f59e0b', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }
+                    : isBorrowAction && available === 0
                     ? { background: T.ctaDisBg, border: `1px solid ${T.ctaDisBor}`, color: T.ctaDisText, cursor: 'not-allowed' }
                     : { background: '#3b82f6', color: '#fff', border: 'none', boxShadow: '0 4px 20px rgba(59,130,246,0.40)' }
                 }
               >
-                {isBorrowAction && available === 0 ? 'Unavailable' : actionLabel}
+                {isPending ? (
+                  <><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />Borrow Pending</>
+                ) : isBorrowAction && available === 0 ? 'Unavailable' : actionLabel}
               </button>
             )}
             <button
@@ -383,5 +397,6 @@ export default function EquipmentViewModal({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
