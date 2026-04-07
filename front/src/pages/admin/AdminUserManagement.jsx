@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil, Loader2, Trash2, Mail, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { useLang } from '@/components/i18n/LangContext';
 
@@ -268,14 +268,6 @@ export default function Users() {
             <UserPlus className="h-3.5 w-3.5" />
             Add User
           </Button>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
-            onClick={() => setIsInviteOpen(true)}
-          >
-            <Mail className="h-3.5 w-3.5" />
-            Invite
-          </Button>
         </div>
       </div>
 
@@ -525,9 +517,9 @@ export default function Users() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white text-slate-900 border-slate-200">
-                    {roles.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>{getRoleLabel(role.value)}</SelectItem>
-                    ))}
+                  {roles.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-400">
@@ -675,11 +667,93 @@ export default function Users() {
         </DialogContent>
       </Dialog>
 
+      {/* ── View User Dialog ── */}
+      <Dialog open={!!viewingUser} onOpenChange={() => { setViewingUser(null); setShowViewPassword(false); }}>
+        <DialogContent className="sm:max-w-sm rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                style={{ backgroundColor: getRoleConfig(viewingUser?.role).dot }}
+              >
+                {(viewingUser?.name || 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+              User Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 divide-y divide-slate-100">
+              {/* Name */}
+              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                <span className="text-xs font-medium text-slate-500 shrink-0">Full Name</span>
+                <span className="text-sm font-medium text-slate-900 text-right truncate">{viewingUser?.name || '—'}</span>
+              </div>
+              {/* Email */}
+              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                <span className="text-xs font-medium text-slate-500 shrink-0">Email</span>
+                <span className="text-sm text-slate-700 text-right truncate">{viewingUser?.email || '—'}</span>
+              </div>
+              {/* Role */}
+              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                <span className="text-xs font-medium text-slate-500 shrink-0">Role</span>
+                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleConfig(viewingUser?.role).color}`}>
+                  {getRoleLabel(viewingUser?.role)}
+                </span>
+              </div>
+              {/* Department */}
+              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                <span className="text-xs font-medium text-slate-500 shrink-0">Department</span>
+                <span className="text-sm text-slate-700 text-right truncate">{viewingUser?.department || '—'}</span>
+              </div>
+              {/* Password */}
+              <div className="flex items-center justify-between px-4 py-3 gap-3">
+                <span className="text-xs font-medium text-slate-500 shrink-0">Password</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-700 font-mono">
+                    {showViewPassword ? (viewingUser?.password || '—') : '••••••••'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowViewPassword((v) => !v)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    {showViewPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="border-t border-slate-100 pt-4">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => { setViewingUser(null); setShowViewPassword(false); }}
+            >
+              Close
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs bg-blue-600 hover:bg-blue-700"
+              onClick={() => { openEditDialog(viewingUser); setViewingUser(null); setShowViewPassword(false); }}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Edit User Dialog ── */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto bg-white text-slate-900">
-          <DialogHeader>
-            <DialogTitle className="text-base">Edit User</DialogTitle>
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
+                <Pencil className="h-4 w-4 text-slate-600" />
+              </div>
+              Edit User
+            </DialogTitle>
           </DialogHeader>
 
           {/* Identity card */}
@@ -779,13 +853,22 @@ export default function Users() {
                 <Label className="text-xs font-medium text-slate-700">
                   New Password <span className="font-normal text-slate-400">(leave blank to keep current)</span>
                 </Label>
-                <Input
-                  type="text"
-                  value={editForm.password}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
-                  placeholder="••••••••"
-                  className="h-9 text-sm"
-                />
+                <div className="relative">
+                  <Input
+                    type={showEditPassword ? 'text' : 'password'}
+                    value={editForm.password}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
+                    placeholder="••••••••"
+                    className="h-9 text-sm pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
           </div>
 

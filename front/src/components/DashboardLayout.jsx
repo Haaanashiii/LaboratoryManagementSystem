@@ -639,7 +639,7 @@ export default function DashboardLayout() {
       </header>
 
       {/* Main content — padded below fixed navbar */}
-      <main className="pt-[76px] p-4 sm:p-6 lg:p-8">
+      <main className="pt-[76px] px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
         <Outlet />
       </main>
     </div>

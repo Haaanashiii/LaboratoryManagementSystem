@@ -1,69 +1,34 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  User, Lock, Save, Loader2, Eye, EyeOff,
-  CheckCircle, ArrowLeft, Mail, Phone, AlertCircle,
-  ShieldCheck, Pencil,
+  Lock, Loader2, Eye, EyeOff,
+  CheckCircle, ArrowLeft, AlertCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import { useTheme } from '@/components/hooks/ThemeContext';
 
 const profileStyles = `
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(18px); }
+    from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .pf-fade-up { opacity: 0; animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .pf-fade-up { opacity: 0; animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) forwards; }
   .pf-fade-up-1 { animation-delay: 0.04s; }
-  .pf-fade-up-2 { animation-delay: 0.14s; }
-  .pf-fade-up-3 { animation-delay: 0.24s; }
-  .pf-fade-up-4 { animation-delay: 0.34s; }
-  .pf-fade-up-5 { animation-delay: 0.44s; }
-
-  @keyframes heroGlow {
-    0%, 100% { opacity: 0.6; transform: scale(1); }
-    50%       { opacity: 1;   transform: scale(1.08); }
-  }
-  .pf-orb   { animation: heroGlow 6s ease-in-out infinite; will-change: transform, opacity; }
-  .pf-orb-2 { animation: heroGlow 8s ease-in-out infinite reverse; will-change: transform, opacity; }
-
-  .pf-dark .pf-hero-banner {
-    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 45%, #3730a3 100%) !important;
-  }
+  .pf-fade-up-2 { animation-delay: 0.12s; }
+  .pf-fade-up-3 { animation-delay: 0.22s; }
+  .pf-fade-up-4 { animation-delay: 0.32s; }
 `;
 
 
 export default function ProfilePage() {
   const { t } = useLang();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { isDark } = useTheme();
-
-  React.useEffect(() => {
-    const el = document.querySelector('main');
-    if (!el) return;
-    const prev = el.style.overflowY;
-    const apply = () => {
-      if (window.innerWidth >= 1024) {
-        el.style.overflowY = 'hidden';
-        document.body.style.overflowY = 'hidden';
-      } else {
-        el.style.overflowY = prev;
-        document.body.style.overflowY = '';
-      }
-    };
-    apply();
-    window.addEventListener('resize', apply);
-    return () => {
-      window.removeEventListener('resize', apply);
-      el.style.overflowY = prev;
-      document.body.style.overflowY = '';
-    };
-  }, []);
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword]         = useState(false);
@@ -74,30 +39,9 @@ export default function ProfilePage() {
     queryFn: () => api.auth.me(),
   });
 
-  const [profileData, setProfileData] = useState({ full_name: '', email: '', phone: '' });
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordError, setPasswordError]   = useState('');
-  const [profileSuccess, setProfileSuccess] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
-
-  React.useEffect(() => {
-    if (user) {
-      setProfileData({
-        full_name: user.full_name || user.name || '',
-        email:     user.email || '',
-        phone:     user.phone || '',
-      });
-    }
-  }, [user]);
-
-  const updateProfileMutation = useMutation({
-    mutationFn: (data) => api.auth.updateMe(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      setProfileSuccess(true);
-      setTimeout(() => setProfileSuccess(false), 3000);
-    },
-  });
 
   const updatePasswordMutation = useMutation({
     mutationFn: (data) => api.auth.changePassword(data),
@@ -110,12 +54,6 @@ export default function ProfilePage() {
       setPasswordError(error.message || t('passwordUpdateError'));
     },
   });
-
-  const handleProfileUpdate = (e) => {
-    e.preventDefault();
-    setProfileSuccess(false);
-    updateProfileMutation.mutate(profileData);
-  };
 
   const handlePasswordUpdate = (e) => {
     e.preventDefault();
@@ -131,10 +69,6 @@ export default function ProfilePage() {
     return map[role] || role?.replace(/_/g, ' ') || 'User';
   };
 
-  const roleColor = isDark
-    ? 'bg-blue-900/50 text-blue-300 border-blue-700'
-    : 'bg-blue-50 text-blue-700 border-blue-200';
-
   const inputCls = `h-10 text-sm transition-colors ${
     isDark
       ? 'bg-slate-800 border-white/10 text-slate-100 placeholder:text-slate-500 focus:border-blue-500'
@@ -149,60 +83,33 @@ export default function ProfilePage() {
   const initials = (user?.name || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   return (
-    <div className={`min-h-screen pb-16 overflow-x-hidden overflow-y-hidden ${isDark ? 'bg-slate-950 pf-dark' : 'bg-slate-200/70'}`}>
+    <div className={`overflow-x-hidden ${isDark ? 'bg-slate-950' : ''}`}>
       <style>{profileStyles}</style>
 
-      {/* ── HERO BANNER ── */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-2 pf-fade-up pf-fade-up-1">
-        <div className="pf-hero-banner relative overflow-hidden rounded-2xl px-6 py-8 sm:px-10 shadow-xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600">
-          {/* animated orbs */}
-          <div className="pf-orb absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/10 pointer-events-none" />
-          <div className="pf-orb-2 absolute -bottom-16 -left-10 w-48 h-48 rounded-full bg-indigo-400/20 pointer-events-none" />
-          <div className="absolute top-4 right-28 w-3 h-3 rounded-full bg-white/30 pointer-events-none" />
-          <div className="absolute bottom-6 right-16 w-5 h-5 rounded-full bg-white/20 pointer-events-none" />
-
-          <div className="relative max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center gap-6">
-            {/* Mobile back */}
-            <button
-              onClick={() => navigate(-1)}
-              className="absolute top-0 right-0 sm:hidden flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg text-white/80 hover:bg-white/20 transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
-            </button>
-
-            {/* Avatar */}
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold shadow-xl shrink-0 bg-white/20 border border-white/30 text-white">
-              {initials}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-widest mb-1 text-blue-200">Edit Profile</p>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-                {user?.name || 'User'}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 border border-white/30 text-white">
-                  {roleLabel(user?.role)}
-                </span>
-                <span className="text-sm text-blue-100">{user?.email}</span>
-              </div>
-            </div>
-
-            {/* Desktop back */}
-            <button
-              onClick={() => navigate(-1)}
-              className="hidden sm:flex shrink-0 items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-white/30 text-white hover:bg-white/20 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
+      {/* ── PAGE HEADER ── */}
+      <div className={`px-4 sm:px-6 lg:px-8 pt-5 pb-4 pf-fade-up pf-fade-up-1`}>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-xl border transition-colors ${
+              isDark
+                ? 'border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/05 hover:border-white/20'
+                : 'border-slate-300 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back
+          </button>
+          <div className={`h-4 w-px ${isDark ? 'bg-white/10' : 'bg-slate-300'}`} />
+          <div>
+            <h1 className={`text-base font-semibold leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Profile Settings</h1>
+            <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Manage your account security</p>
           </div>
         </div>
       </div>
 
-      {/* ── CONTENT: two-column grid ── */}
-      <div className="px-4 sm:px-6 lg:px-8 mt-8 pb-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_1fr] gap-5 items-start">
+      {/* ── CONTENT ── */}
+      <div className="px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5 items-start">
 
           {/* ── LEFT: Account Details (sticky sidebar) ── */}
           <div className={`${cardCls} pf-fade-up pf-fade-up-2 lg:sticky lg:top-6`}>
@@ -250,108 +157,11 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* ── COL 2: Personal Information ── */}
-          <div>
-
-            {/* Personal Information */}
-            <div className={`${cardCls} pf-fade-up pf-fade-up-3`}>
-              <div className={cardHeaderCls}>
-                <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
-                    <User className={`w-3.5 h-3.5 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
-                  </div>
-                  <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Personal Information</h2>
-                </div>
-                <p className={`text-xs mt-0.5 ml-9 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Update your display name, email address, and phone number.</p>
-              </div>
-
-              <form onSubmit={handleProfileUpdate} className="p-6 space-y-4">
-                {/* Full Name */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="full_name" className={labelCls}>Full Name</Label>
-                  <div className="relative">
-                    <Pencil className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <Input
-                      id="full_name"
-                      value={profileData.full_name}
-                      onChange={(e) => setProfileData({ ...profileData, full_name: e.target.value })}
-                      placeholder="Enter full name"
-                      className={`${inputCls} pl-9`}
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className={labelCls}>Email Address</Label>
-                  <div className="relative">
-                    <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profileData.email}
-                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                      placeholder="Enter email"
-                      className={`${inputCls} pl-9`}
-                    />
-                  </div>
-                </div>
-
-                {/* Phone */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone" className={labelCls}>Phone Number</Label>
-                  <div className="relative">
-                    <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <Input
-                      id="phone"
-                      value={profileData.phone}
-                      onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                      placeholder="Enter phone number"
-                      className={`${inputCls} pl-9`}
-                    />
-                  </div>
-                </div>
-
-                {profileSuccess && (
-                  <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm ${
-                    isDark ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-700/40' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}>
-                    <CheckCircle className="w-4 h-4 shrink-0" />
-                    Profile updated successfully.
-                  </div>
-                )}
-
-                {updateProfileMutation.error && (
-                  <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm ${
-                    isDark ? 'bg-red-900/30 text-red-300 border border-red-700/40' : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}>
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    {updateProfileMutation.error.message || 'Failed to update profile.'}
-                  </div>
-                )}
-
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    disabled={updateProfileMutation.isPending}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-60"
-                  >
-                    {updateProfileMutation.isPending
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
-                      : <><Save className="w-4 h-4" /> Save Changes</>
-                    }
-                  </button>
-                </div>
-              </form>
-            </div>
-
-          </div>{/* ── end COL 2 ── */}
-
-          {/* ── COL 3: Change Password ── */}
+          {/* ── COL 2: Change Password ── */}
           <div>
 
             {/* Change Password */}
-            <div className={`${cardCls} pf-fade-up pf-fade-up-4`}>
+            <div className={`${cardCls} pf-fade-up pf-fade-up-3`}>
               <div className={cardHeaderCls}>
                 <div className="flex items-center gap-2">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-violet-500/20' : 'bg-violet-50'}`}>
@@ -362,7 +172,7 @@ export default function ProfilePage() {
                 <p className={`text-xs mt-0.5 ml-9 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Minimum 6 characters. Use a unique password you don't use elsewhere.</p>
               </div>
 
-              <form onSubmit={handlePasswordUpdate} className="p-6 space-y-4">
+              <form onSubmit={handlePasswordUpdate} className="p-5 space-y-3">
                 {/* Current Password */}
                 <div className="space-y-1.5">
                   <Label htmlFor="currentPassword" className={labelCls}>Current Password</Label>
@@ -383,68 +193,71 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* New Password */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="newPassword" className={labelCls}>New Password</Label>
-                  <div className="relative">
-                    <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <Input
-                      id="newPassword"
-                      type={showNewPassword ? 'text' : 'password'}
-                      value={passwordData.newPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                      placeholder="New password"
-                      className={`${inputCls} pl-9 pr-9`}
-                    />
-                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {passwordData.newPassword && (
-                    <div className="flex gap-1 pt-1">
-                      {[1,2,3,4].map((s) => {
-                        const len = passwordData.newPassword.length;
-                        const score = len >= 10 ? 4 : len >= 8 ? 3 : len >= 6 ? 2 : 1;
-                        return (
-                          <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${
-                            s <= score
-                              ? score >= 4 ? 'bg-emerald-500' : score >= 3 ? 'bg-blue-500' : score >= 2 ? 'bg-amber-500' : 'bg-red-500'
-                              : isDark ? 'bg-slate-700' : 'bg-slate-200'
-                          }`} />
-                        );
-                      })}
+                {/* New + Confirm in a row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="newPassword" className={labelCls}>New Password</Label>
+                    <div className="relative">
+                      <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                        placeholder="New password"
+                        className={`${inputCls} pl-9 pr-9`}
+                      />
+                      <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword" className={labelCls}>Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={passwordData.confirmPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                      placeholder="Confirm password"
-                      className={`${inputCls} pl-9 pr-9`}
-                    />
-                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    {passwordData.newPassword && (
+                      <div className="flex gap-1 pt-0.5">
+                        {[1,2,3,4].map((s) => {
+                          const len = passwordData.newPassword.length;
+                          const score = len >= 10 ? 4 : len >= 8 ? 3 : len >= 6 ? 2 : 1;
+                          return (
+                            <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${
+                              s <= score
+                                ? score >= 4 ? 'bg-emerald-500' : score >= 3 ? 'bg-blue-500' : score >= 2 ? 'bg-amber-500' : 'bg-red-500'
+                                : isDark ? 'bg-slate-700' : 'bg-slate-200'
+                            }`} />
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  {passwordData.confirmPassword && (
-                    <p className={`text-[11px] mt-1 ${
-                      passwordData.newPassword === passwordData.confirmPassword
-                        ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-                        : (isDark ? 'text-red-400' : 'text-red-500')
-                    }`}>
-                      {passwordData.newPassword === passwordData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
-                    </p>
-                  )}
+
+                  {/* Confirm Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="confirmPassword" className={labelCls}>Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                        placeholder="Confirm password"
+                        className={`${inputCls} pl-9 pr-9`}
+                      />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {passwordData.confirmPassword && (
+                      <p className={`text-[11px] mt-0.5 ${
+                        passwordData.newPassword === passwordData.confirmPassword
+                          ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                          : (isDark ? 'text-red-400' : 'text-red-500')
+                      }`}>
+                        {passwordData.newPassword === passwordData.confirmPassword ? '✓ Passwords match' : '✗ Do not match'}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {passwordError && (
@@ -480,12 +293,12 @@ export default function ProfilePage() {
               </form>
             </div>
 
-          </div>{/* ── end COL 3 ── */}
+          </div>{/* ── end COL 2 ── */}
 
         </div>{/* ── end 3-col grid ── */}
 
         {/* Footer */}
-        <p className={`pf-fade-up pf-fade-up-5 text-center text-xs pb-2 mt-5 ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
+        <p className={`pf-fade-up pf-fade-up-4 text-center text-xs pb-2 mt-5 ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
           Equimon Laboratory Management System · v1.0.0
         </p>
       </div>
