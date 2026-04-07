@@ -112,9 +112,21 @@ const ensureAdminAccount = async () => {
 };
 
 // Middleware
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? [process.env.CORS_ORIGIN]
-  : ['http://localhost:5173', 'http://localhost:5174'];
+const defaultDevOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174'
+];
+const configuredOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = Array.from(new Set(
+  process.env.NODE_ENV === 'production'
+    ? (configuredOrigins.length > 0 ? configuredOrigins : defaultDevOrigins)
+    : [...defaultDevOrigins, ...configuredOrigins]
+));
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
@@ -157,6 +169,7 @@ app.use('/api/equipment', equipmentRoutes);
 app.use('/api/borrow-requests', borrowRequestRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/admin/audit-logs', auditLogRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // Error handling middleware (must be last)

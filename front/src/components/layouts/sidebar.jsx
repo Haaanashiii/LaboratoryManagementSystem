@@ -28,7 +28,6 @@ const menuConfig = {
     { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
     { label: 'auditLogs', icon: ClipboardList, href: '/admin-audit-logs' },
     { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
-    { label: 'returns', icon: History, href: '/returns' },
     { label: 'settings', icon: Settings, href: '/settings' },
   ],
   lecturer: [

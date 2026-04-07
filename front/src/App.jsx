@@ -137,7 +137,9 @@ function App() {
             <Route path="inventory" element={<Inventory />} />
             <Route path="requests" element={<MyRequests />} />
             <Route path="equipment-prep" element={<EquipmentPrep />} />
-            <Route path="returns" element={<Returns />} />
+            <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>
+              <Route path="returns" element={<Returns />} />
+            </Route>
             
             {/* Profile & Settings */}
             <Route path="profile" element={<Profile />} />

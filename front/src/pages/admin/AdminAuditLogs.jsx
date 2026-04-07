@@ -17,10 +17,12 @@ const ACTION_OPTIONS = [
 ];
 
 export default function AdminAuditLogs() {
+  const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState({
     user: '',
     action_type: 'all',
-    start_date: ''
+    start_date: '',
+    end_date: ''
   });
 
   const queryFilters = useMemo(() => {
@@ -28,6 +30,7 @@ export default function AdminAuditLogs() {
     if (filters.user.trim()) next.user = filters.user.trim();
     if (filters.action_type !== 'all') next.action_type = filters.action_type;
     if (filters.start_date) next.start_date = filters.start_date;
+    if (filters.end_date) next.end_date = filters.end_date;
     next.limit = 100;
     return next;
   }, [filters]);
@@ -39,6 +42,26 @@ export default function AdminAuditLogs() {
 
   const logs = data?.data || [];
 
+  const handleExportPdf = async () => {
+    try {
+      setIsExporting(true);
+      const exportFilters = { ...queryFilters, limit: 5000 };
+      const blob = await api.entities.AuditLogs.exportPdf(exportFilters);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'audit_logs.pdf';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(error.message || 'Failed to export audit logs PDF.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-4 py-4 px-4">
       <div>
@@ -46,7 +69,18 @@ export default function AdminAuditLogs() {
         <p className="text-sm text-slate-600 mt-1">Track login attempts, borrow activity, returns, and damage verification actions.</p>
       </div>
 
-      <div className="flex justify-end">
+      <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <span className="font-semibold">Important:</span> Audit log data is automatically deleted after 7 days. Export regularly to keep a long-term record.
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          onClick={handleExportPdf}
+          disabled={isExporting}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-70"
+        >
+          {isExporting ? 'Exporting...' : 'Export PDF'}
+        </Button>
         <Button
           onClick={() => refetch()}
           className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -82,6 +116,15 @@ export default function AdminAuditLogs() {
                   type="date"
                   value={filters.start_date}
                   onChange={(event) => setFilters((prev) => ({ ...prev, start_date: event.target.value }))}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="w-full md:w-[240px]">
+                <Input
+                  type="date"
+                  value={filters.end_date}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, end_date: event.target.value }))}
                   className="w-full"
                 />
               </div>

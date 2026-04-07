@@ -26,6 +26,8 @@ const initSocket = (server, allowedOrigins) => {
     }
   });
 
+  console.log(` Socket.IO ready on same HTTP server (origins: ${allowedOrigins.join(', ')})`);
+
   ioInstance.use(async (socket, next) => {
     try {
       const token = extractToken(socket);
@@ -56,6 +58,12 @@ const initSocket = (server, allowedOrigins) => {
 
     socket.join(userIdRoom);
     socket.join(roleRoom);
+
+    console.log(` Socket connected: ${socket.id} | user=${socket.user.id} | role=${socket.user.role}`);
+
+    socket.on('disconnect', (reason) => {
+      console.log(` Socket disconnected: ${socket.id} | reason=${reason}`);
+    });
   });
 
   return ioInstance;

@@ -212,13 +212,7 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => navigate('/login')}
-            className="mt-6 w-full text-sm font-medium text-cyan-200 transition hover:text-cyan-100"
-          >
-            {t('useRegularLoginInstead')}
-          </button>
+      
         </div>
       </div>
     </div>

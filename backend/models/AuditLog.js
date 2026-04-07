@@ -56,6 +56,7 @@ const auditLogSchema = new mongoose.Schema({
 });
 
 auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
 auditLogSchema.index({ action_type: 1, createdAt: -1 });
 auditLogSchema.index({ user: 1, createdAt: -1 });
 

@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { Search, History, Package, Calendar, CheckCircle, RotateCcw, AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, History, Package, Calendar, CheckCircle, RotateCcw, AlertCircle, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
-import { format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { useTheme } from '@/components/hooks/ThemeContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const pageStyles = `
   @keyframes fadeUp {
@@ -57,6 +67,8 @@ const pageStyles = `
 `;
 
 const PAGE_SIZE = 10;
+const RECENT_WINDOW_DAYS = 30;
+const RECENTLY_BORROWED_STATUSES = ['borrowed', 'returned'];
 
 const STATUS_FILTERS = [
   { key: 'all',      label: 'All',       statuses: null },
@@ -65,13 +77,40 @@ const STATUS_FILTERS = [
   { key: 'borrowed', label: 'Borrowed',  statuses: ['borrowed'] },
   { key: 'returned', label: 'Returned',  statuses: ['returned'] },
   { key: 'rejected', label: 'Rejected',  statuses: ['rejected'] },
+  { key: 'recently_borrowed', label: 'Recently Borrowed', statuses: RECENTLY_BORROWED_STATUSES },
 ];
+
+const getEquipmentId = (request) => {
+  if (!request) return null;
+  if (typeof request.equipment === 'string') return request.equipment;
+  return request.equipment?._id || request.equipment?.id || null;
+};
+
+const isRecentlyBorrowed = (request) => {
+  if (!RECENTLY_BORROWED_STATUSES.includes(request?.status)) {
+    return false;
+  }
+
+  const requestDate = new Date(request?.borrow_date || request?.created_date || request?.createdAt || 0);
+  if (Number.isNaN(requestDate.getTime())) {
+    return false;
+  }
+
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - RECENT_WINDOW_DAYS);
+  return requestDate >= cutoff;
+};
 
 export default function ApprovalHistory() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [borrowAgainMessage, setBorrowAgainMessage] = useState(null);
+  const [confirmBorrowAgainRequest, setConfirmBorrowAgainRequest] = useState(null);
+  const [borrowAgainReason, setBorrowAgainReason] = useState('');
   const { isDark } = useTheme();
+  const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -84,14 +123,60 @@ export default function ApprovalHistory() {
     enabled: !!user
   });
 
+  const borrowAgainMutation = useMutation({
+    mutationFn: ({ request, reason }) => {
+      const equipmentId = getEquipmentId(request);
+      if (!equipmentId) {
+        throw new Error('Unable to identify equipment for this request.');
+      }
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const returnDate = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+
+      return api.entities.BorrowRequest.create({
+        equipment: equipmentId,
+        quantity: request.quantity || 1,
+        purpose: `Borrow again reason: ${reason.trim()}`,
+        borrow_date: today,
+        return_date: returnDate,
+        agree_policy: true,
+      });
+    },
+    onSuccess: () => {
+      setBorrowAgainMessage({ type: 'success', text: 'Borrow request submitted. Check Pending to track approval.' });
+      queryClient.invalidateQueries({ queryKey: ['myRequests'] });
+      setStatusFilter('pending');
+      setPage(1);
+    },
+    onError: (mutationError) => {
+      setBorrowAgainMessage({
+        type: 'error',
+        text: mutationError?.message || 'Failed to submit borrow request. Please try again.',
+      });
+    },
+  });
+
   const activeFilter = STATUS_FILTERS.find(f => f.key === statusFilter) || STATUS_FILTERS[0];
 
-  const filteredRequests = requests
-    .filter(r => !activeFilter.statuses || activeFilter.statuses.includes(r.status))
+  let filteredRequests = requests
+    .filter(r => {
+      if (statusFilter === 'recently_borrowed') {
+        return isRecentlyBorrowed(r);
+      }
+      return !activeFilter.statuses || activeFilter.statuses.includes(r.status);
+    })
     .filter(r =>
       r.equipment_name?.toLowerCase().includes(search.toLowerCase()) ||
       r.borrower_name?.toLowerCase().includes(search.toLowerCase())
     );
+
+  if (statusFilter === 'recently_borrowed') {
+    filteredRequests = [...filteredRequests].sort((a, b) => {
+      const firstDate = new Date(a.borrow_date || a.created_date || a.createdAt || 0).getTime();
+      const secondDate = new Date(b.borrow_date || b.created_date || b.createdAt || 0).getTime();
+      return secondDate - firstDate;
+    });
+  }
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -165,9 +250,11 @@ export default function ApprovalHistory() {
         {/* Status chip filters */}
         <div className={`inline-flex gap-1 p-1 rounded-xl flex-shrink-0 ${isDark ? 'bg-white/[0.06]' : 'bg-slate-100'}`}>
           {STATUS_FILTERS.map(f => {
-            const count = f.statuses
-              ? requests.filter(r => f.statuses.includes(r.status)).length
-              : requests.length;
+            const count = f.key === 'recently_borrowed'
+              ? requests.filter(isRecentlyBorrowed).length
+              : f.statuses
+                ? requests.filter(r => f.statuses.includes(r.status)).length
+                : requests.length;
             return (
               <button
                 key={f.key}
@@ -205,6 +292,20 @@ export default function ApprovalHistory() {
         </div>
       </div>
 
+      {borrowAgainMessage && (
+        <div className={`hist-fade-up rounded-xl border px-3 py-2 text-sm ${
+          borrowAgainMessage.type === 'success'
+            ? isDark
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : isDark
+              ? 'border-red-500/30 bg-red-500/10 text-red-300'
+              : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
+          {borrowAgainMessage.text}
+        </div>
+      )}
+
       {/* ── CARDS LIST ──────────────────────────────────────────── */}
       <div className="hist-fade-up hist-fade-3 space-y-3">
         {filteredRequests.length === 0 ? (
@@ -221,6 +322,8 @@ export default function ApprovalHistory() {
           pagedRequests.map((request) => {
             const isRejected = request.status === 'rejected';
             const isReturned = request.status === 'returned';
+            const canBorrowAgain = RECENTLY_BORROWED_STATUSES.includes(request.status) && !!getEquipmentId(request);
+            const isBorrowAgainLoading = borrowAgainMutation.isPending && borrowAgainMutation.variables?.id === request.id;
 
             return (
               <div
@@ -288,6 +391,28 @@ export default function ApprovalHistory() {
                           <span><span className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Remarks: </span>{request.lecturer_remarks}</span>
                         </div>
                       )}
+
+                      {canBorrowAgain && (
+                        <div className="mt-3 flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBorrowAgainMessage(null);
+                              setConfirmBorrowAgainRequest(request);
+                              setBorrowAgainReason('');
+                            }}
+                            disabled={borrowAgainMutation.isPending}
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                              isDark
+                                ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                : 'bg-slate-900 text-white hover:bg-blue-600'
+                            }`}
+                          >
+                            {isBorrowAgainLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                            {isBorrowAgainLoading ? 'Submitting...' : 'Borrow Again'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -344,6 +469,73 @@ export default function ApprovalHistory() {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={!!confirmBorrowAgainRequest}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmBorrowAgainRequest(null);
+            setBorrowAgainReason('');
+          }
+        }}
+      >
+        <AlertDialogContent className={isDark ? 'bg-[#111118] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Borrow Again</AlertDialogTitle>
+            <AlertDialogDescription className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+              Are you sure you want to borrow {confirmBorrowAgainRequest?.equipment_name || 'this equipment'} again?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1">
+            <label className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Reason for borrowing again
+            </label>
+            <textarea
+              value={borrowAgainReason}
+              onChange={(e) => setBorrowAgainReason(e.target.value)}
+              placeholder="Enter your reason..."
+              rows={3}
+              className={`w-full rounded-md border px-3 py-2 text-sm resize-none outline-none transition-colors ${
+                isDark
+                  ? 'bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/60'
+                  : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-400'
+              }`}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setConfirmBorrowAgainRequest(null);
+                setBorrowAgainReason('');
+              }}
+              className={isDark ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10' : ''}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!confirmBorrowAgainRequest) {
+                  return;
+                }
+                const requestToSubmit = confirmBorrowAgainRequest;
+                const reasonToSubmit = borrowAgainReason.trim();
+                if (!reasonToSubmit) {
+                  return;
+                }
+                setConfirmBorrowAgainRequest(null);
+                setBorrowAgainMessage(null);
+                setBorrowAgainReason('');
+                borrowAgainMutation.mutate({ request: requestToSubmit, reason: reasonToSubmit });
+              }}
+              disabled={borrowAgainMutation.isPending || !borrowAgainReason.trim()}
+              className="inline-flex items-center gap-1.5"
+            >
+              {borrowAgainMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              {borrowAgainMutation.isPending ? 'Submitting...' : 'Yes, Borrow Again'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

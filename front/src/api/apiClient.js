@@ -660,6 +660,42 @@ export const api = {
         const data = await request(`/admin/audit-logs${params ? `?${params}` : ''}`);
         return data;
       },
+      exportPdf: async (filters = {}) => {
+        const token = getStoredToken();
+        const params = new URLSearchParams(filters).toString();
+        const candidateEndpoints = [
+          `${API_BASE_URL}/audit-logs/export/pdf${params ? `?${params}` : ''}`,
+          `${API_BASE_URL}/admin/audit-logs/export/pdf${params ? `?${params}` : ''}`,
+        ];
+
+        let lastResponse = null;
+
+        for (const endpoint of candidateEndpoints) {
+          let response;
+          try {
+            response = await fetch(endpoint, {
+              method: 'GET',
+              headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+            });
+          } catch {
+            throw new Error('Cannot connect to backend API. Make sure backend is running and reachable at http://localhost:3000.');
+          }
+
+          if (response.ok) {
+            return response.blob();
+          }
+
+          lastResponse = response;
+          if (response.status !== 404) {
+            break;
+          }
+        }
+
+        const payload = await lastResponse?.json().catch(() => ({}));
+        throw new Error(payload?.message || `Request failed with status ${lastResponse?.status || 500}`);
+      },
     },
     AdminMaintenance: {
       status: async () => {

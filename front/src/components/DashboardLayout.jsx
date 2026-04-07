@@ -82,8 +82,6 @@ const navigationConfig = {
     { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.admin, icon: Package },
     { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
     { name: 'auditLogs', href: '/admin-audit-logs', icon: History },
-    { name: 'equipmentPrep', href: '/equipment-prep', icon: CheckCircle },
-    { name: 'returns', href: '/returns', icon: History },
     { name: 'settings', href: '/settings', icon: Settings },
   ],
 };
@@ -157,6 +155,19 @@ export default function DashboardLayout() {
       return undefined;
     }
 
+    const invalidateRealtimeData = () => {
+      queryClient.invalidateQueries({
+        queryKey: ['notifications', user?.id, user?.role]
+      });
+
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const firstKey = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+          return typeof firstKey === 'string' && /(request|approval)/i.test(firstKey);
+        }
+      });
+    };
+
     const handleNotificationNew = (incoming) => {
       if (!incoming) {
         return;
@@ -178,12 +189,12 @@ export default function DashboardLayout() {
           ...prev
         ].slice(0, 20);
       });
+
+      invalidateRealtimeData();
     };
 
     const handleNotificationRefresh = () => {
-      queryClient.invalidateQueries({
-        queryKey: ['notifications', user?.id, user?.role]
-      });
+      invalidateRealtimeData();
     };
 
     socket.on('notification:new', handleNotificationNew);
