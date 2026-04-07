@@ -71,7 +71,6 @@ export default function Users() {
   const [viewingUser, setViewingUser] = useState(null);
   const [showViewPassword, setShowViewPassword] = useState(false);
   const [showAddPassword, setShowAddPassword] = useState(false);
-  const [showEditPassword, setShowEditPassword] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showEditPassword, setShowEditPassword] = useState(false);
@@ -749,8 +748,9 @@ export default function Users() {
                       className="h-9 text-sm bg-white"
                     />
                   </div>
-                </>
-              )}
+                </div>
+              </div>
+            )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-slate-700">
@@ -764,7 +764,6 @@ export default function Users() {
                   className="h-9 text-sm"
                 />
               </div>
-            </div>
           </div>
 
           <DialogFooter className="gap-2 border-t border-slate-100 pt-4">

@@ -7,21 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Search, FileText, Clock3, CheckCircle2, RotateCcw, XCircle, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
 const STATUS_TABS = [
-  { key: 'all', label: 'All Requests', statuses: null },
-  { key: 'pending', label: 'Pending', statuses: ['Pending Lecturer', 'Pending Head'] },
-  { key: 'approved', label: 'Approved', statuses: ['Approved', 'Ready for pickup', 'Borrowed'] },
-  { key: 'returned', label: 'Returned', statuses: ['Returned'] },
-  { key: 'rejected', label: 'Rejected', statuses: ['Rejected'] },
+  { key: 'all',      label: 'All Requests', statuses: null,                                             icon: Layers,       color: 'border-slate-300 bg-slate-100 text-slate-900',   dot: '#475569' },
+  { key: 'pending',  label: 'Pending',      statuses: ['Pending Lecturer', 'Pending Head'],          icon: Clock3,       color: 'border-amber-300 bg-amber-50 text-amber-900',    dot: '#d97706' },
+  { key: 'approved', label: 'Approved',     statuses: ['Approved', 'Ready for pickup', 'Borrowed'],  icon: CheckCircle2, color: 'border-blue-300 bg-blue-50 text-blue-900',      dot: '#2563eb' },
+  { key: 'returned', label: 'Returned',     statuses: ['Returned'],                                  icon: RotateCcw,    color: 'border-emerald-300 bg-emerald-50 text-emerald-900', dot: '#059669' },
+  { key: 'rejected', label: 'Rejected',     statuses: ['Rejected'],                                  icon: XCircle,      color: 'border-red-300 bg-red-50 text-red-900',         dot: '#dc2626' },
 ];
 
+const PAGE_SIZE = 10;
+
 export default function AllRequests() {
-  const { t } = useLang();
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['allRequests'],
@@ -36,6 +39,10 @@ export default function AllRequests() {
   }, {});
 
   const selectedTab = STATUS_TABS.find((tab) => tab.key === activeStatus) || STATUS_TABS[0];
+
+  const pendingCount  = statusCounts['pending']  || 0;
+  const approvedCount = statusCounts['approved'] || 0;
+  const returnedCount = statusCounts['returned'] || 0;
 
   // Reset page when filters change
   React.useEffect(() => { setCurrentPage(1); }, [search, activeStatus]);
@@ -123,27 +130,30 @@ export default function AllRequests() {
       {/* Filters */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap gap-3">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveStatus(tab.key)}
-              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                isActive
-                  ? `${tab.color} shadow-sm`
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
-                <TabIcon className="h-4 w-4" style={isActive ? { color: tab.dot } : { color: '#64748b' }} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-slate-500 truncate">{tab.label}</p>
-                <p className="text-lg font-semibold leading-tight text-slate-900">{statusCounts[tab.key] || 0}</p>
-              </div>
-            </button>
-          );
-        })}
+          {STATUS_TABS.map((tab) => {
+            const isActive = tab.key === activeStatus;
+            const TabIcon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveStatus(tab.key)}
+                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                  isActive
+                    ? `${tab.color} shadow-sm`
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
+                  <TabIcon className="h-4 w-4" style={isActive ? { color: tab.dot } : { color: '#64748b' }} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500 truncate">{tab.label}</p>
+                  <p className="text-lg font-semibold leading-tight text-slate-900">{statusCounts[tab.key] || 0}</p>
+                </div>
+              </button>
+            );
+          })}
       </div>
 
         <div className="relative flex-1">
