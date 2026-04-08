@@ -55,7 +55,13 @@ const menuConfig = {
       groupLabel: 'sidebarGroupApplication',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
-        { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.lecturer },
+        {
+          label: 'inventory', icon: Package, href: '/inventory',
+          children: [
+            { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },
+            { label: 'editEquipment', icon: Pencil, href: '/inventory' },
+          ],
+        },
       ],
     },
     {
@@ -71,7 +77,6 @@ const menuConfig = {
       groupLabel: 'sidebarGroupApplication',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
-        { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.head_of_lab },
       ],
     },
     {
@@ -100,7 +105,13 @@ const menuConfig = {
       groupLabel: 'sidebarGroupApplication',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
-        { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.lab_assistant },
+        {
+          label: 'inventory', icon: Package, href: '/inventory',
+          children: [
+            { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },
+            { label: 'editEquipment', icon: Pencil, href: '/inventory' },
+          ],
+        },
       ],
     },
     {

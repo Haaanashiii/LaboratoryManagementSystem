@@ -23,7 +23,6 @@ import HeadApprovalHistory from './pages/approvals/HeadApprovalHistory'
 // Functions
 import Catalog from './pages/catalogs/CatalogRedirect'
 import StudentCatalog from './pages/catalogs/StudentCatalog'
-import LecturerCatalog from './pages/catalogs/LecturerCatalog'
 import HeadCatalog from './pages/catalogs/HeadCatalog'
 import AssistantCatalog from './pages/catalogs/AssistantCatalog'
 import AllRequests from './pages/requests/AllRequest'
@@ -120,9 +119,6 @@ function App() {
             <Route path="catalog" element={<Catalog />} />
             <Route element={<RoleRoute allowedRoles={['student']} />}>
               <Route path="catalog/student" element={<StudentCatalog />} />
-            </Route>
-            <Route element={<RoleRoute allowedRoles={['lecturer']} />}>
-              <Route path="catalog/lecturer" element={<LecturerCatalog />} />
             </Route>
             <Route element={<RoleRoute allowedRoles={['head_of_lab']} />}>
               <Route path="catalog/head-of-lab" element={<HeadCatalog />} />

@@ -76,7 +76,7 @@ export default function Inventory() {
   const totalPages = Math.max(1, Math.ceil(displayedEquipment.length / PAGE_SIZE));
   const paginatedEquipment = displayedEquipment.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const activeCategoryConfig = activeCategory ? categoryConfig.find(c => c.value === activeCategory) : null;
-  const canEdit = user?.role === 'admin' || user?.role === 'head_of_lab' || user?.role === 'lab_assistant';
+  const canEdit = user?.role === 'admin' || user?.role === 'head_of_lab' || user?.role === 'lab_assistant' || user?.role === 'lecturer';
 
 
 

@@ -1,8 +1,8 @@
 export const CATALOG_ROUTES_BY_ROLE = {
   student: '/catalog/student',
-  lecturer: '/catalog/lecturer',
-  head_of_lab: '/catalog/head-of-lab',
-  lab_assistant: '/catalog/lab-assistant',
+  lecturer: '/inventory',
+  head_of_lab: '/inventory',
+  lab_assistant: '/inventory',
 };
 
 export const getCatalogRouteForRole = (role, fallback = '/dashboard') => (
