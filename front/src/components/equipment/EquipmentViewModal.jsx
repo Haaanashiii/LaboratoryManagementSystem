@@ -39,6 +39,7 @@ export default function EquipmentViewModal({
   primaryActionLabel,
   onPrimaryAction,
   isPending = false,
+  borrowState = 'none',
 }) {
   const { isDark } = useTheme();
   const { t } = useLang();
@@ -78,6 +79,8 @@ export default function EquipmentViewModal({
   const actionHandler   = onPrimaryAction || onBorrow;
   const isBorrowAction  = !onPrimaryAction && typeof onBorrow === 'function';
   const actionLabel     = onPrimaryAction ? (primaryActionLabel || t('takeAction')) : t('borrow');
+  const effectiveBorrowState = borrowState === 'none' ? (isPending ? 'pending' : 'none') : borrowState;
+  const hasActiveRequest = effectiveBorrowState !== 'none';
 
   const stockColor =
     available === 0  ? { dark: '#f87171', light: '#dc2626' } :
@@ -91,7 +94,8 @@ export default function EquipmentViewModal({
 
   const stockLabel =
     available === 0  ? t('outOfStock') :
-    isPending        ? t('borrowPending') :
+    effectiveBorrowState === 'borrowed' ? t('currentlyBorrowed') :
+    hasActiveRequest ? t('borrowPending') :
     isBorrowAction   ? t('availableToBorrow') :
                t('inStock');
 
@@ -372,19 +376,19 @@ export default function EquipmentViewModal({
           >
             {actionHandler && (
               <button
-                onClick={() => { if (!isPending) { actionHandler(equipment); onClose(); } }}
-                disabled={isPending || (isBorrowAction && available === 0)}
+                onClick={() => { if (!hasActiveRequest) { actionHandler(equipment); onClose(); } }}
+                disabled={hasActiveRequest || (isBorrowAction && available === 0)}
                 className="flex-1 h-9 px-4 rounded-lg font-semibold text-xs transition-all"
                 style={
-                  isPending
+                  hasActiveRequest
                     ? { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#f59e0b', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }
                     : isBorrowAction && available === 0
                     ? { background: T.ctaDisBg, border: `1px solid ${T.ctaDisBor}`, color: T.ctaDisText, cursor: 'not-allowed' }
                     : { background: '#3b82f6', color: '#fff', border: 'none', boxShadow: '0 4px 20px rgba(59,130,246,0.40)' }
                 }
               >
-                {isPending ? (
-                  <><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />{t('borrowPending')}</>
+                {hasActiveRequest ? (
+                  <><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />{effectiveBorrowState === 'borrowed' ? t('currentlyBorrowed') : t('borrowPending')}</>
                 ) : isBorrowAction && available === 0 ? t('unavailable') : actionLabel}
               </button>
             )}

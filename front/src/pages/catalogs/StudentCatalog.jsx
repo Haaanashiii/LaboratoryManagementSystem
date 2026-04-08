@@ -58,13 +58,25 @@ export default function StudentCatalog() {
     enabled: user?.role === 'student',
   });
 
-  // Equipment IDs with an active (non-rejected, non-returned) request
-  const pendingEquipmentIds = new Set(
-    myRequests
-      .filter(r => !['rejected', 'returned'].includes(r.status))
-      .map(r => (r.equipment?._id || r.equipment?.id || r.equipment))
-      .filter(Boolean)
-  );
+  // Track per-equipment request state so borrowed items aren't shown as pending.
+  const equipmentRequestStateMap = myRequests.reduce((acc, request) => {
+    const equipmentId = request.equipment?._id || request.equipment?.id || request.equipment;
+    if (!equipmentId) return acc;
+    if (request.status === 'rejected' || request.status === 'returned') return acc;
+
+    const currentState = acc.get(equipmentId) || 'none';
+    if (request.status === 'borrowed') {
+      acc.set(equipmentId, 'borrowed');
+      return acc;
+    }
+
+    if (currentState !== 'borrowed') {
+      acc.set(equipmentId, 'pending');
+    }
+    return acc;
+  }, new Map());
+
+  const pendingEquipmentIds = new Set(equipmentRequestStateMap.keys());
 
   const createRequestMutation = useMutation({
     mutationFn: (data) => api.entities.BorrowRequest.create(data),
@@ -242,6 +254,7 @@ export default function StudentCatalog() {
             onSelect={setViewedEquipment}
             onBorrow={(eq) => { if (!pendingEquipmentIds.has(eq._id || eq.id)) setSelectedEquipment(eq); }}
             pendingEquipmentIds={pendingEquipmentIds}
+            equipmentRequestStateMap={equipmentRequestStateMap}
             isDark={isDark}
           />
         </div>
@@ -255,6 +268,7 @@ export default function StudentCatalog() {
           onClose={() => setViewedEquipment(null)}
           onBorrow={handleViewEquipmentBorrow}
           isPending={viewedEquipment ? pendingEquipmentIds.has(viewedEquipment._id || viewedEquipment.id) : false}
+          borrowState={viewedEquipment ? (equipmentRequestStateMap.get(viewedEquipment._id || viewedEquipment.id) || 'none') : 'none'}
           isDark={isDark}
         />
       )}

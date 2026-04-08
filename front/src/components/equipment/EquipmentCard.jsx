@@ -322,20 +322,23 @@ const cardStyles = `
   }
 `;
 
-export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole, isPending = false, variant = 'default' }) {
+export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole, isPending = false, borrowState = 'none', variant = 'default' }) {
   const { isDark } = useTheme();
   const { t } = useLang();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const isLecturer = variant === 'lecturer';
 
+  const effectiveBorrowState = borrowState === 'none' ? (isPending ? 'pending' : 'none') : borrowState;
+  const hasActiveRequest = effectiveBorrowState !== 'none';
+
   const handleClick = () => {
     if (onSelect) onSelect(equipment);
-    else if (onBorrow && !isPending) onBorrow(equipment);
+    else if (onBorrow && !hasActiveRequest) onBorrow(equipment);
   };
 
   const handleViewAndBorrowClick = (e) => {
     e.stopPropagation();
-    if (isPending) return;
+    if (hasActiveRequest) return;
     if (onBorrow) onBorrow(equipment);
     else if (onSelect) onSelect(equipment);
   };
@@ -486,7 +489,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
               >
                 {t('viewDetails')}
               </button>
-              {onBorrow && !isPending ? (
+              {onBorrow && !hasActiveRequest ? (
                 <button
                   onClick={handleViewAndBorrowClick}
                   className="eq-action-btn eq-action-secondary"
@@ -494,10 +497,10 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
                 >
                   {t('requestForClass')}
                 </button>
-              ) : isPending ? (
+              ) : hasActiveRequest ? (
                 <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#f59e0b' }}>
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  {t('pendingRequests')}
+                  {effectiveBorrowState === 'borrowed' ? t('currentlyBorrowed') : t('pendingRequests')}
                 </div>
               ) : (
                 <span className="eq-action-meta">{t('requestForClassInApprovals')}</span>
@@ -607,12 +610,12 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
 
           {/* Borrow button */}
           {canBorrow && (
-            isPending ? (
+            hasActiveRequest ? (
               <div className="mt-1 w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-semibold cursor-not-allowed"
                 style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#f59e0b' }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                Borrow Pending
+                {effectiveBorrowState === 'borrowed' ? t('currentlyBorrowed') : t('borrowPending')}
               </div>
             ) : (
               <button

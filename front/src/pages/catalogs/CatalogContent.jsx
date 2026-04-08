@@ -186,6 +186,7 @@ export default function CatalogContent({
   onSelect,
   onBorrow,
   pendingEquipmentIds,
+  equipmentRequestStateMap,
   variant = 'default',
   isDark = false,
 }) {
@@ -428,6 +429,7 @@ export default function CatalogContent({
                           variant={variant}
                           isDark={isDark}
                           isPending={pendingEquipmentIds?.has(item._id || item.id)}
+                          borrowState={equipmentRequestStateMap?.get(item._id || item.id) || 'none'}
                         />
                       </div>
                     ))}
@@ -451,6 +453,7 @@ export default function CatalogContent({
                     variant={variant}
                     isDark={isDark}
                     isPending={pendingEquipmentIds?.has(item._id || item.id)}
+                    borrowState={equipmentRequestStateMap?.get(item._id || item.id) || 'none'}
                   />
                 </div>
               ))}

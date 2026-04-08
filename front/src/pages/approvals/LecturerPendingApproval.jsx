@@ -5,7 +5,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Package, Calendar, User, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Package, Calendar, User, Clock, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 import { useLang } from '@/components/i18n/LangContext';
@@ -17,6 +17,14 @@ export default function LecturerApprovals() {
   const [action, setAction] = useState(null); // 'approve' or 'reject'
 
   const queryClient = useQueryClient();
+
+  const hasExplicitTime = (value) => {
+    return typeof value === 'string' && (value.includes('T') || value.includes(':'));
+  };
+
+  const formatBorrowReturn = (value) => {
+    return format(new Date(value), hasExplicitTime(value) ? 'MMM d, yyyy h:mm a' : 'MMM d, yyyy');
+  };
 
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['pendingLecturerRequests'],
@@ -128,7 +136,11 @@ export default function LecturerApprovals() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5" />
-                          {format(new Date(request.borrow_date), 'MMM d')} – {format(new Date(request.return_date), 'MMM d, yyyy')}
+                          {formatBorrowReturn(request.borrow_date)} – {formatBorrowReturn(request.return_date)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Requested: {format(new Date(request.created_date), 'MMM d, yyyy h:mm a')}
                         </span>
                       </div>
                     </div>

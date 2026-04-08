@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { useLang } from '@/components/i18n/LangContext';
 
@@ -143,8 +143,6 @@ export default function Users() {
       setInviteRole('student');
     }
   });
-
-  useEffect(() => { setCurrentPage(1); }, [search, activeRole]);
 
   const filteredUsers = users.filter(user =>
     user.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -281,7 +279,10 @@ export default function Users() {
             <button
               key={role.value}
               type="button"
-              onClick={() => setActiveRole(activeRole === role.value ? '' : role.value)}
+              onClick={() => {
+                setCurrentPage(1);
+                setActiveRole(activeRole === role.value ? '' : role.value);
+              }}
               className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
                 isActive
                   ? `${role.color} shadow-sm`
@@ -316,7 +317,10 @@ export default function Users() {
             </span>
             {activeRole && (
               <button
-                onClick={() => setActiveRole('')}
+                onClick={() => {
+                  setCurrentPage(1);
+                  setActiveRole('');
+                }}
                 className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
               >
                 {t('clear')}
@@ -328,7 +332,10 @@ export default function Users() {
             <Input
               placeholder={t('searchUsers')}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setCurrentPage(1);
+                setSearch(e.target.value);
+              }}
               className="h-8 pl-8 text-xs"
             />
           </div>
@@ -518,7 +525,7 @@ export default function Users() {
                 </SelectTrigger>
                 <SelectContent className="bg-white text-slate-900 border-slate-200">
                   {roles.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                    <SelectItem key={role.value} value={role.value}>{getRoleLabel(role.value)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
