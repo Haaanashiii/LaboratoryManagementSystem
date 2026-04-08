@@ -78,7 +78,6 @@ const navigationConfig = {
     { name: 'dashboard', href: '/dashboard', icon: Home },
     { name: 'users', href: '/users', icon: Users },
     { name: 'inventory', href: '/inventory', icon: Package },
-    { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.admin, icon: Package },
     { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
     { name: 'auditLogs', href: '/admin-audit-logs', icon: History },
     { name: 'settings', href: '/settings', icon: Settings },

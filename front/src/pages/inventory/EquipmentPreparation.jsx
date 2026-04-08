@@ -3,20 +3,37 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, CheckCircle, Loader2 } from 'lucide-react';
+import { Package, CheckCircle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
-const STATUS_CONFIG = {
-  head_approved: { label: 'Needs Preparation', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  ready_pickup:  { label: 'Ready for Pickup',  color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+const PAGE_SIZE = 10;
+
+const SECTION_CONFIG = [
+  { key: 'all',     label: 'All',           color: 'bg-slate-100 text-slate-700 border-slate-300',        dot: '#475569', icon: ClipboardList },
+  { key: 'prepare', label: 'Needs Preparation',    color: 'bg-amber-50 text-amber-700 border-amber-200',         dot: '#d97706', icon: Package },
+  { key: 'release', label: 'Ready Pickup',  color: 'bg-indigo-50 text-indigo-700 border-indigo-200',      dot: '#6366f1', icon: CheckCircle },
+];
+
+const STATUS_COLOR = {
+  head_approved: 'bg-amber-50 text-amber-700 border-amber-200',
+  ready_pickup:  'bg-indigo-50 text-indigo-700 border-indigo-200',
+};
+
+const STATUS_LABEL = {
+  head_approved: 'Needs Preparation',
+  ready_pickup:  'Ready for Pickup',
 };
 
 export default function EquipmentPrep() {
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [dialogAction, setDialogAction] = useState(null); // 'prepare' or 'release'
+  const [dialogAction, setDialogAction] = useState(null);
+  const [search, setSearch] = useState('');
+  const [activeSection, setActiveSection] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const queryClient = useQueryClient();
 
   const { data: approvedRequests = [], isLoading: loadingApproved, isError: errorApproved, error: errorMsgApproved } = useQuery({
@@ -37,7 +54,7 @@ export default function EquipmentPrep() {
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       closeDialog();
-    }
+    },
   });
 
   const releaseMutation = useMutation({
@@ -47,31 +64,19 @@ export default function EquipmentPrep() {
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       closeDialog();
-    }
+    },
   });
 
-  const openPrepareDialog = (request) => {
-    setSelectedRequest(request);
-    setDialogAction('prepare');
-  };
-
-  const openReleaseDialog = (request) => {
-    setSelectedRequest(request);
-    setDialogAction('release');
-  };
-
-  const closeDialog = () => {
-    setSelectedRequest(null);
-    setDialogAction(null);
-  };
+  const openPrepareDialog = (request) => { setSelectedRequest(request); setDialogAction('prepare'); };
+  const openReleaseDialog = (request) => { setSelectedRequest(request); setDialogAction('release'); };
+  const closeDialog = () => { setSelectedRequest(null); setDialogAction(null); };
 
   const handleConfirm = () => {
-    if (dialogAction === 'prepare') {
-      prepareMutation.mutate(selectedRequest.id);
-    } else {
-      releaseMutation.mutate(selectedRequest.id);
-    }
+    if (dialogAction === 'prepare') prepareMutation.mutate(selectedRequest.id);
+    else releaseMutation.mutate(selectedRequest.id);
   };
+
+  const handleSectionChange = (key) => { setActiveSection(key); setCurrentPage(1); };
 
   const isPending = prepareMutation.isPending || releaseMutation.isPending;
   const isLoading = loadingApproved || loadingReady;
@@ -82,6 +87,25 @@ export default function EquipmentPrep() {
     ...approvedRequests.map((r) => ({ ...r, _section: 'prepare' })),
     ...readyRequests.map((r) => ({ ...r, _section: 'release' })),
   ];
+
+  const sectionCounts = {
+    all: allRequests.length,
+    prepare: approvedRequests.length,
+    release: readyRequests.length,
+  };
+
+  const sectionFiltered = activeSection === 'all'
+    ? allRequests
+    : allRequests.filter((r) => r._section === activeSection);
+
+  const filtered = sectionFiltered.filter((r) =>
+    !search || r.equipment_name?.toLowerCase().includes(search.toLowerCase()) ||
+    r.borrower_name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const activeConfig = SECTION_CONFIG.find((c) => c.key === activeSection) || SECTION_CONFIG[0];
 
   return (
     <div className="w-full space-y-4 px-2 py-2">
@@ -94,35 +118,65 @@ export default function EquipmentPrep() {
         </div>
       </div>
 
-      {/* Stat Pills */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 max-w-sm">
-        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <div className="rounded-lg bg-white/60 p-1.5">
-            <Package className="h-4 w-4 text-amber-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-slate-500 truncate">Needs Prep</p>
-            <p className="text-lg font-semibold leading-tight text-slate-900">{approvedRequests.length}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
-          <div className="rounded-lg bg-white/60 p-1.5">
-            <CheckCircle className="h-4 w-4 text-indigo-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-slate-500 truncate">Ready Pickup</p>
-            <p className="text-lg font-semibold leading-tight text-slate-900">{readyRequests.length}</p>
-          </div>
-        </div>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {SECTION_CONFIG.map((cfg) => {
+          const count = sectionCounts[cfg.key] ?? 0;
+          const isActive = activeSection === cfg.key;
+          const CfgIcon = cfg.icon;
+          return (
+            <button
+              key={cfg.key}
+              type="button"
+              onClick={() => handleSectionChange(cfg.key)}
+              className={`flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all ${
+                isActive
+                  ? `${cfg.color} shadow-sm`
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
+                <CfgIcon className="h-4 w-4" style={isActive ? { color: cfg.dot } : { color: '#64748b' }} />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-xs text-slate-500">{cfg.label}</p>
+                <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Table Card */}
-      <Card className="border-slate-200 shadow-none overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-slate-100 bg-white px-4 py-3">
-          <p className="text-sm font-medium text-slate-800">All Requests</p>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-            {allRequests.length}
-          </span>
+      <Card className="overflow-hidden border-slate-200 shadow-none">
+        {/* Toolbar */}
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            {activeSection !== 'all' && (
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeConfig.dot }} />
+            )}
+            <p className="text-sm font-medium text-slate-800">{activeConfig.label}</p>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+              {filtered.length}
+            </span>
+            {activeSection !== 'all' && (
+              <button
+                onClick={() => handleSectionChange('all')}
+                className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
+              >
+                clear
+              </button>
+            )}
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search equipment or borrower…"
+              value={search}
+              onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
+              className="h-8 pl-8 text-xs"
+            />
+          </div>
         </div>
 
         <CardContent className="p-0">
@@ -140,14 +194,6 @@ export default function EquipmentPrep() {
                 {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
               </p>
             </div>
-          ) : allRequests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                <Package className="h-4 w-4 text-slate-400" />
-              </div>
-              <p className="text-sm text-slate-500">No equipment to prepare</p>
-              <p className="text-xs text-slate-400">All equipment has been prepared and distributed</p>
-            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -162,51 +208,105 @@ export default function EquipmentPrep() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {allRequests.map((request) => {
-                    const statusCfg = STATUS_CONFIG[request.status] ?? { label: request.status, color: 'bg-slate-100 text-slate-500 border-slate-200' };
-                    return (
-                      <TableRow key={request.id} className="border-slate-50 hover:bg-slate-50/50">
-                        <TableCell>
-                          <span className="text-sm font-medium text-slate-900">{request.equipment_name}</span>
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-500">{request.borrower_name}</TableCell>
-                        <TableCell className="text-xs text-slate-500">{request.quantity}</TableCell>
-                        <TableCell className="text-xs text-slate-500">
-                          {format(new Date(request.borrow_date), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${statusCfg.color}`}>
-                            {statusCfg.label}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {request._section === 'prepare' ? (
-                            <Button
-                              size="sm"
-                              className="h-7 gap-1.5 text-xs bg-amber-600 hover:bg-amber-700"
-                              onClick={() => openPrepareDialog(request)}
-                              disabled={isPending}
-                            >
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              Mark Ready
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              className="h-7 gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700"
-                              onClick={() => openReleaseDialog(request)}
-                              disabled={isPending}
-                            >
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              Confirm Pickup
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {filtered.length === 0 ? (
+                    <TableRow>
+                      <td colSpan={6} className="py-14 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
+                            <Package className="h-4 w-4 text-slate-400" />
+                          </div>
+                          <p className="text-sm text-slate-500">No equipment to prepare</p>
+                          <p className="text-xs text-slate-400">All equipment has been prepared and distributed</p>
+                        </div>
+                      </td>
+                    </TableRow>
+                  ) : (
+                    paginated.map((request) => {
+                      const statusColor = STATUS_COLOR[request.status] ?? 'bg-slate-100 text-slate-500 border-slate-200';
+                      const statusLabel = STATUS_LABEL[request.status] ?? request.status;
+                      return (
+                        <TableRow key={request.id} className="border-slate-50 hover:bg-slate-50/50">
+                          <TableCell>
+                            <span className="text-sm font-medium text-slate-900">{request.equipment_name}</span>
+                          </TableCell>
+                          <TableCell className="text-xs text-slate-500">{request.borrower_name}</TableCell>
+                          <TableCell className="text-xs text-slate-500">{request.quantity}</TableCell>
+                          <TableCell className="text-xs text-slate-500">
+                            {format(new Date(request.borrow_date), 'MMM d, yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${statusColor}`}>
+                              {statusLabel}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {request._section === 'prepare' ? (
+                              <Button
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs bg-amber-600 hover:bg-amber-700"
+                                onClick={() => openPrepareDialog(request)}
+                                disabled={isPending}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                Mark Ready
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700"
+                                onClick={() => openReleaseDialog(request)}
+                                disabled={isPending}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                Confirm Pickup
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                  <p className="text-xs text-slate-500">
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size="icon"
+                        className={`h-7 w-7 text-xs ${currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -238,8 +338,7 @@ export default function EquipmentPrep() {
             <p className="text-sm text-slate-600">
               {dialogAction === 'prepare'
                 ? 'This will reserve the equipment and mark it as ready for pickup. The borrower will be notified.'
-                : 'Confirm that the borrower has picked up the equipment. This will mark the request as actively borrowed.'
-              }
+                : 'Confirm that the borrower has picked up the equipment. This will mark the request as actively borrowed.'}
             </p>
           </div>
           <DialogFooter>
@@ -250,7 +349,7 @@ export default function EquipmentPrep() {
               className={dialogAction === 'prepare' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}
             >
               {isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing…</>
               ) : dialogAction === 'prepare' ? (
                 'Mark as Ready'
               ) : (

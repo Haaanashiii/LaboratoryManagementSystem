@@ -397,6 +397,44 @@ exports.logout = async (req, res, next) => {
   }
 };
 
+// @desc    Update current user's display name
+// @route   PUT /api/auth/update-name
+// @access  Private
+exports.updateName = async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    const trimmed = String(name || '').trim();
+
+    if (!trimmed || trimmed.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be at least 2 characters'
+      });
+    }
+
+    if (trimmed.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must not exceed 100 characters'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name: trimmed },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    res.json({
+      success: true,
+      message: 'Name updated successfully',
+      data: { name: user.name }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Update user password
 // @route   PUT /api/auth/update-password
 // @access  Private

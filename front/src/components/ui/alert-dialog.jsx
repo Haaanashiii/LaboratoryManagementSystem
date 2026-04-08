@@ -79,11 +79,15 @@ export const AlertDialogAction = React.forwardRef(({ className = '', ...props },
 ));
 AlertDialogAction.displayName = 'AlertDialogAction';
 
-export const AlertDialogCancel = React.forwardRef(({ className = '', ...props }, ref) => (
-  <button
-    ref={ref}
-    className={`inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold ring-offset-white transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${className}`}
-    {...props}
-  />
-));
+export const AlertDialogCancel = React.forwardRef(({ className = '', onClick, ...props }, ref) => {
+  const { onOpenChange } = useContext(AlertDialogContext);
+  return (
+    <button
+      ref={ref}
+      className={`inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold ring-offset-white transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${className}`}
+      onClick={(e) => { onOpenChange(false); onClick?.(e); }}
+      {...props}
+    />
+  );
+});
 AlertDialogCancel.displayName = 'AlertDialogCancel';

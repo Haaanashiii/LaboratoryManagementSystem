@@ -1,22 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import {
   Bell,
   Edit,
   ChevronRight,
-  User,
   Moon,
   Globe,
-  Wrench,
-  AlertTriangle,
   LogOut,
-  Shield,
-  HelpCircle,
-  MessageSquare,
-  FileText,
-  ExternalLink,
   Info,
   Zap,
 } from 'lucide-react';
@@ -69,7 +61,6 @@ const settingsStyles = `
 
 export default function Settings() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { t, lang, toggleLang } = useLang();
   const { isDark, toggle: toggleTheme } = useTheme();
   const { logout } = useAuth();
@@ -99,21 +90,6 @@ export default function Settings() {
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.auth.me(),
-  });
-
-  const isAdmin = user?.role === 'admin';
-
-  const { data: maintenanceData } = useQuery({
-    queryKey: ['maintenanceStatus'],
-    enabled: isAdmin,
-    queryFn: () => api.entities.AdminMaintenance.status(),
-  });
-
-  const toggleMaintenanceMutation = useMutation({
-    mutationFn: (enabled) => api.entities.AdminMaintenance.toggle(enabled),
-    onSuccess: (data) => {
-      queryClient.setQueryData(['maintenanceStatus'], data);
-    },
   });
 
   const roleLabel = (role) => {
@@ -286,63 +262,6 @@ export default function Settings() {
             <ChevronRight className={`w-4 h-4 shrink-0 transition-colors ${isDark ? 'text-slate-600 group-hover:text-slate-400' : 'text-slate-300 group-hover:text-slate-500'}`} />
           </div>
         </div>
-
-        {/* ── ADMIN MAINTENANCE CARD ── */}
-        {isAdmin && (
-          <div className={`st-fade-up st-fade-up-3 rounded-2xl border overflow-hidden ${
-            isDark ? 'bg-amber-950/40 border-amber-800/50' : 'bg-amber-50 border-amber-200'
-          }`}>
-            <div className={`px-6 py-4 border-b ${isDark ? 'border-amber-800/30' : 'border-amber-200'}`}>
-              <div className="flex items-center gap-2">
-                <Wrench className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-                <h2 className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{t('adminControls')}</h2>
-              </div>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-500' : 'text-amber-600'}`}>{t('adminOnlySettings')}</p>
-            </div>
-
-            <div className="px-6 py-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className={`text-sm font-semibold ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>{t('maintenanceMode')}</p>
-                  <p className={`text-xs mt-1 max-w-xs ${isDark ? 'text-amber-500' : 'text-amber-700'}`}>
-                    {t('maintenanceModeDesc')}
-                  </p>
-                </div>
-
-                <label className="inline-flex cursor-pointer items-center gap-3">
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={maintenanceData?.maintenanceMode === true}
-                    disabled={toggleMaintenanceMutation.isPending}
-                    onChange={(event) => toggleMaintenanceMutation.mutate(event.target.checked)}
-                  />
-                  <span
-                    className={`relative h-6 w-11 rounded-full transition-colors ${
-                      maintenanceData?.maintenanceMode ? 'bg-amber-500' : isDark ? 'bg-slate-700' : 'bg-slate-300'
-                    }`}
-                  >
-                    <span
-                      className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                        maintenanceData?.maintenanceMode ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </span>
-                  <span className={`text-sm font-semibold ${maintenanceData?.maintenanceMode ? (isDark ? 'text-amber-300' : 'text-amber-700') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
-                    {maintenanceData?.maintenanceMode ? t('on') : t('off')}
-                  </span>
-                </label>
-              </div>
-
-              {toggleMaintenanceMutation.error && (
-                <div className={`mt-3 flex items-center gap-2 text-xs rounded-lg px-3 py-2 ${isDark ? 'bg-red-950/50 text-red-400' : 'bg-red-50 text-red-600'}`}>
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  {toggleMaintenanceMutation.error.message || t('failedUpdateMaintenanceMode')}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         </div>{/* ═══ end LEFT COLUMN ═══ */}
 

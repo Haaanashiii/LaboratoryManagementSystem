@@ -26,13 +26,13 @@ import StudentCatalog from './pages/catalogs/StudentCatalog'
 import LecturerCatalog from './pages/catalogs/LecturerCatalog'
 import HeadCatalog from './pages/catalogs/HeadCatalog'
 import AssistantCatalog from './pages/catalogs/AssistantCatalog'
-import AdminCatalog from './pages/catalogs/AdminCatalog'
 import AllRequests from './pages/requests/AllRequest'
 import FunctionsApprovalHistory from './pages/approvals/MyApprovalHistory'
 
 // Inventory
 import Inventory from './pages/inventory/Inventory'
-import AddEquipmentPage from './pages/inventory/AddEquipmentPage'
+import AddEquipmentPage from './pages/inventory/AddEquipment'
+import EditEquipmentPage from './pages/inventory/EditEquipment'
 import MyRequests from './pages/requests/StudentRequest'
 import EquipmentPrep from './pages/inventory/EquipmentPreparation'
 import Returns from './pages/inventory/Returns'
@@ -40,6 +40,7 @@ import Returns from './pages/inventory/Returns'
 // Settings
 import Settings from './pages/Settings'
 import Profile from './pages/Profile'
+import AdminSettings from './pages/admin/AdminSettings'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import Maintenance from './pages/Maintenance'
 
@@ -129,9 +130,6 @@ function App() {
             <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>
               <Route path="catalog/lab-assistant" element={<AssistantCatalog />} />
             </Route>
-            <Route element={<RoleRoute allowedRoles={['admin']} />}>
-              <Route path="catalog/admin" element={<AdminCatalog />} />
-            </Route>
             <Route path="all-requests" element={<AllRequests />} />
             <Route path="all-approval-history" element={<AllRequests />} />
             <Route path="functions-approval-history" element={<FunctionsApprovalHistory />} />
@@ -139,6 +137,7 @@ function App() {
             {/* Inventory */}
             <Route path="inventory" element={<Inventory />} />
             <Route path="inventory/add-equipment" element={<AddEquipmentPage />} />
+            <Route path="inventory/edit-equipment/:id" element={<EditEquipmentPage />} />
             <Route path="requests" element={<MyRequests />} />
             <Route path="equipment-prep" element={<EquipmentPrep />} />
             <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>
@@ -148,6 +147,9 @@ function App() {
             {/* Profile & Settings */}
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<Settings />} />
+            <Route element={<AdminRoute />}>
+              <Route path="admin-settings" element={<AdminSettings />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

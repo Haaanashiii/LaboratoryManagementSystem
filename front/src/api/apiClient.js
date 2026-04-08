@@ -343,6 +343,21 @@ export const api = {
       });
     },
 
+    updateName: async (name) => {
+      const data = await request('/auth/update-name', {
+        method: 'PUT',
+        body: JSON.stringify({ name }),
+      });
+      // Keep local cache in sync
+      const storage = getActiveAuthStorage();
+      const stored = storage.getItem(USER_KEY);
+      if (stored) {
+        const current = JSON.parse(stored);
+        storage.setItem(USER_KEY, JSON.stringify({ ...current, name: data.data?.name ?? name }));
+      }
+      return data;
+    },
+
     redirectToLogin: (redirectUrl) => {
       window.location.href = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
     },
@@ -465,6 +480,18 @@ export const api = {
 
     // Equipment - REAL BACKEND
     Equipment: {
+      getById: async (id) => {
+        const data = await request(`/equipment/${id}`);
+        const item = data.data;
+        const normalizedImages = normalizeEquipmentImages(item);
+        return {
+          ...item,
+          ...normalizedImages,
+          id: item._id || item.id,
+          total_quantity: item.quantity,
+          available_quantity: item.available,
+        };
+      },
       list: async () => {
         const data = await request('/equipment');
         return data.data.map(item => {

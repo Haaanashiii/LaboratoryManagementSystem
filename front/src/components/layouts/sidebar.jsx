@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Package,
@@ -13,6 +13,7 @@ import {
   CheckCircle,
   LogOut,
   Plus,
+  Pencil,
   ChevronDown,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
@@ -35,10 +36,8 @@ const menuConfig = {
         {
           label: 'inventory', icon: Package, href: '/inventory',
           children: [
-            { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },
-          ],
+            { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },            { label: 'editEquipment', icon: Pencil, href: '/inventory' },          ],
         },
-        { label: 'equipmentCatalog', icon: Package, href: CATALOG_ROUTES_BY_ROLE.admin },
         { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
         { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
       ],
@@ -47,7 +46,7 @@ const menuConfig = {
       groupLabel: 'sidebarGroupSystem',
       items: [
         { label: 'auditLogs', icon: ClipboardList, href: '/admin-audit-logs' },
-        { label: 'settings', icon: Settings, href: '/settings' },
+        { label: 'settings', icon: Settings, href: '/admin-settings' },
       ],
     },
   ],
@@ -90,6 +89,7 @@ const menuConfig = {
           label: 'inventory', icon: Package, href: '/inventory',
           children: [
             { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },
+            { label: 'editEquipment', icon: Pencil, href: '/inventory' },
           ],
         },
       ],
@@ -139,13 +139,40 @@ const roleBadgeStyles = {
 
 export default function Sidebar({ user, isOpen, onClose, collapsed = false, onLogout }) {
   const userRole = user?.role || 'student';
-  const groups = menuConfig[userRole] || menuConfig.student;
   const { t } = useLang();
   const location = useLocation();
 
+  // Re-render when admin saves a new sidebar order
+  const [orderRevision, setOrderRevision] = useState(0);
+  useEffect(() => {
+    const handler = () => setOrderRevision((v) => v + 1);
+    window.addEventListener('admin:sidebar-reordered', handler);
+    return () => window.removeEventListener('admin:sidebar-reordered', handler);
+  }, []);
+
+  const groups = useMemo(() => {
+    if (userRole !== 'admin') return menuConfig[userRole] || menuConfig.student;
+    try {
+      const raw = localStorage.getItem('admin_sidebar_order');
+      if (!raw) return menuConfig.admin;
+      const savedOrder = JSON.parse(raw);
+      const allItems = menuConfig.admin.flatMap((g) => g.items);
+      const itemMap = new Map(allItems.map((item) => [item.label, item]));
+      const ordered = savedOrder.map((s) => itemMap.get(s.id)).filter(Boolean);
+      const savedIds = new Set(savedOrder.map((s) => s.id));
+      const remainder = allItems.filter((i) => !savedIds.has(i.label));
+      return [{ groupLabel: 'sidebarGroupApplication', items: [...ordered, ...remainder] }];
+    } catch {
+      return menuConfig.admin;
+    }
+  // orderRevision is intentionally used to trigger recompute on event
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userRole, orderRevision]);
+
   const [expandedItems, setExpandedItems] = useState(() => {
+    const defaultGroups = menuConfig[userRole] || menuConfig.student;
     const expanded = new Set();
-    groups.forEach((group) => {
+    defaultGroups.forEach((group) => {
       group.items.forEach((item) => {
         if (item.children?.some((child) => location.pathname === child.href)) {
           expanded.add(item.label);
@@ -188,31 +215,35 @@ export default function Sidebar({ user, isOpen, onClose, collapsed = false, onLo
         <div
           className={`
             flex h-16 shrink-0 items-center border-b border-[hsl(var(--sidebar-border))]
-            ${collapsed ? 'justify-center px-3' : 'px-4'}
+            ${collapsed ? 'justify-center px-0' : 'px-4'}
           `}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <div className="h-8 w-8 shrink-0">
+          {collapsed ? (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center" title="Equimon">
               <img src={equimonLogo} alt="Equimon" className="h-full w-full object-contain" />
             </div>
-            {!collapsed && (
-              <div className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-[hsl(var(--sidebar-primary))]">
-                  Equimon
-                </span>
-                <span className="block truncate text-xs text-[hsl(var(--sidebar-foreground)/60%)]">
-                  {t('appSubtitle')}
-                </span>
+          ) : (
+            <>
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <div className="h-8 w-8 shrink-0">
+                  <img src={equimonLogo} alt="Equimon" className="h-full w-full object-contain" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-[hsl(var(--sidebar-primary))]">
+                    Equimon
+                  </span>
+                  <span className="block truncate text-xs text-[hsl(var(--sidebar-foreground)/60%)]">
+                    {t('appSubtitle')}
+                  </span>
+                </div>
               </div>
-            )}
-          </div>
-          {!collapsed && (
-            <button
-              onClick={onClose}
-              className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[hsl(var(--sidebar-foreground)/50%)] transition-colors hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))] lg:hidden"
-            >
-              <X className="h-4 w-4" />
-            </button>
+              <button
+                onClick={onClose}
+                className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[hsl(var(--sidebar-foreground)/50%)] transition-colors hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))] lg:hidden"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </>
           )}
         </div>
 
@@ -307,10 +338,20 @@ export default function Sidebar({ user, isOpen, onClose, collapsed = false, onLo
         {/* ── Footer ── */}
         <div className="shrink-0 border-t border-[hsl(var(--sidebar-border))] p-2">
           {collapsed ? (
-            <div className="flex justify-center py-1">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-sm font-bold text-white">
+            <div className="flex flex-col items-center gap-1.5 py-1">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 text-sm font-bold text-white"
+                title={user?.name || 'User'}
+              >
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
+              <button
+                onClick={onLogout}
+                title={t('logout')}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           ) : (
             <>

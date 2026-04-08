@@ -29,8 +29,7 @@ const conditionConfig = [
   { value: 'Excellent',         label: 'Excellent',        color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200',    ring: 'ring-blue-400'    },
   { value: 'Good',              label: 'Good',             color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', ring: 'ring-emerald-400' },
   { value: 'Fair',              label: 'Fair',             color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200',   ring: 'ring-amber-400'   },
-  { value: 'Poor',              label: 'Poor',             color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200',  ring: 'ring-orange-400'  },
-  { value: 'Damaged',           label: 'Damaged',          color: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-200',     ring: 'ring-red-400'     },
+  { value: 'Needs Maintenance', label: 'Needs Maintenance',     color: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-200',     ring: 'ring-red-400'     },
 ];
 
 const initialForm = {
@@ -128,21 +127,6 @@ export default function AddEquipmentPage() {
       return;
     }
 
-    if (!formData.location.trim()) {
-      setFormError('Location is required.');
-      return;
-    }
-
-    if (formData.total_quantity < 0 || formData.available_quantity < 0) {
-      setFormError('Quantities cannot be negative.');
-      return;
-    }
-
-    if (formData.available_quantity > formData.total_quantity) {
-      setFormError('Available quantity cannot be greater than total quantity.');
-      return;
-    }
-
     let submitData = { ...formData };
     const uploadedUrls = [...formData.images_urls];
 
@@ -185,34 +169,6 @@ export default function AddEquipmentPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Add Equipment</h1>
           <p className="mt-1 text-sm text-slate-500">Register a new item to the laboratory inventory.</p>
         </div>
-        {/* Sticky save shortcut in header */}
-        <div className="hidden items-center gap-2 sm:flex">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 px-4 text-sm"
-            onClick={() => navigate('/inventory')}
-            disabled={isSubmitting}
-          >
-            Discard
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!formData.name.trim() || !formData.location.trim() || isSubmitting}
-            className="h-9 gap-2 bg-blue-600 px-5 text-sm font-medium hover:bg-blue-700"
-            onClick={handleSubmit}
-          >
-            {uploading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
-            ) : createMutation.isPending ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
-            ) : (
-              <><Plus className="h-4 w-4" /> Save Equipment</>
-            )}
-          </Button>
-        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -251,7 +207,7 @@ export default function AddEquipmentPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <span className="inline-flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Location <span className="text-red-500">*</span></span>
+                    <span className="inline-flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Location</span>
                   </Label>
                   <Input
                     value={formData.location}
@@ -362,7 +318,7 @@ export default function AddEquipmentPage() {
 
           {/* Right column — images (1/3 width) */}
           <div className="xl:col-span-1">
-            <div className="sticky top-4">
+            <div className="sticky top-4 space-y-4">
               <Section icon={ImagePlus} title="Images" description="Add photos to help identify the equipment.">
                 <div className="space-y-4">
 
@@ -422,12 +378,12 @@ export default function AddEquipmentPage() {
                     </div>
                     <Button
                       type="button"
-                      size="sm"
+                      size="icon"
                       disabled={isSubmitting}
                       onClick={addImageUrl}
-                      className="h-9 shrink-0 bg-slate-800 text-xs hover:bg-slate-900"
+                      className="h-9 w-9 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700"
                     >
-                      Add
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
 
@@ -464,6 +420,33 @@ export default function AddEquipmentPage() {
 
                 </div>
               </Section>
+
+              {/* Sticky action buttons */}
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 text-sm"
+                  onClick={() => navigate('/inventory')}
+                  disabled={isSubmitting}
+                >
+                  Discard
+                </Button>
+                <Button
+                  type="button"
+                  disabled={!formData.name.trim() || isSubmitting}
+                  className="flex-1 gap-2 bg-blue-600 text-sm font-medium hover:bg-blue-700"
+                  onClick={handleSubmit}
+                >
+                  {uploading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+                  ) : createMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Plus className="h-4 w-4" /> Save</>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -494,7 +477,7 @@ export default function AddEquipmentPage() {
           </Button>
           <Button
             type="submit"
-            disabled={!formData.name.trim() || !formData.location.trim() || isSubmitting}
+            disabled={!formData.name.trim() || isSubmitting}
             className="flex-1 gap-2 bg-blue-600 text-sm font-medium hover:bg-blue-700"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
