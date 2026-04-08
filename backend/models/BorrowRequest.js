@@ -106,6 +106,14 @@ const borrowRequestSchema = new mongoose.Schema({
   actual_return_date: {
     type: Date
   },
+  returned_early: {
+    type: Boolean,
+    default: false
+  },
+  return_timing: {
+    type: String,
+    enum: ['early', 'on_time', 'late']
+  },
   return_condition: {
     type: String,
     enum: ['Excellent', 'Good', 'Fair', 'Poor', 'Damaged', 'Lost']

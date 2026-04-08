@@ -87,7 +87,7 @@ export default function Returns() {
     }
   };
 
-  const handleReturn = () => {
+  const handleReturn = (returnedEarly = false) => {
     const willReplace = returnCondition === 'Lost' ? true : studentWillReplace === 'yes';
     const hasReplacementTracking = returnCondition === 'Lost' || willReplace;
 
@@ -97,9 +97,10 @@ export default function Returns() {
         return_condition: returnCondition,
         return_remarks: returnRemarks,
         damage_details: returnCondition === 'Damaged' ? damageDetails : '',
-          damage_image: returnCondition === 'Damaged' ? damageImage : null,
+        damage_image: returnCondition === 'Damaged' ? damageImage : null,
         student_will_replace: returnCondition === 'Good' ? false : willReplace,
-        replacement_completed: hasReplacementTracking ? replacementCompleted === 'yes' : false
+        replacement_completed: hasReplacementTracking ? replacementCompleted === 'yes' : false,
+        returned_early: returnedEarly,
       }
     });
   };
@@ -117,6 +118,79 @@ export default function Returns() {
 
   const isOverdue = (returnDate) => {
     return new Date(returnDate) < new Date();
+  };
+
+  const getBorrowedTimestamp = (request) => {
+    return new Date(
+      request?.released_at ||
+      request?.borrow_date ||
+      request?.created_date ||
+      request?.createdAt ||
+      0
+    ).getTime();
+  };
+
+  const overdueRequests = borrowedRequests
+    .filter((request) => isOverdue(request.return_date))
+    .sort((a, b) => new Date(a.return_date).getTime() - new Date(b.return_date).getTime());
+
+  const normalRequests = borrowedRequests
+    .filter((request) => !isOverdue(request.return_date))
+    .sort((a, b) => getBorrowedTimestamp(a) - getBorrowedTimestamp(b));
+
+  const renderRequestCard = (request) => {
+    const overdue = isOverdue(request.return_date);
+
+    return (
+      <Card
+        key={request.id}
+        className={`border-0 shadow-sm ${overdue ? 'border-l-4 border-l-red-500' : ''}`}
+      >
+        <CardContent className="p-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                overdue ? 'bg-red-100' : 'bg-blue-100'
+              }`}>
+                <Package className={`w-5 h-5 ${overdue ? 'text-red-600' : 'text-blue-600'}`} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-slate-900">{request.equipment_name}</h3>
+                  {overdue && (
+                    <span className="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">
+                      <AlertTriangle className="w-3 h-3" />
+                      Overdue
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500">Qty: {request.quantity}</p>
+                <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    {request.borrower_name}
+                  </span>
+                  <span className={`flex items-center gap-1 ${overdue ? 'text-red-500' : ''}`}>
+                    <Calendar className="w-3 h-3" />
+                    Due: {format(new Date(request.return_date), 'MMM d, yyyy')}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <StatusBadge status={request.status} />
+              <Button
+                onClick={() => openReturnDialog(request)}
+                className="bg-slate-800 hover:bg-slate-900"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Process Return
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   if (isLoading) {
@@ -157,60 +231,26 @@ export default function Returns() {
 
   return (
     <div>
-      <div className="space-y-3">
-        {borrowedRequests.map((request) => {
-          const overdue = isOverdue(request.return_date);
-          return (
-            <Card 
-              key={request.id} 
-              className={`border-0 shadow-sm ${overdue ? 'border-l-4 border-l-red-500' : ''}`}
-            >
-              <CardContent className="p-5">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      overdue ? 'bg-red-100' : 'bg-blue-100'
-                    }`}>
-                      <Package className={`w-5 h-5 ${overdue ? 'text-red-600' : 'text-blue-600'}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-slate-900">{request.equipment_name}</h3>
-                        {overdue && (
-                          <span className="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">
-                            <AlertTriangle className="w-3 h-3" />
-                            Overdue
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-500">Qty: {request.quantity}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          {request.borrower_name}
-                        </span>
-                        <span className={`flex items-center gap-1 ${overdue ? 'text-red-500' : ''}`}>
-                          <Calendar className="w-3 h-3" />
-                          Due: {format(new Date(request.return_date), 'MMM d, yyyy')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <StatusBadge status={request.status} />
-                    <Button 
-                      onClick={() => openReturnDialog(request)}
-                      className="bg-slate-800 hover:bg-slate-900"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Process Return
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="space-y-5">
+        {overdueRequests.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-red-700">Overdue Returns</h2>
+              <span className="text-xs text-red-500">{overdueRequests.length} item(s)</span>
+            </div>
+            {overdueRequests.map(renderRequestCard)}
+          </section>
+        )}
+
+        {normalRequests.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">Regular Returns</h2>
+              <span className="text-xs text-slate-500">LIFO queue: latest borrow appears at the bottom</span>
+            </div>
+            {normalRequests.map(renderRequestCard)}
+          </section>
+        )}
       </div>
 
       {/* Return Dialog */}
@@ -226,6 +266,8 @@ export default function Returns() {
               <p className="font-medium">{selectedRequest?.equipment_name}</p>
               <p className="text-sm text-slate-500 mt-2">Borrowed by</p>
               <p className="font-medium">{selectedRequest?.borrower_name}</p>
+              <p className="text-sm text-slate-500 mt-2">Expected return date</p>
+              <p className="font-medium">{selectedRequest?.return_date ? format(new Date(selectedRequest.return_date), 'MMM d, yyyy') : '—'}</p>
             </div>
             
             <div className="space-y-2">
@@ -347,8 +389,15 @@ export default function Returns() {
 
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={() => handleReturn(true)}
+              disabled={returnMutation.isPending || isFormInvalid || (selectedRequest ? isOverdue(selectedRequest.return_date) : true)}
+            >
+              Mark Returned Early
+            </Button>
             <Button 
-              onClick={handleReturn}
+              onClick={() => handleReturn(false)}
               disabled={returnMutation.isPending || isFormInvalid}
               className="bg-blue-600 hover:bg-blue-700"
             >

@@ -35,6 +35,7 @@ export default function StudentCatalog() {
   const [borrowForm, setBorrowForm] = useState(getDefaultBorrowForm());
   const [borrowImgIdx, setBorrowImgIdx] = useState(0);
   const [borrowQuantityNotice, setBorrowQuantityNotice] = useState('');
+  const [borrowDateNotice, setBorrowDateNotice] = useState('');
 
   const {
     search,
@@ -108,6 +109,31 @@ export default function StudentCatalog() {
       return;
     }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const borrowDate = new Date(borrowForm.borrow_date);
+    const returnDate = new Date(borrowForm.return_date);
+
+    if (Number.isNaN(borrowDate.getTime()) || Number.isNaN(returnDate.getTime())) {
+      setBorrowDateNotice('Please select valid borrow and return dates.');
+      return;
+    }
+
+    borrowDate.setHours(0, 0, 0, 0);
+    returnDate.setHours(0, 0, 0, 0);
+
+    if (borrowDate < today) {
+      setBorrowDateNotice('Borrow date cannot be yesterday or earlier.');
+      return;
+    }
+
+    if (returnDate <= borrowDate) {
+      setBorrowDateNotice('Return date must be after borrow date.');
+      return;
+    }
+
+    setBorrowDateNotice('');
+
     createRequestMutation.mutate({
       equipment: selectedEquipment.id,
       ...borrowForm,
@@ -120,6 +146,7 @@ export default function StudentCatalog() {
     setBorrowImgIdx(0);
     setBorrowForm(getDefaultBorrowForm());
     setBorrowQuantityNotice('');
+    setBorrowDateNotice('');
   };
 
   const handleViewEquipmentBorrow = (equipment) => {
@@ -129,12 +156,27 @@ export default function StudentCatalog() {
     setSelectedEquipment(equipment);
     setBorrowForm(getDefaultBorrowForm());
     setBorrowQuantityNotice('');
+    setBorrowDateNotice('');
   };
 
   const selectedAvailableQty = Number(selectedEquipment?.available_quantity ?? 0);
   const parsedBorrowQuantity = Number.parseInt(String(borrowForm.quantity), 10);
   const isBorrowQuantityInvalid = !Number.isFinite(parsedBorrowQuantity) || parsedBorrowQuantity < 1;
   const isBorrowQuantityExceeded = Number.isFinite(parsedBorrowQuantity) && parsedBorrowQuantity > selectedAvailableQty;
+  const isBorrowDateInvalid = (() => {
+    if (!borrowForm.borrow_date || !borrowForm.return_date) return true;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const borrowDate = new Date(borrowForm.borrow_date);
+    const returnDate = new Date(borrowForm.return_date);
+    if (Number.isNaN(borrowDate.getTime()) || Number.isNaN(returnDate.getTime())) return true;
+
+    borrowDate.setHours(0, 0, 0, 0);
+    returnDate.setHours(0, 0, 0, 0);
+    return borrowDate < today || returnDate <= borrowDate;
+  })();
+  const todayIso = format(new Date(), 'yyyy-MM-dd');
 
   // Auto-advance image carousel in borrow dialog
   useEffect(() => {
@@ -523,8 +565,12 @@ export default function StudentCatalog() {
                       </Label>
                       <Input
                         type="date"
+                        min={todayIso}
                         value={borrowForm.borrow_date}
-                        onChange={(e) => setBorrowForm({ ...borrowForm, borrow_date: e.target.value })}
+                        onChange={(e) => {
+                          setBorrowDateNotice('');
+                          setBorrowForm({ ...borrowForm, borrow_date: e.target.value });
+                        }}
                         className={`rounded-lg text-xs font-medium h-8 w-full ${isDark ? 'bg-white/5 border-white/10 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'}`}
                         style={isDark ? { color: '#e2e8f0', colorScheme: 'dark' } : { colorScheme: 'light' }}
                       />
@@ -535,13 +581,22 @@ export default function StudentCatalog() {
                       </Label>
                       <Input
                         type="date"
+                        min={borrowForm.borrow_date || todayIso}
                         value={borrowForm.return_date}
-                        onChange={(e) => setBorrowForm({ ...borrowForm, return_date: e.target.value })}
+                        onChange={(e) => {
+                          setBorrowDateNotice('');
+                          setBorrowForm({ ...borrowForm, return_date: e.target.value });
+                        }}
                         className={`rounded-lg text-xs font-medium h-8 w-full ${isDark ? 'bg-white/5 border-white/10 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'}`}
                         style={isDark ? { color: '#e2e8f0', colorScheme: 'dark' } : { colorScheme: 'light' }}
                       />
                     </div>
                   </div>
+                  {borrowDateNotice && (
+                    <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
+                      {borrowDateNotice}
+                    </p>
+                  )}
 
                   {/* Purpose */}
                   <div className="space-y-1.5">
@@ -602,7 +657,7 @@ export default function StudentCatalog() {
                   )}
                   <Button
                     onClick={handleBorrowSubmit}
-                    disabled={createRequestMutation.isPending || !borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded}
+                    disabled={createRequestMutation.isPending || !borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded || isBorrowDateInvalid}
                     className={`flex-[2] h-8 rounded-lg text-white text-xs font-semibold transition-all disabled:opacity-35 ${isDark ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.35)]' : 'bg-slate-900 hover:bg-blue-600 shadow-[0_4px_16px_rgba(0,0,0,0.18)]'}`}
                   >
                     {createRequestMutation.isPending ? (

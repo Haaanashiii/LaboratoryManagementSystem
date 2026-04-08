@@ -26,6 +26,16 @@ export default function LecturerApprovals() {
     return format(new Date(value), hasExplicitTime(value) ? 'MMM d, yyyy h:mm a' : 'MMM d, yyyy');
   };
 
+  const getRequestTimestamp = (request) => {
+    return new Date(
+      request?.created_date ||
+      request?.createdAt ||
+      request?.updatedAt ||
+      request?.borrow_date ||
+      0
+    ).getTime();
+  };
+
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['pendingLecturerRequests'],
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'pending_lecturer' }, '-created_date'),
@@ -67,6 +77,8 @@ export default function LecturerApprovals() {
       remarks: normalizedRemarks
     });
   };
+
+  const orderedRequests = [...requests].sort((a, b) => getRequestTimestamp(a) - getRequestTimestamp(b));
 
   if (isLoading) {
     return (
@@ -110,7 +122,7 @@ export default function LecturerApprovals() {
 
       <hr className="border-slate-200" />
 
-      {requests.length === 0 ? (
+      {orderedRequests.length === 0 ? (
         <div className="py-20 text-center">
           <CheckCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-sm font-medium text-slate-600">{t('allCaughtUp')}</p>
@@ -118,7 +130,7 @@ export default function LecturerApprovals() {
         </div>
       ) : (
         <div className="space-y-3">
-          {requests.map((request) => (
+          {orderedRequests.map((request) => (
             <div key={request.id} className="border border-slate-200 rounded-lg hover:border-slate-400 transition-colors bg-white">
               <div className="p-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

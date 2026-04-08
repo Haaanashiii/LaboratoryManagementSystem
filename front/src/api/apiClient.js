@@ -558,7 +558,7 @@ export const api = {
           throw new Error(err.message || 'Image upload failed');
         }
         const data = await res.json();
-        return resolveApiAssetUrl(data.data.path || data.data.filename);
+        return resolveApiAssetUrl(data.data.url || data.data.path || data.data.filename);
       },
     },
 

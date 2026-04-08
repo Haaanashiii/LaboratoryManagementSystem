@@ -204,6 +204,37 @@ exports.createBorrowRequest = async (req, res, next) => {
   try {
     const { equipment, quantity, purpose, borrow_date, return_date, lecturer_email, agree_policy } = req.body;
 
+    const borrowDate = new Date(borrow_date);
+    const returnDate = new Date(return_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(borrowDate.getTime()) || Number.isNaN(returnDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid borrow and return dates are required'
+      });
+    }
+
+    const normalizedBorrowDate = new Date(borrowDate);
+    const normalizedReturnDate = new Date(returnDate);
+    normalizedBorrowDate.setHours(0, 0, 0, 0);
+    normalizedReturnDate.setHours(0, 0, 0, 0);
+
+    if (normalizedBorrowDate < today) {
+      return res.status(400).json({
+        success: false,
+        message: 'Borrow date cannot be in the past'
+      });
+    }
+
+    if (normalizedReturnDate <= normalizedBorrowDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Return date must be after borrow date'
+      });
+    }
+
     const blockingStatuses = ['pending_lecturer', 'pending_head', 'head_approved', 'ready_pickup', 'borrowed'];
     const existingActiveRequest = await BorrowRequest.findOne({
       student: req.user.id,
@@ -646,7 +677,8 @@ exports.returnEquipment = async (req, res, next) => {
       return_remarks,
       damage_details,
       student_will_replace,
-      replacement_completed
+      replacement_completed,
+      returned_early
     } = req.body;
 
     const allowedConditions = ['Good', 'Damaged', 'Lost'];
@@ -673,6 +705,14 @@ exports.returnEquipment = async (req, res, next) => {
 
     const normalizedStudentWillReplaceInput = toBoolean(student_will_replace);
     const normalizedReplacementCompletedInput = toBoolean(replacement_completed);
+    const normalizedReturnedEarlyInput = toBoolean(returned_early);
+
+    if (returned_early !== undefined && typeof normalizedReturnedEarlyInput !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Returned early flag must be true or false'
+      });
+    }
 
     if (return_condition === 'Damaged' && typeof normalizedStudentWillReplaceInput !== 'boolean') {
       return res.status(400).json({
@@ -734,8 +774,16 @@ exports.returnEquipment = async (req, res, next) => {
     
     await equipment.save();
 
+    const processedAt = new Date();
+    const dueAt = request.return_date ? new Date(request.return_date) : null;
+    const isMarkedEarly = normalizedReturnedEarlyInput === true;
+    const isLateReturn = dueAt ? processedAt.getTime() > dueAt.getTime() : false;
+    const returnTiming = isMarkedEarly ? 'early' : (isLateReturn ? 'late' : 'on_time');
+
     request.status = 'returned';
-    request.actual_return_date = Date.now();
+    request.actual_return_date = processedAt;
+    request.returned_early = returnTiming === 'early';
+    request.return_timing = returnTiming;
     request.return_condition = return_condition;
     request.return_remarks = return_remarks ? return_remarks.trim() : '';
     request.damage_details = return_condition === 'Damaged' ? damage_details.trim() : '';
@@ -784,7 +832,8 @@ exports.returnEquipment = async (req, res, next) => {
       status: 'success',
       details: {
         condition: return_condition,
-        damage_status: request.damage_status
+        damage_status: request.damage_status,
+        return_timing: request.return_timing
       }
     });
 

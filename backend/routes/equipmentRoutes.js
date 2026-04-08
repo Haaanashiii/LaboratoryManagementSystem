@@ -8,6 +8,7 @@ const {
   deleteEquipment,
   getCategories,
   updateQuantity,
+  markOutOfStock,
   uploadImage,
   getImage
 } = require('../controllers/equipmentController');
@@ -36,5 +37,6 @@ router.delete('/:id', authorize('admin', 'head_of_lab', 'lab_assistant'), delete
 
 // Lab assistant can update quantities
 router.patch('/:id/quantity', authorize('admin', 'head_of_lab', 'lab_assistant'), updateQuantity);
+router.patch('/:id/out-of-stock', authorize('admin', 'head_of_lab', 'lab_assistant'), markOutOfStock);
 
 module.exports = router;

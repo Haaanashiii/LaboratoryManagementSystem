@@ -26,7 +26,7 @@ const categoryConfig = [
   { value: 'Other',        label: 'Other',        color: 'bg-slate-50 text-slate-700 border-slate-200',   dot: '#64748b', icon: Boxes },
 ];
 
-const conditions = ['Excellent', 'Good', 'Fair', 'Needs Maintenance'];
+const conditions = ['Excellent', 'Good', 'Fair', 'Poor', 'Damaged'];
 
 const conditionStyle = (condition) => {
   if (condition === 'Excellent') return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -45,6 +45,7 @@ export default function Inventory() {
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -107,6 +108,7 @@ export default function Inventory() {
   const canEdit = user?.role === 'admin' || user?.role === 'head_of_lab' || user?.role === 'lab_assistant';
 
   const openAddDialog = () => {
+    setFormError('');
     setEditingItem(null);
     setImageFiles([]);
     setImagePreviews([]);
@@ -115,6 +117,7 @@ export default function Inventory() {
   };
 
   const openEditDialog = (item) => {
+    setFormError('');
     setEditingItem(item);
     setImageFiles([]);
     setImagePreviews(item.images_urls || (item.image_url ? [item.image_url] : []));
@@ -137,6 +140,30 @@ export default function Inventory() {
     setEditingItem(null);
     setImageFiles([]);
     setImagePreviews([]);
+    setFormError('');
+    setFormData({
+      name: '',
+      description: '',
+      category: 'Other',
+      images_urls: [],
+      total_quantity: 1,
+      available_quantity: 1,
+      location: '',
+      condition: 'Good',
+      is_active: true,
+    });
+  };
+
+  const parseQuantityInput = (value) => {
+    if (value === '') return '';
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return '';
+    return Math.max(0, parsed);
+  };
+
+  const normalizeQuantity = (value) => {
+    const parsed = Number.parseInt(String(value), 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
   };
 
   const handleFileSelect = (e) => {
@@ -159,6 +186,26 @@ export default function Inventory() {
   };
 
   const handleSubmit = async () => {
+    setFormError('');
+
+    const totalQuantity = normalizeQuantity(formData.total_quantity);
+    const availableQuantity = normalizeQuantity(formData.available_quantity);
+
+    if (!formData.name?.trim()) {
+      setFormError('Equipment name is required.');
+      return;
+    }
+
+    if (!formData.location?.trim()) {
+      setFormError('Location is required.');
+      return;
+    }
+
+    if (availableQuantity > totalQuantity) {
+      setFormError('Available quantity cannot be greater than total quantity.');
+      return;
+    }
+
     let submitData = { ...formData };
     const uploadedUrls = [...formData.images_urls];
 
@@ -171,12 +218,18 @@ export default function Inventory() {
         }
         submitData.images_urls = uploadedUrls;
       } catch (err) {
-        window.alert(err.message || 'Image upload failed. Please try again.');
+        setFormError(err.message || 'Image upload failed. Please try again.');
         setUploading(false);
         return;
       }
       setUploading(false);
     }
+
+    submitData = {
+      ...submitData,
+      total_quantity: totalQuantity,
+      available_quantity: availableQuantity,
+    };
 
     if (editingItem) {
       updateMutation.mutate({ id: editingItem.id, data: submitData });
@@ -421,7 +474,13 @@ export default function Inventory() {
       </Card>
 
       {/* ── Add / Edit Dialog ── */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          closeDialog();
+          return;
+        }
+        setIsDialogOpen(true);
+      }}>
         <DialogContent className="rounded-2xl bg-white text-slate-900 sm:max-w-2xl">
           <DialogHeader className="border-b border-slate-100 pb-4">
             <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
@@ -448,7 +507,7 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-600">Location</Label>
+                <Label className="text-xs font-medium text-slate-600">Location <span className="text-red-500">*</span></Label>
                 <Input
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -492,7 +551,7 @@ export default function Inventory() {
                   type="number"
                   min="0"
                   value={formData.total_quantity}
-                  onChange={(e) => setFormData({ ...formData, total_quantity: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setFormData({ ...formData, total_quantity: parseQuantityInput(e.target.value) })}
                   className="h-9 text-sm"
                 />
               </div>
@@ -502,11 +561,24 @@ export default function Inventory() {
                   type="number"
                   min="0"
                   value={formData.available_quantity}
-                  onChange={(e) => setFormData({ ...formData, available_quantity: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setFormData({ ...formData, available_quantity: parseQuantityInput(e.target.value) })}
                   className="h-9 text-sm"
                 />
               </div>
             </div>
+            {editingItem && (
+              <div className="flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
+                  onClick={() => setFormData((prev) => ({ ...prev, available_quantity: 0 }))}
+                >
+                  Mark Out of Stock
+                </Button>
+              </div>
+            )}
 
             {/* Row 3: Description + Images side by side */}
             <div className="grid grid-cols-2 gap-3">
@@ -582,12 +654,18 @@ export default function Inventory() {
             </div>
           </div>
 
+          {formError && (
+            <div className="mb-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {formError}
+            </div>
+          )}
+
           <DialogFooter className="border-t border-slate-100 pt-4">
             <Button variant="outline" size="sm" onClick={closeDialog} className="text-xs">Cancel</Button>
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={!formData.name || createMutation.isPending || updateMutation.isPending || uploading}
+              disabled={!formData.name || !formData.location.trim() || createMutation.isPending || updateMutation.isPending || uploading}
               className="bg-blue-600 text-xs hover:bg-blue-700"
             >
               {uploading ? (

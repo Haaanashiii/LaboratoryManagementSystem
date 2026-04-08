@@ -3,6 +3,134 @@ const path = require('path');
 const fs = require('fs');
 const { uploadToGridFS, downloadFromGridFS, deleteFromGridFS, getFileMetadata } = require('../config/gridfs');
 
+const IMAGE_ROUTE_PATTERN = /\/api\/equipment\/image\/[a-f0-9]{24}$/i;
+
+const parseOptionalNonNegativeInt = (value, fieldLabel) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || !Number.isInteger(numericValue) || numericValue < 0) {
+    const error = new Error(`${fieldLabel} must be a non-negative whole number`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return numericValue;
+};
+
+const applyQuantityRules = (payload = {}, options = {}) => {
+  const nextPayload = { ...payload };
+  const isUpdate = Boolean(options.forUpdate);
+  const currentQuantity = Number(options.currentQuantity);
+  const currentAvailable = Number(options.currentAvailable);
+
+  const parsedQuantity = parseOptionalNonNegativeInt(nextPayload.quantity, 'Quantity');
+  const parsedAvailable = parseOptionalNonNegativeInt(nextPayload.available, 'Available quantity');
+
+  if (!isUpdate) {
+    const quantity = parsedQuantity ?? 0;
+    let available = parsedAvailable ?? quantity;
+
+    if (quantity === 0) {
+      available = 0;
+    }
+
+    if (available > quantity) {
+      available = quantity;
+    }
+
+    nextPayload.quantity = quantity;
+    nextPayload.available = available;
+    return nextPayload;
+  }
+
+  if (parsedQuantity === undefined && parsedAvailable === undefined) {
+    delete nextPayload.quantity;
+    delete nextPayload.available;
+    return nextPayload;
+  }
+
+  let quantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
+  let available = Number.isFinite(currentAvailable) ? currentAvailable : 0;
+
+  if (parsedQuantity !== undefined) {
+    quantity = parsedQuantity;
+  }
+
+  if (parsedAvailable !== undefined) {
+    available = parsedAvailable;
+  }
+
+  if (quantity === 0) {
+    available = 0;
+  }
+
+  if (available > quantity) {
+    available = quantity;
+  }
+
+  nextPayload.quantity = quantity;
+  nextPayload.available = available;
+  return nextPayload;
+};
+
+const normalizeImageReference = (value) => {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+
+  if (IMAGE_ROUTE_PATTERN.test(raw)) {
+    const match = raw.match(/\/api\/equipment\/image\/[a-f0-9]{24}$/i);
+    return match ? match[0] : raw;
+  }
+
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  return raw.startsWith('/') ? raw : `/${raw}`;
+};
+
+const normalizeEquipmentPayload = (payload = {}, { forUpdate = false } = {}) => {
+  const nextPayload = { ...payload };
+
+  if (typeof nextPayload.condition === 'string') {
+    const normalizedCondition = nextPayload.condition.trim().toLowerCase();
+    if (normalizedCondition === 'needs maintenance') {
+      nextPayload.condition = 'Poor';
+    }
+  }
+
+  const hasImageInput = ['image', 'image_url', 'images', 'images_urls'].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+
+  if (hasImageInput) {
+    const imageCandidates = [];
+
+    if (Array.isArray(payload.images)) imageCandidates.push(...payload.images);
+    if (Array.isArray(payload.images_urls)) imageCandidates.push(...payload.images_urls);
+    imageCandidates.push(payload.image, payload.image_url);
+
+    const normalizedImages = [...new Set(
+      imageCandidates
+        .map(normalizeImageReference)
+        .filter(Boolean)
+    )];
+
+    nextPayload.images = normalizedImages;
+    nextPayload.image = normalizedImages[0] || '';
+  } else if (!forUpdate) {
+    nextPayload.images = [];
+    nextPayload.image = '';
+  }
+
+  delete nextPayload.image_url;
+  delete nextPayload.images_urls;
+
+  return nextPayload;
+};
+
 // @desc    Get all equipment
 // @route   GET /api/equipment
 // @access  Private
@@ -62,9 +190,11 @@ exports.getEquipmentById = async (req, res, next) => {
 // @access  Private (Admin)
 exports.createEquipment = async (req, res, next) => {
   try {
-    console.log('Creating equipment with data:', req.body);
+    let payload = normalizeEquipmentPayload(req.body);
+    payload = applyQuantityRules(payload);
+    console.log('Creating equipment with data:', payload);
     
-    const equipment = await Equipment.create(req.body);
+    const equipment = await Equipment.create(payload);
     
     console.log('Equipment created successfully:', equipment._id);
 
@@ -82,22 +212,30 @@ exports.createEquipment = async (req, res, next) => {
 // @access  Private (Admin)
 exports.updateEquipment = async (req, res, next) => {
   try {
-    const equipment = await Equipment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true
-      }
-    );
+    const existingEquipment = await Equipment.findById(req.params.id).select('quantity available');
 
-    if (!equipment) {
+    if (!existingEquipment) {
       return res.status(404).json({
         success: false,
         message: 'Equipment not found'
       });
     }
 
+    let payload = normalizeEquipmentPayload(req.body, { forUpdate: true });
+    payload = applyQuantityRules(payload, {
+      forUpdate: true,
+      currentQuantity: existingEquipment.quantity,
+      currentAvailable: existingEquipment.available
+    });
+
+    const equipment = await Equipment.findByIdAndUpdate(
+      req.params.id,
+      payload,
+      {
+        new: true,
+        runValidators: true
+      }
+    );
     res.json({
       success: true,
       data: equipment
@@ -153,8 +291,6 @@ exports.getCategories = async (req, res, next) => {
 // @access  Private (Admin, Lab Assistant)
 exports.updateQuantity = async (req, res, next) => {
   try {
-    const { quantity, available } = req.body;
-    
     const equipment = await Equipment.findById(req.params.id);
 
     if (!equipment) {
@@ -164,10 +300,49 @@ exports.updateQuantity = async (req, res, next) => {
       });
     }
 
-    if (quantity !== undefined) equipment.quantity = quantity;
-    if (available !== undefined) equipment.available = available;
+    const normalizedPayload = applyQuantityRules(
+      {
+        quantity: req.body.quantity,
+        available: req.body.available
+      },
+      {
+        forUpdate: true,
+        currentQuantity: equipment.quantity,
+        currentAvailable: equipment.available
+      }
+    );
+
+    if (normalizedPayload.quantity !== undefined) equipment.quantity = normalizedPayload.quantity;
+    if (normalizedPayload.available !== undefined) equipment.available = normalizedPayload.available;
 
     await equipment.save();
+
+    res.json({
+      success: true,
+      data: equipment
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Mark equipment as out of stock
+// @route   PATCH /api/equipment/:id/out-of-stock
+// @access  Private (Admin, Head of Lab, Lab Assistant)
+exports.markOutOfStock = async (req, res, next) => {
+  try {
+    const equipment = await Equipment.findByIdAndUpdate(
+      req.params.id,
+      { available: 0 },
+      { new: true, runValidators: true }
+    );
+
+    if (!equipment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Equipment not found'
+      });
+    }
 
     res.json({
       success: true,
@@ -197,11 +372,15 @@ exports.uploadImage = async (req, res, next) => {
       req.file.mimetype
     );
 
+    const relativePath = `/api/equipment/image/${fileId}`;
+    const origin = `${req.protocol}://${req.get('host')}`;
+
     res.json({
       success: true,
       data: {
         fileId: fileId,
-        path: `/api/equipment/image/${fileId}`
+        path: relativePath,
+        url: `${origin}${relativePath}`
       }
     });
   } catch (error) {

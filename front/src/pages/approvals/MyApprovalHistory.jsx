@@ -399,6 +399,7 @@ export default function ApprovalHistory() {
           pagedRequests.map((request) => {
             const isRejected = request.status === 'rejected';
             const isReturned = request.status === 'returned';
+            const returnTiming = request.return_timing || (request.returned_early ? 'early' : null);
             const equipmentId = getEquipmentId(request);
             const activeRequest = equipmentId ? activeRequestByEquipment.get(String(equipmentId)) : null;
             const hasBlockingActiveRequest = !!activeRequest && activeRequest.id !== request.id;
@@ -446,7 +447,24 @@ export default function ApprovalHistory() {
                             {t('qty')}: {request.quantity}
                           </p>
                         </div>
-                        <StatusBadge status={request.status} />
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={request.status} />
+                          {isReturned && returnTiming === 'early' && (
+                            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${isDark ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                              Returned Early
+                            </span>
+                          )}
+                          {isReturned && returnTiming === 'late' && (
+                            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${isDark ? 'border-red-500/40 bg-red-500/15 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                              Returned Late
+                            </span>
+                          )}
+                          {isReturned && returnTiming === 'on_time' && (
+                            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${isDark ? 'border-blue-500/40 bg-blue-500/15 text-blue-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+                              Returned On Time
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Date + remarks row */}
