@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 import Landing from './landingPage'
 import LoginPage from './pages/LoginPage'
-import AdminLoginPage from './pages/AdminLoginPage'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
@@ -34,12 +34,15 @@ import AddEquipmentPage from './pages/inventory/AddEquipment'
 import EditEquipmentPage from './pages/inventory/EditEquipment'
 import MyRequests from './pages/requests/StudentRequest'
 import EquipmentPrep from './pages/inventory/EquipmentPreparation'
-import Returns from './pages/inventory/Returns'
+import Returns from './pages/inventory/AssistantReturns'
 
 // Settings
-import Settings from './pages/Settings'
+import Settings from './pages/settings/StudentSettings'
 import Profile from './pages/Profile'
-import AdminSettings from './pages/admin/AdminSettings'
+import AdminSettings from './pages/settings/AdminSettings'
+import LecturerSettings from './pages/settings/LecturerSettings'
+import HeadLabSettings from './pages/settings/HeadLabSettings'
+import AssistantSettings from './pages/settings/AssistantSettings'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import Reports from './pages/admin/Reports'
 import Maintenance from './pages/Maintenance'
@@ -139,6 +142,7 @@ function App() {
             <Route path="equipment-prep" element={<EquipmentPrep />} />
             <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>
               <Route path="returns" element={<Returns />} />
+              <Route path="assistant-settings" element={<AssistantSettings />} />
             </Route>
             
             {/* Profile & Settings */}
@@ -147,6 +151,12 @@ function App() {
             <Route element={<AdminRoute />}>
               <Route path="admin-settings" element={<AdminSettings />} />
               <Route path="reports" element={<Reports />} />
+            </Route>
+            <Route element={<RoleRoute allowedRoles={['lecturer']} />}>
+              <Route path="lecturer-settings" element={<LecturerSettings />} />
+            </Route>
+            <Route element={<RoleRoute allowedRoles={['head_of_lab']} />}>
+              <Route path="head-settings" element={<HeadLabSettings />} />
             </Route>
           </Route>
         </Route>

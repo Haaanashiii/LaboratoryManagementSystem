@@ -24,13 +24,13 @@ import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 const menuConfig = {
   admin: [
     {
-      groupLabel: 'sidebarGroupApplication',
+      groupLabel: 'Dashboard',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
       ],
     },
     {
-      groupLabel: 'sidebarGroupPlatform',
+      groupLabel: 'Platform',
       items: [
         { label: 'users', icon: Users, href: '/users' },
         {
@@ -44,16 +44,16 @@ const menuConfig = {
       ],
     },
     {
-      groupLabel: 'sidebarGroupSystem',
+      groupLabel: 'System',
       items: [
-        { label: 'auditLogs', icon: ClipboardList, href: '/admin-audit-logs' },
+        { label: 'Audit Logs', icon: ClipboardList, href: '/admin-audit-logs' },
         { label: 'settings', icon: Settings, href: '/admin-settings' },
       ],
     },
   ],
   lecturer: [
     {
-      groupLabel: 'sidebarGroupApplication',
+      groupLabel: 'Application',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
         {
@@ -72,16 +72,22 @@ const menuConfig = {
         { label: 'approvalHistory', icon: History, href: '/lecturer-approval-history' },
       ],
     },
+    {
+      groupLabel: 'System',
+      items: [
+        { label: 'settings', icon: Settings, href: '/lecturer-settings' },
+      ],
+    },
   ],
   head_of_lab: [
     {
-      groupLabel: 'sidebarGroupApplication',
+      groupLabel: 'Dashboard',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
       ],
     },
     {
-      groupLabel: 'sidebarGroupApprovals',
+      groupLabel: 'Approvals',
       items: [
         { label: 'finalApprovals', icon: CheckCircle, href: '/head-approvals' },
         { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
@@ -89,7 +95,7 @@ const menuConfig = {
       ],
     },
     {
-      groupLabel: 'sidebarGroupManagement',
+      groupLabel: 'Management',
       items: [
         {
           label: 'inventory', icon: Package, href: '/inventory',
@@ -98,6 +104,12 @@ const menuConfig = {
             { label: 'editEquipment', icon: Pencil, href: '/inventory' },
           ],
         },
+      ],
+    },
+    {
+      groupLabel: 'System',
+      items: [
+        { label: 'settings', icon: Settings, href: '/head-settings' },
       ],
     },
   ],
@@ -121,6 +133,12 @@ const menuConfig = {
         { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
         { label: 'returns', icon: History, href: '/returns' },
         { label: 'allRequests', icon: ClipboardList, href: '/all-requests' },
+      ],
+    },
+    {
+      groupLabel: 'System',
+      items: [
+        { label: 'settings', icon: Settings, href: '/assistant-settings' },
       ],
     },
   ],
@@ -154,29 +172,54 @@ export default function Sidebar({ user, isOpen, onClose, collapsed = false, onLo
   const { t } = useLang();
   const location = useLocation();
 
-  // Re-render when admin saves a new sidebar order
+  // Re-render when admin, lecturer, or head_of_lab saves a new sidebar order
   const [orderRevision, setOrderRevision] = useState(0);
   useEffect(() => {
     const handler = () => setOrderRevision((v) => v + 1);
     window.addEventListener('admin:sidebar-reordered', handler);
-    return () => window.removeEventListener('admin:sidebar-reordered', handler);
+    window.addEventListener('lecturer:sidebar-reordered', handler);
+    window.addEventListener('head_of_lab:sidebar-reordered', handler);
+    window.addEventListener('lab_assistant:sidebar-reordered', handler);
+    return () => {
+      window.removeEventListener('admin:sidebar-reordered', handler);
+      window.removeEventListener('lecturer:sidebar-reordered', handler);
+      window.removeEventListener('head_of_lab:sidebar-reordered', handler);
+      window.removeEventListener('lab_assistant:sidebar-reordered', handler);
+    };
   }, []);
 
   const groups = useMemo(() => {
-    if (userRole !== 'admin') return menuConfig[userRole] || menuConfig.student;
-    try {
-      const raw = localStorage.getItem('admin_sidebar_order');
-      if (!raw) return menuConfig.admin;
-      const savedOrder = JSON.parse(raw);
-      const allItems = menuConfig.admin.flatMap((g) => g.items);
-      const itemMap = new Map(allItems.map((item) => [item.label, item]));
-      const ordered = savedOrder.map((s) => itemMap.get(s.id)).filter(Boolean);
-      const savedIds = new Set(savedOrder.map((s) => s.id));
-      const remainder = allItems.filter((i) => !savedIds.has(i.label));
-      return [{ groupLabel: 'sidebarGroupApplication', items: [...ordered, ...remainder] }];
-    } catch {
-      return menuConfig.admin;
-    }
+    const applyOrder = (role, storageKey) => {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return menuConfig[role];
+        const savedOrder = JSON.parse(raw);
+        // Build position map: item.id -> index in saved order
+        const posMap = new Map(savedOrder.map((s, idx) => [s.id, idx]));
+        return menuConfig[role]
+          .map((group) => ({
+            ...group,
+            items: [...group.items].sort((a, b) => {
+              const pa = posMap.has(a.label) ? posMap.get(a.label) : Infinity;
+              const pb = posMap.has(b.label) ? posMap.get(b.label) : Infinity;
+              return pa - pb;
+            }),
+          }))
+          .sort((ga, gb) => {
+            const firstA = Math.min(...ga.items.map((i) => posMap.has(i.label) ? posMap.get(i.label) : Infinity));
+            const firstB = Math.min(...gb.items.map((i) => posMap.has(i.label) ? posMap.get(i.label) : Infinity));
+            return firstA - firstB;
+          });
+      } catch {
+        return menuConfig[role];
+      }
+    };
+
+    if (userRole === 'admin')         return applyOrder('admin',         'admin_sidebar_order');
+    if (userRole === 'lecturer')      return applyOrder('lecturer',      'lecturer_sidebar_order');
+    if (userRole === 'head_of_lab')   return applyOrder('head_of_lab',   'head_of_lab_sidebar_order');
+    if (userRole === 'lab_assistant') return applyOrder('lab_assistant', 'lab_assistant_sidebar_order');
+    return menuConfig[userRole] || menuConfig.student;
   // orderRevision is intentionally used to trigger recompute on event
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole, orderRevision]);

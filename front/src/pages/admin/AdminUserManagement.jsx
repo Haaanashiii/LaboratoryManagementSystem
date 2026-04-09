@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react';
+import { format } from 'date-fns';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { useLang } from '@/components/i18n/LangContext';
 
@@ -247,16 +248,50 @@ export default function Users() {
     });
   };
 
+  const h = new Date().getHours();
+  const gc =
+    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
+    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
+             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
   return (
     <div className="w-full space-y-4 px-2 py-2">
 
-      {/* ── Page Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">User Management</h1>
-          <p className="mt-0.5 text-sm text-slate-500">{users.length} {t('totalRegisteredUsers')}</p>
+      {/* ── Hero Banner ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
+            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
+          >
+            <UsersIcon className="h-6 w-6" style={{ color: gc.color }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            </p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">User Management</h1>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+              <UsersIcon className="h-3.5 w-3.5 text-blue-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-base font-bold leading-none tabular-nums text-blue-700">{users.length}</p>
+              <p className="mt-0.5 text-[10px] font-medium text-blue-500">registered user{users.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 rounded-xl border border-violet-100 bg-violet-50 px-4 py-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100">
+              <ShieldCheck className="h-3.5 w-3.5 text-violet-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-base font-bold leading-none tabular-nums text-violet-700">{users.filter(u => u.role !== 'student').length}</p>
+              <p className="mt-0.5 text-[10px] font-medium text-violet-500">staff account{users.filter(u => u.role !== 'student').length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
           <Button
             variant="outline"
             size="sm"

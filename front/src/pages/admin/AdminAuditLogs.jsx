@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { useLang } from '@/components/i18n/LangContext';
+import { format } from 'date-fns';
 
 const PAGE_SIZE = 15;
 
@@ -57,6 +58,11 @@ export default function AdminAuditLogs() {
     queryFn: () => api.entities.AuditLogs.list(queryFilters),
   });
 
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.auth.me(),
+  });
+
   const allLogs = data?.data || [];
 
   const logsByAction = useMemo(() =>
@@ -99,16 +105,32 @@ export default function AdminAuditLogs() {
     }
   };
 
+  const h = new Date().getHours();
+  const gc =
+    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
+    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
+             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
   return (
     <div className="w-full space-y-4 px-2 py-2">
 
-      {/* ── Page Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">{t('adminAuditLogsTitle')}</h1>
-          <p className="mt-0.5 text-sm text-slate-500">{allLogs.length} {t('adminAuditLogsDesc')}</p>
+      {/* ── Hero Banner ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
+            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
+          >
+            <ClipboardList className="h-6 w-6" style={{ color: gc.color }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            </p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('Audit Logs')}</h1>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
@@ -116,7 +138,7 @@ export default function AdminAuditLogs() {
             onClick={() => refetch()}
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            {t('refreshLogs')}
+            {t('Refresh Logs')}
           </Button>
           <Button
             size="sm"
@@ -125,7 +147,7 @@ export default function AdminAuditLogs() {
             disabled={isExporting}
           >
             <Download className="h-3.5 w-3.5" />
-            {isExporting ? t('exporting') : t('exportPdf')}
+            {isExporting ? t('Exporting') : t('Export PDF')}
           </Button>
         </div>
       </div>

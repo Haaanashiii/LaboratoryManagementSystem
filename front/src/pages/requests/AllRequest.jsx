@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Search, FileText, Clock3, CheckCircle2, RotateCcw, XCircle, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, FileText, Clock3, CheckCircle2, RotateCcw, XCircle, Layers, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 
@@ -28,6 +28,11 @@ export default function AllRequests() {
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['allRequests'],
     queryFn: () => api.entities.BorrowRequest.list('-created_date'),
+  });
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.auth.me(),
   });
 
   const statusCounts = STATUS_TABS.reduce((acc, tab) => {
@@ -53,13 +58,33 @@ export default function AllRequests() {
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  const h = new Date().getHours();
+  const gc =
+    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
+    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
+             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
   return (
     <div className="w-full space-y-4 px-2 py-2">
 
-      {/* ── Page Header ── */}
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">All Requests</h1>
-        <p className="mt-0.5 text-sm text-slate-500">{requests.length} total borrowing requests</p>
+      {/* ── Hero Banner ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
+            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
+          >
+            <BarChart3 className="h-6 w-6" style={{ color: gc.color }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            </p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">All Requests</h1>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5"> 
+        </div>
       </div>
 
       {/* ── Status stat pills ── */}

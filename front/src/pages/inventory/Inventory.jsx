@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Search, Pencil, Trash2, Package, Cpu, Monitor, Network, Mouse, HardDrive, Cable, Wrench, Boxes, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format } from 'date-fns';
 import BanterLoader from '@/components/ui/BanterLoader';
 
 const PAGE_SIZE = 10;
@@ -80,21 +81,57 @@ export default function Inventory() {
 
 
 
+  const h = new Date().getHours();
+  const gc =
+    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
+    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
+             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
   return (
     <div className="w-full space-y-4 px-2 py-2">
 
-      {/* ── Page Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Inventory</h1>
-          <p className="mt-0.5 text-sm text-slate-500">{equipment.length} total equipment items</p>
+      {/* ── Hero Banner ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
+            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
+          >
+            <Package className="h-6 w-6" style={{ color: gc.color }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            </p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Inventory</h1>
+          </div>
         </div>
-        {canEdit && (
-          <Button size="sm" className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700" onClick={() => navigate('/inventory/add-equipment')}>
-            <Plus className="h-3.5 w-3.5" />
-            Add Equipment
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+              <Package className="h-3.5 w-3.5 text-blue-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-base font-bold leading-none tabular-nums text-blue-700">{equipment.length}</p>
+              <p className="mt-0.5 text-[10px] font-medium text-blue-500">total item{equipment.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+              <Package className="h-3.5 w-3.5 text-emerald-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-base font-bold leading-none tabular-nums text-emerald-700">{equipment.filter(e => (e.available ?? e.available_quantity ?? 0) > 0).length}</p>
+              <p className="mt-0.5 text-[10px] font-medium text-emerald-500">available</p>
+            </div>
+          </div>
+          {canEdit && (
+            <Button size="sm" className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700" onClick={() => navigate('/inventory/add-equipment')}>
+              <Plus className="h-3.5 w-3.5" />
+              Add Equipment
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Category stat pills ── */}

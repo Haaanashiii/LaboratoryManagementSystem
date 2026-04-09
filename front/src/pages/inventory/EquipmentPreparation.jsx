@@ -41,6 +41,11 @@ export default function EquipmentPrep() {
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'head_approved' }, '-created_date'),
   });
 
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.auth.me(),
+  });
+
   const { data: readyRequests = [], isLoading: loadingReady, isError: errorReady, error: errorMsgReady } = useQuery({
     queryKey: ['readyRequests'],
     queryFn: () => api.entities.BorrowRequest.filter({ status: 'ready_pickup' }, '-created_date'),
@@ -107,14 +112,32 @@ export default function EquipmentPrep() {
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const activeConfig = SECTION_CONFIG.find((c) => c.key === activeSection) || SECTION_CONFIG[0];
 
+  const h = new Date().getHours();
+  const gc =
+    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
+    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
+             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
   return (
     <div className="w-full space-y-4 px-2 py-2">
 
-      {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Equipment Preparation</h1>
-          <p className="mt-0.5 text-sm text-slate-500">{allRequests.length} pending request{allRequests.length !== 1 ? 's' : ''}</p>
+      {/* ── Hero Banner ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
+            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
+          >
+            <CheckCircle className="h-6 w-6" style={{ color: gc.color }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            </p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Equipment Preparation</h1>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
         </div>
       </div>
 

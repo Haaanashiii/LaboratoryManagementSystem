@@ -364,7 +364,7 @@ export default function AdminDashboard() {
 
   // ── render ──
   return (
-    <div className="w-full space-y-5 px-2 py-3">
+    <div className="w-full overflow-x-hidden space-y-5 px-2 py-3">
 
       {/* ── Hero Banner ── */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
@@ -388,33 +388,6 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Active Requests pill */}
-          <button
-            onClick={() => navigate('/all-requests')}
-            className="group flex items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 transition-all hover:border-blue-200 hover:bg-blue-100 hover:shadow-sm"
-          >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 transition-colors group-hover:bg-blue-200">
-              <FileText className="h-3.5 w-3.5 text-blue-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-base font-bold leading-none tabular-nums text-blue-700">{activeRequests}</p>
-              <p className="mt-0.5 text-[10px] font-medium text-blue-500">active request{activeRequests !== 1 ? 's' : ''}</p>
-            </div>
-          </button>
-
-          {/* Items Out pill */}
-          <button
-            onClick={() => navigate('/inventory')}
-            className="group flex items-center gap-2.5 rounded-xl border border-violet-100 bg-violet-50 px-4 py-2.5 transition-all hover:border-violet-200 hover:bg-violet-100 hover:shadow-sm"
-          >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 transition-colors group-hover:bg-violet-200">
-              <Package className="h-3.5 w-3.5 text-violet-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-base font-bold leading-none tabular-nums text-violet-700">{totalEquipment - availableEquipment}</p>
-              <p className="mt-0.5 text-[10px] font-medium text-violet-500">item{totalEquipment - availableEquipment !== 1 ? 's' : ''} out</p>
-            </div>
-          </button>
 
           {/* Damage Reports pill — only when present */}
           {pendingDamageReports.length > 0 && (
@@ -490,21 +463,36 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="group relative flex cursor-default items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
               <span className="text-xs text-slate-500">Borrowed</span>
               <span className="text-sm font-bold text-slate-900">{totalEquipment - availableEquipment}</span>
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2.5 w-max max-w-[200px] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] leading-relaxed text-slate-600 shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                Equipment currently checked out and not yet returned
+                <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-200" />
+                <div className="absolute left-1/2 top-[calc(100%-1px)] -translate-x-1/2 border-4 border-transparent border-t-white" />
+              </div>
             </div>
             <div className="h-4 w-px bg-slate-200" />
-            <div className="flex items-center gap-2">
+            <div className="group relative flex cursor-default items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
               <span className="text-xs text-slate-500">Available</span>
               <span className="text-sm font-bold text-slate-900">{availableEquipment}</span>
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2.5 w-max max-w-[200px] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] leading-relaxed text-slate-600 shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                Equipment in stock and ready to borrow
+                <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-200" />
+                <div className="absolute left-1/2 top-[calc(100%-1px)] -translate-x-1/2 border-4 border-transparent border-t-white" />
+              </div>
             </div>
             <div className="h-4 w-px bg-slate-200" />
-            <div className="flex items-center gap-2">
+            <div className="group relative flex cursor-default items-center gap-2">
               <span className="text-xs text-slate-500">Total</span>
               <span className="text-sm font-bold text-slate-900">{totalEquipment}</span>
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2.5 w-max max-w-[200px] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] leading-relaxed text-slate-600 shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                Total equipment items registered in the system
+                <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-200" />
+                <div className="absolute left-1/2 top-[calc(100%-1px)] -translate-x-1/2 border-4 border-transparent border-t-white" />
+              </div>
             </div>
           </div>
         </div>
@@ -548,14 +536,6 @@ export default function AdminDashboard() {
                 })()}
               </div>
             </div>
-          </div>
-
-          {/* Column labels */}
-          <div className="grid grid-cols-[2rem_1fr_auto_auto] items-center gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">#</span>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Equipment / Borrower</span>
-            <span className="text-right text-[10px] font-semibold uppercase tracking-wider text-slate-400">Due Date</span>
-            <span className="text-right text-[10px] font-semibold uppercase tracking-wider text-slate-400">Days Late</span>
           </div>
 
           {/* Rows */}
@@ -690,10 +670,19 @@ export default function AdminDashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
                 <div className="mt-3 flex items-center gap-5 text-xs text-slate-500">
-                  {[ACTIVITY_CHART_CONFIG.new, ACTIVITY_CHART_CONFIG.active, ACTIVITY_CHART_CONFIG.done].map(({ label, color }) => (
-                    <div key={label} className="flex items-center gap-1.5">
+                  {[
+                    { ...ACTIVITY_CHART_CONFIG.new,    desc: 'Requests awaiting lecturer or head of lab approval' },
+                    { ...ACTIVITY_CHART_CONFIG.active, desc: 'Approved, ready for pickup, or currently borrowed' },
+                    { ...ACTIVITY_CHART_CONFIG.done,   desc: 'Returned or rejected requests' },
+                  ].map(({ label, color, desc }) => (
+                    <div key={label} className="group relative flex cursor-default items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
                       {label}
+                      <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2.5 w-max max-w-[200px] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] leading-relaxed text-slate-600 shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                        {desc}
+                        <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-200" />
+                        <div className="absolute left-1/2 top-[calc(100%-1px)] -translate-x-1/2 border-4 border-transparent border-t-white" />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -752,7 +741,7 @@ export default function AdminDashboard() {
                 {mostBorrowedChartData.map((item, i) => {
                   const max = mostBorrowedChartData[0]?.count || 1;
                   const pct = Math.round((item.count / max) * 100);
-                  const rankColors = ['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
+                  const rankColors = ['#1d4ed8', '#2563eb', '#3b82f6', '  60a5fa', '#93c5fd', '#bfdbfe'];
                   const barColor = rankColors[i] ?? '#e5e7eb';
                   const isTop = i === 0;
                   return (
