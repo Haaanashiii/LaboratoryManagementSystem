@@ -2,7 +2,7 @@ import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  AreaChart, Area, PieChart, Pie, Cell,
+  AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import { format, subDays, parseISO, isValid } from 'date-fns';
@@ -10,12 +10,13 @@ import { api } from '@/api/apiClient';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Users, Package, FileText, CheckCircle,
-  TrendingUp, AlertTriangle, Clock, Activity,
+  Users, Package, FileText,
+  AlertTriangle, Clock, Activity, Sun, Sunset, Moon, CheckCircle,
   ArrowUpRight, ArrowRight, ShieldAlert, BarChart2,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
+import { ChartTooltipContent } from '@/components/ui/chart';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const REQUEST_STATUS_COLORS = {
@@ -54,13 +55,10 @@ const ROLE_LABELS = {
   admin: 'Admin',
 };
 
-const CHART_TOOLTIP_STYLE = {
-  backgroundColor: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)',
-  fontSize: '12px',
-  padding: '8px 12px',
+const ACTIVITY_CHART_CONFIG = {
+  new:    { label: 'Pending',   color: '#f59e0b' },
+  active: { label: 'Active',    color: '#3b82f6' },
+  done:   { label: 'Completed', color: '#22c55e' },
 };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -68,25 +66,35 @@ function StatCard({ title, value, icon: Icon, color, sub, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group relative flex flex-col gap-4 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 text-left transition-all duration-200 hover:border-slate-300 hover:shadow-md"
+      className="group relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-white p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)]"
+      style={{ borderColor: `${color}55` }}
     >
+      {/* Ambient gradient wash */}
       <div
-        className="absolute inset-y-0 left-0 w-1 rounded-l-xl"
-        style={{ backgroundColor: color }}
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `radial-gradient(130% 90% at 0% 0%, ${color}11 0%, transparent 65%)`,
+        }}
       />
-      <div className="flex items-start justify-between pl-2">
+      <div className="relative flex items-start justify-between">
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-lg"
-          style={{ backgroundColor: `${color}18` }}
+          className="flex h-11 w-11 items-center justify-center rounded-xl"
+          style={{
+            backgroundColor: `${color}14`,
+            boxShadow: `0 0 0 1px ${color}25`,
+          }}
         >
-          <Icon className="h-4.5 w-4.5" style={{ color }} />
+          <Icon className="h-5 w-5" style={{ color }} />
         </div>
-        <ArrowUpRight className="h-4 w-4 text-slate-300 transition-colors duration-200 group-hover:text-slate-500" />
+        <ArrowUpRight
+          className="h-4 w-4 opacity-25 transition-all duration-300 group-hover:opacity-75 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+          style={{ color }}
+        />
       </div>
-      <div className="pl-2">
-        <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+      <div className="relative">
+        <p className="text-3xl font-bold tracking-tight text-slate-900">{value}</p>
         <p className="mt-0.5 text-sm font-medium text-slate-500">{title}</p>
-        {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+        {sub && <p className="mt-1.5 text-xs text-slate-400">{sub}</p>}
       </div>
     </button>
   );
@@ -120,11 +128,107 @@ function DonutLegend({ items }) {
   );
 }
 
+function ActiveDonut({ data, height = 190 }) {
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const active = data[activeIndex] ?? data[0];
+
+  const renderActiveShape = (props) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+    return (
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius - 3}
+        outerRadius={outerRadius + 6}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+    );
+  };
+
+  return (
+    <div className="relative">
+      <ResponsiveContainer width="100%" height={height}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={52}
+            outerRadius={70}
+            paddingAngle={2}
+            dataKey="value"
+            strokeWidth={0}
+            activeIndex={activeIndex}
+            activeShape={renderActiveShape}
+            onMouseEnter={(_, i) => setActiveIndex(i)}
+          >
+            {data.map((entry, i) => (
+              <Cell
+                key={i}
+                fill={entry.color ?? entry.fill}
+                opacity={i === activeIndex ? 1 : 0.55}
+              />
+            ))}
+          </Pie>
+          <Tooltip content={<ChartTooltipContent hideLabel />} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold tabular-nums text-slate-900">
+          {active?.value ?? 0}
+        </span>
+        <span className="mt-0.5 max-w-[80px] text-center text-[11px] leading-tight text-slate-500">
+          {active?.name ?? ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Borrow Activity custom tooltip ────────────────────────────────────────
+function BorrowActivityTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const meta = {
+    Pending:   { desc: 'Awaiting lecturer or head approval',                  color: '#f59e0b' },
+    Active:    { desc: 'Approved, ready for pickup, or currently borrowed',    color: '#3b82f6' },
+    Completed: { desc: 'Returned or rejected requests',                        color: '#22c55e' },
+  };
+  const total = payload.reduce((s, e) => s + (e.value || 0), 0);
+  return (
+    <div className="min-w-[220px] rounded-xl border border-slate-200 bg-white p-3.5 shadow-xl text-xs">
+      <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+        <p className="font-semibold text-slate-700">{label}</p>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">{total} total</span>
+      </div>
+      {[...payload].reverse().map((entry) => {
+        const m = meta[entry.name] ?? {};
+        return (
+          <div key={entry.name} className="mb-2.5 last:mb-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: m.color }} />
+                <span className="font-semibold text-slate-800">{entry.name}</span>
+              </div>
+              <span className="font-bold tabular-nums" style={{ color: m.color }}>{entry.value}</span>
+            </div>
+            {m.desc && (
+              <p className="mt-0.5 pl-3.5 text-[10px] leading-relaxed text-slate-400">{m.desc}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLang();
+  const [activityDays, setActivityDays] = React.useState(14);
 
   // ── queries ──
   const { data: currentUser } = useQuery({
@@ -215,11 +319,11 @@ export default function AdminDashboard() {
     [mostBorrowed]
   );
 
-  // Area chart: requests created per day over last 14 days
+  // Area chart — stacked by status: pending / active / completed
   const activityChartData = React.useMemo(() => {
-    const days = Array.from({ length: 14 }, (_, i) => {
-      const d = subDays(new Date(), 13 - i);
-      return { date: format(d, 'MMM d'), label: format(d, 'yyyy-MM-dd'), count: 0 };
+    const days = Array.from({ length: activityDays }, (_, i) => {
+      const d = subDays(new Date(), activityDays - 1 - i);
+      return { date: format(d, 'MMM d'), label: format(d, 'yyyy-MM-dd'), new: 0, active: 0, done: 0 };
     });
 
     allRequests.forEach((req) => {
@@ -229,11 +333,14 @@ export default function AdminDashboard() {
       if (!isValid(parsed)) return;
       const label = format(parsed, 'yyyy-MM-dd');
       const slot = days.find((d) => d.label === label);
-      if (slot) slot.count += 1;
+      if (!slot) return;
+      if (['pending_lecturer', 'pending_head'].includes(req.status)) slot.new += 1;
+      else if (['head_approved', 'ready_pickup', 'borrowed'].includes(req.status)) slot.active += 1;
+      else if (['returned', 'rejected'].includes(req.status)) slot.done += 1;
     });
 
     return days;
-  }, [allRequests]);
+  }, [allRequests, activityDays]);
 
   const totalRequests = allRequests.length;
   const totalUsers = users.length;
@@ -247,48 +354,82 @@ export default function AdminDashboard() {
       ? Math.round(((totalEquipment - availableEquipment) / totalEquipment) * 100)
       : 0;
 
-  const getTimeGreeting = () => {
+  const getGreetingConfig = () => {
     const h = new Date().getHours();
-    if (h < 12) return t('goodMorning') || 'Good morning';
-    if (h < 18) return t('goodAfternoon') || 'Good afternoon';
-    return t('goodEvening') || 'Good evening';
+    if (h < 12) return { greeting: t('goodMorning') || 'Good morning', Icon: Sun,    color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' };
+    if (h < 18) return { greeting: t('goodAfternoon') || 'Good afternoon', Icon: Sunset, color: '#f97316', bg: '#fff7ed', border: '#fed7aa' };
+    return         { greeting: t('goodEvening') || 'Good evening',   Icon: Moon,   color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
   };
+  const gc = getGreetingConfig();
 
   // ── render ──
   return (
     <div className="w-full space-y-5 px-2 py-3">
 
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-            {getTimeGreeting()},{' '}
-            <span className="text-blue-600">
-              {currentUser?.name?.split(' ')[0] || 'Admin'}
-            </span>
-          </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Lab overview — {format(new Date(), 'EEEE, MMMM d, yyyy')}
-          </p>
+      {/* ── Hero Banner ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
+            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
+          >
+            <gc.Icon className="h-6 w-6" style={{ color: gc.color }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            </p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              {gc.greeting},{' '}
+              <span style={{ color: gc.color }}>
+                {currentUser?.name?.split(' ')[0] || 'Admin'}
+              </span>
+            </h1>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Active Requests pill */}
+          <button
+            onClick={() => navigate('/all-requests')}
+            className="group flex items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 transition-all hover:border-blue-200 hover:bg-blue-100 hover:shadow-sm"
+          >
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 transition-colors group-hover:bg-blue-200">
+              <FileText className="h-3.5 w-3.5 text-blue-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-base font-bold leading-none tabular-nums text-blue-700">{activeRequests}</p>
+              <p className="mt-0.5 text-[10px] font-medium text-blue-500">active request{activeRequests !== 1 ? 's' : ''}</p>
+            </div>
+          </button>
+
+          {/* Items Out pill */}
+          <button
+            onClick={() => navigate('/inventory')}
+            className="group flex items-center gap-2.5 rounded-xl border border-violet-100 bg-violet-50 px-4 py-2.5 transition-all hover:border-violet-200 hover:bg-violet-100 hover:shadow-sm"
+          >
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 transition-colors group-hover:bg-violet-200">
+              <Package className="h-3.5 w-3.5 text-violet-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-base font-bold leading-none tabular-nums text-violet-700">{totalEquipment - availableEquipment}</p>
+              <p className="mt-0.5 text-[10px] font-medium text-violet-500">item{totalEquipment - availableEquipment !== 1 ? 's' : ''} out</p>
+            </div>
+          </button>
+
+          {/* Damage Reports pill — only when present */}
           {pendingDamageReports.length > 0 && (
             <button
-              onClick={() =>
-                document.getElementById('damage-section')?.scrollIntoView({ behavior: 'smooth' })
-              }
-              className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
+              onClick={() => document.getElementById('damage-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="group flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 transition-all hover:border-amber-300 hover:bg-amber-100 hover:shadow-sm"
             >
-              <AlertTriangle className="h-3.5 w-3.5" />
-              {pendingDamageReports.length} damage{' '}
-              {pendingDamageReports.length !== 1 ? 'reports' : 'report'}
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 transition-colors group-hover:bg-amber-200">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-base font-bold leading-none tabular-nums text-amber-700">{pendingDamageReports.length}</p>
+                <p className="mt-0.5 text-[10px] font-medium text-amber-500">damage {pendingDamageReports.length !== 1 ? 'reports' : 'report'}</p>
+              </div>
             </button>
-          )}
-          {overdueItems.length > 0 && (
-            <span className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
-              <Clock className="h-3.5 w-3.5" />
-              {overdueItems.length} overdue
-            </span>
           )}
         </div>
       </div>
@@ -329,11 +470,168 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* ── Equipment Utilization (compact) ── */}
+      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="shrink-0">
+            <p className="text-xs font-medium text-slate-500">Equipment Utilization</p>
+            <p className="mt-0.5 text-3xl font-bold tracking-tight text-slate-900">{utilizationRate}%</p>
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5 min-w-[140px]">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${utilizationRate}%`, backgroundColor: '#2563eb' }}
+              />
+            </div>
+            <div className="flex justify-between text-[11px] text-slate-400">
+              <span>0%</span>
+              <span>100%</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+              <span className="text-xs text-slate-500">Borrowed</span>
+              <span className="text-sm font-bold text-slate-900">{totalEquipment - availableEquipment}</span>
+            </div>
+            <div className="h-4 w-px bg-slate-200" />
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span className="text-xs text-slate-500">Available</span>
+              <span className="text-sm font-bold text-slate-900">{availableEquipment}</span>
+            </div>
+            <div className="h-4 w-px bg-slate-200" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Total</span>
+              <span className="text-sm font-bold text-slate-900">{totalEquipment}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Overdue Returns ── */}
+      {overdueItems.length > 0 ? (
+        <Card id="overdue-section" className="overflow-hidden rounded-2xl border-red-200 shadow-sm">
+          {/* Header */}
+          <div className="border-b border-red-100 bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-4 ring-red-100">
+                  <Clock className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Overdue Returns</h3>
+                  <p className="text-xs text-slate-500">Items past their scheduled return date</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const critical = overdueItems.filter(i => Math.floor((Date.now() - new Date(i.return_date)) / 86_400_000) > 7).length;
+                  const warning  = overdueItems.length - critical;
+                  return (
+                    <>
+                      {critical > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+                          {critical} critical
+                        </span>
+                      )}
+                      {warning > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+                          {warning} warning
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* Column labels */}
+          <div className="grid grid-cols-[2rem_1fr_auto_auto] items-center gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">#</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Equipment / Borrower</span>
+            <span className="text-right text-[10px] font-semibold uppercase tracking-wider text-slate-400">Due Date</span>
+            <span className="text-right text-[10px] font-semibold uppercase tracking-wider text-slate-400">Days Late</span>
+          </div>
+
+          {/* Rows */}
+          <div className="divide-y divide-slate-100">
+            {overdueItems.slice(0, 8).map((item, i) => {
+              const daysOver   = Math.floor((Date.now() - new Date(item.return_date)) / 86_400_000);
+              const isCritical = daysOver > 14;
+              const isUrgent   = daysOver > 7;
+              return (
+                <div
+                  key={item.id}
+                  className={`group relative flex items-center gap-4 py-4 pl-0 pr-6 transition-colors hover:bg-slate-50/80 ${
+                    isCritical ? 'border-l-[3px] border-l-red-600 pl-[21px]'
+                    : isUrgent  ? 'border-l-[3px] border-l-red-400 pl-[21px]'
+                                : 'border-l-[3px] border-l-orange-300 pl-[21px]'
+                  }`}
+                >
+                  {/* rank */}
+                  <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-slate-300">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+
+                  {/* equipment + borrower */}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{item.equipment_name}</p>
+                    <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                      <Users className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{item.borrower_name}</span>
+                    </div>
+                  </div>
+
+                  {/* due date */}
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs font-semibold text-slate-700">{format(new Date(item.return_date), 'MMM d')}</p>
+                    <p className="text-[10px] text-slate-400">{format(new Date(item.return_date), 'yyyy')}</p>
+                  </div>
+
+                  {/* days late badge */}
+                  <span
+                    className={`shrink-0 min-w-[68px] rounded-lg px-2.5 py-1.5 text-center text-xs font-bold ${
+                      isCritical ? 'bg-red-600 text-white'
+                      : isUrgent  ? 'bg-red-100 text-red-700'
+                                  : 'bg-orange-100 text-orange-700'
+                    }`}
+                  >
+                    {daysOver}d late
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          {overdueItems.length > 8 && (
+            <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-3">
+              <p className="text-xs text-slate-500">{overdueItems.length - 8} more overdue item{overdueItems.length - 8 !== 1 ? 's' : ''} not shown</p>
+            </div>
+          )}
+        </Card>
+      ) : (
+        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-5 py-4 shadow-sm">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+            <CheckCircle className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-emerald-800">No overdue returns</p>
+            <p className="text-xs text-emerald-600">All borrowed items are within their return window</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Row 1: Activity area chart + Request status donut ── */}
       <div className="grid gap-4 lg:grid-cols-3">
 
         {/* Borrow Activity — Area Chart */}
-        <Card className="border-slate-200 shadow-none lg:col-span-2">
+        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-2">
           <CardHeader className="px-6 pt-5 pb-2">
             <div className="flex items-start justify-between">
               <div>
@@ -341,66 +639,71 @@ export default function AdminDashboard() {
                   Borrow Activity
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500 mt-0.5">
-                  Requests created over the last 14 days
+                  Requests over the last {activityDays} days
                 </CardDescription>
               </div>
-              <span className="flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600">
-                <TrendingUp className="h-3 w-3" />
-                14-day trend
-              </span>
+              <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                {[7, 14, 30].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setActivityDays(d)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-150 ${
+                      activityDays === d
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="px-6 pb-5">
-            {activityChartData.every((d) => d.count === 0) ? (
+            {activityChartData.every((d) => d.new === 0 && d.active === 0 && d.done === 0) ? (
               <EmptyState message="No activity data found" />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart
-                  data={activityChartData}
-                  margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
-                >
-                  <defs>
-                    <linearGradient id="activityGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={1}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={CHART_TOOLTIP_STYLE}
-                    formatter={(value) => [value, 'Requests']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="count"
-                    name="Requests"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    fill="url(#activityGrad)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#2563eb', strokeWidth: 0 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart
+                    data={activityChartData}
+                    margin={{ top: 8, right: 8, bottom: 0, left: -20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10, fill: '#94a3b8' }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={activityDays >= 30 ? 4 : activityDays >= 14 ? 1 : 0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: '#94a3b8' }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip content={<BorrowActivityTooltip />} />
+                    <Area type="monotone" dataKey="done" name="Completed" stackId="a" stroke="#22c55e" strokeWidth={1.5} fill="#22c55e" fillOpacity={0.15} dot={false} />
+                    <Area type="monotone" dataKey="active" name="Active" stackId="a" stroke="#3b82f6" strokeWidth={1.5} fill="#3b82f6" fillOpacity={0.2} dot={false} />
+                    <Area type="monotone" dataKey="new" name="Pending" stackId="a" stroke="#f59e0b" strokeWidth={1.5} fill="#f59e0b" fillOpacity={0.25} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+                <div className="mt-3 flex items-center gap-5 text-xs text-slate-500">
+                  {[ACTIVITY_CHART_CONFIG.new, ACTIVITY_CHART_CONFIG.active, ACTIVITY_CHART_CONFIG.done].map(({ label, color }) => (
+                    <div key={label} className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
 
         {/* Request Status — Donut */}
-        <Card className="border-slate-200 shadow-none">
+        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md">
           <CardHeader className="px-6 pt-5 pb-2">
             <CardTitle className="text-sm font-semibold text-slate-900">Request Status</CardTitle>
             <CardDescription className="text-xs text-slate-500">Current distribution</CardDescription>
@@ -410,25 +713,7 @@ export default function AdminDashboard() {
               <EmptyState message="No requests yet" />
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie
-                      data={requestStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={72}
-                      paddingAngle={2}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
-                      {requestStatusData.map((entry, i) => (
-                        <Cell key={`rs-${i}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ActiveDonut data={requestStatusData} />
                 <DonutLegend items={requestStatusData} />
               </>
             )}
@@ -440,7 +725,7 @@ export default function AdminDashboard() {
       <div className="grid gap-4 lg:grid-cols-3">
 
         {/* Most Borrowed — Ranked list */}
-        <Card className="border-slate-200 shadow-none lg:col-span-2">
+        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-2">
           <CardHeader className="px-6 pt-5 pb-0">
             <div className="flex items-start justify-between">
               <div>
@@ -463,7 +748,7 @@ export default function AdminDashboard() {
             {mostBorrowedChartData.length === 0 ? (
               <EmptyState message="No borrow data yet" />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {mostBorrowedChartData.map((item, i) => {
                   const max = mostBorrowedChartData[0]?.count || 1;
                   const pct = Math.round((item.count / max) * 100);
@@ -471,12 +756,12 @@ export default function AdminDashboard() {
                   const barColor = rankColors[i] ?? '#e5e7eb';
                   const isTop = i === 0;
                   return (
-                    <div key={item.name} className="group flex items-center gap-3">
+                    <div key={item.name} className="group flex items-center gap-4">
                       {/* Rank badge */}
                       <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
                           isTop
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
                             : 'bg-slate-100 text-slate-500'
                         }`}
                       >
@@ -485,23 +770,23 @@ export default function AdminDashboard() {
 
                       {/* Name + bar */}
                       <div className="min-w-0 flex-1">
-                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <div className="mb-2 flex items-center justify-between gap-2">
                           <p
-                            className={`truncate text-xs font-medium ${
+                            className={`truncate text-sm font-semibold ${
                               isTop ? 'text-slate-900' : 'text-slate-700'
                             }`}
                           >
                             {item.fullName}
                           </p>
                           <span
-                            className={`shrink-0 tabular-nums text-xs font-semibold ${
+                            className={`shrink-0 tabular-nums text-sm font-bold ${
                               isTop ? 'text-blue-600' : 'text-slate-500'
                             }`}
                           >
                             {item.count}×
                           </span>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                           <div
                             className="h-full rounded-full transition-all duration-500"
                             style={{ width: `${pct}%`, backgroundColor: barColor }}
@@ -517,7 +802,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Users by Role — Donut */}
-        <Card className="border-slate-200 shadow-none">
+        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md">
           <CardHeader className="px-6 pt-5 pb-2">
             <CardTitle className="text-sm font-semibold text-slate-900">Users by Role</CardTitle>
             <CardDescription className="text-xs text-slate-500">Account type breakdown</CardDescription>
@@ -527,25 +812,7 @@ export default function AdminDashboard() {
               <EmptyState message="No user data" />
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={155}>
-                  <PieChart>
-                    <Pie
-                      data={userRoleData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={66}
-                      paddingAngle={2}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
-                      {userRoleData.map((entry, i) => (
-                        <Cell key={`role-${i}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ActiveDonut data={userRoleData.map((r) => ({ ...r, color: r.fill }))} />
                 <DonutLegend items={userRoleData.map((r) => ({ ...r, color: r.fill }))} />
               </>
             )}
@@ -553,144 +820,9 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ── Row 3: Overdue + Equipment Utilization bar ── */}
-      <div className="grid gap-4 lg:grid-cols-2">
-
-        {/* Overdue Items */}
-        <Card className="border-slate-200 shadow-none">
-          <CardHeader className="px-6 pt-5 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold text-slate-900">
-                  Overdue Borrows
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Items past their return date
-                </CardDescription>
-              </div>
-              {overdueItems.length > 0 && (
-                <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-600">
-                  {overdueItems.length}
-                </span>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-4">
-            {overdueItems.length === 0 ? (
-              <div className="flex h-[160px] flex-col items-center justify-center gap-2 text-slate-400">
-                <CheckCircle className="h-7 w-7 opacity-30" />
-                <p className="text-sm">All items returned on time</p>
-              </div>
-            ) : (
-              <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1">
-                {overdueItems.slice(0, 8).map((item) => {
-                  const daysOver = Math.floor(
-                    (Date.now() - new Date(item.return_date)) / 86_400_000
-                  );
-                  const urgency =
-                    daysOver > 7
-                      ? 'bg-red-100 border-red-200 text-red-700'
-                      : 'bg-orange-50 border-orange-200 text-orange-700';
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-slate-800">
-                          {item.equipment_name}
-                        </p>
-                        <p className="truncate text-xs text-slate-500">{item.borrower_name}</p>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${urgency}`}
-                      >
-                        {daysOver}d
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Equipment Utilization — stacked bar */}
-        <Card className="border-slate-200 shadow-none">
-          <CardHeader className="px-6 pt-5 pb-3">
-            <CardTitle className="text-sm font-semibold text-slate-900">
-              Equipment Utilization
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Available vs borrowed breakdown
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-5">
-            {totalEquipment === 0 ? (
-              <EmptyState message="No equipment data" />
-            ) : (
-              <div className="space-y-5">
-                {/* Big utilization number */}
-                <div className="flex items-end gap-3">
-                  <p className="text-4xl font-bold tracking-tight text-slate-900">
-                    {utilizationRate}%
-                  </p>
-                  <p className="mb-1 text-sm text-slate-500">utilization rate</p>
-                </div>
-
-                {/* Stacked progress */}
-                <div>
-                  <div className="mb-2 flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-l-full transition-all duration-500"
-                      style={{
-                        width: `${utilizationRate}%`,
-                        backgroundColor: '#2563eb',
-                      }}
-                    />
-                    <div
-                      className="h-full flex-1 rounded-r-full transition-all duration-500"
-                      style={{ backgroundColor: '#22c55e' }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span>0%</span>
-                    <span>100%</span>
-                  </div>
-                </div>
-
-                {/* Breakdown */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <span className="h-2 w-2 rounded-full bg-blue-500" />
-                      Borrowed
-                    </div>
-                    <p className="mt-1.5 text-2xl font-bold text-slate-900">
-                      {totalEquipment - availableEquipment}
-                    </p>
-                    <p className="text-xs text-slate-400">items out</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      Available
-                    </div>
-                    <p className="mt-1.5 text-2xl font-bold text-slate-900">
-                      {availableEquipment}
-                    </p>
-                    <p className="text-xs text-slate-400">items ready</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* ── Pending Damage Verification ── */}
       {pendingDamageReports.length > 0 && (
-        <Card id="damage-section" className="border-amber-200 shadow-none">
+        <Card id="damage-section" className="rounded-2xl border-amber-200/70 shadow-sm transition-all duration-200 hover:shadow-md">
           <CardHeader className="px-6 pt-5 pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
