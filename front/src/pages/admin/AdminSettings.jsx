@@ -81,6 +81,42 @@ const styles = `
   .as-dot { animation: asDot 7s ease-in-out infinite; }
 `;
 
+function PasswordField({
+  id,
+  value,
+  visible,
+  onChange,
+  onToggle,
+  placeholder,
+  inputClassName,
+  isDark,
+  autoComplete = 'new-password',
+  disabled = false,
+}) {
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`${inputClassName} pr-10`}
+        autoComplete={autoComplete}
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        className={`absolute inset-y-0 right-0 flex items-center pr-3 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'} disabled:opacity-40 disabled:cursor-not-allowed`}
+      >
+        {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const { isDark } = useTheme();
   const queryClient = useQueryClient();
@@ -181,27 +217,6 @@ export default function AdminSettings() {
     setPwMsg(null);
     pwMutation.mutate({ currentPassword: pw.cur, newPassword: pw.next });
   };
-
-  const PwField = ({ id, field, placeholder }) => (
-    <div className="relative">
-      <Input
-        id={id}
-        type={vis[field] ? 'text' : 'password'}
-        value={pw[field]}
-        onChange={(e) => setPw((p) => ({ ...p, [field]: e.target.value }))}
-        placeholder={placeholder}
-        className={`${inputCls} pr-10`}
-        autoComplete="new-password"
-      />
-      <button
-        type="button"
-        onClick={() => setVis((v) => ({ ...v, [field]: !v[field] }))}
-        className={`absolute inset-y-0 right-0 flex items-center pr-3 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
-      >
-        {vis[field] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-      </button>
-    </div>
-  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // SIDEBAR ‑ reorder + live preview
@@ -395,14 +410,34 @@ export default function AdminSettings() {
                 <form onSubmit={handlePwSave} className="px-6 py-5 space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="cur-pw" className={labelCls}>Current Password</Label>
-                    <PwField id="cur-pw" field="cur" placeholder="Enter current password" />
+                    <PasswordField
+                      id="cur-pw"
+                      value={pw.cur}
+                      visible={vis.cur}
+                      onChange={(e) => setPw((p) => ({ ...p, cur: e.target.value }))}
+                      onToggle={() => setVis((v) => ({ ...v, cur: !v.cur }))}
+                      placeholder="Enter current password"
+                      inputClassName={inputCls}
+                      isDark={isDark}
+                      autoComplete="current-password"
+                    />
                   </div>
 
                   <div className={`border-t my-0.5 ${isDark ? 'border-white/5' : 'border-slate-100'}`} />
 
                   <div className="space-y-1.5">
                     <Label htmlFor="new-pw" className={labelCls}>New Password</Label>
-                    <PwField id="new-pw" field="next" placeholder="Create new password" />
+                    <PasswordField
+                      id="new-pw"
+                      value={pw.next}
+                      visible={vis.next}
+                      onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))}
+                      onToggle={() => setVis((v) => ({ ...v, next: !v.next }))}
+                      placeholder="Create new password"
+                      inputClassName={inputCls}
+                      isDark={isDark}
+                      autoComplete="new-password"
+                    />
                     {/* strength bar */}
                     {pw.next.length > 0 && (
                       <div className="mt-1.5">
@@ -423,7 +458,17 @@ export default function AdminSettings() {
 
                   <div className="space-y-1.5">
                     <Label htmlFor="confirm-pw" className={labelCls}>Confirm New Password</Label>
-                    <PwField id="confirm-pw" field="confirm" placeholder="Re-enter new password" />
+                    <PasswordField
+                      id="confirm-pw"
+                      value={pw.confirm}
+                      visible={vis.confirm}
+                      onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))}
+                      onToggle={() => setVis((v) => ({ ...v, confirm: !v.confirm }))}
+                      placeholder="Re-enter new password"
+                      inputClassName={inputCls}
+                      isDark={isDark}
+                      autoComplete="new-password"
+                    />
                     {pw.confirm.length > 0 && (
                       <p className={`text-[11px] mt-1 ${
                         pw.next === pw.confirm

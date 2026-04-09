@@ -765,6 +765,17 @@ export const api = {
         throw new Error(payload?.message || `Request failed with status ${lastResponse?.status || 500}`);
       },
     },
+    Reports: {
+      borrowing: async (filters = {}) => {
+        const params = new URLSearchParams(filters).toString();
+        const data = await request(`/reports/borrowing${params ? `?${params}` : ''}`);
+
+        return {
+          summary: data.summary || { totalBorrowed: 0, good: 0, damaged: 0, lost: 0 },
+          records: Array.isArray(data.records) ? data.records : []
+        };
+      }
+    },
     AdminMaintenance: {
       status: async () => {
         const data = await request('/admin/maintenance-status');

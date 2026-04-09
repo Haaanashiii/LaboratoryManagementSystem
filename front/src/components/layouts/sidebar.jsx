@@ -39,6 +39,7 @@ const menuConfig = {
             { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },            { label: 'editEquipment', icon: Pencil, href: '/inventory' },          ],
         },
         { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
+        { label: 'reports', icon: ClipboardList, href: '/reports' },
         { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
       ],
     },

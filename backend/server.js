@@ -21,6 +21,7 @@ const statsRoutes = require('./routes/statsRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const reportsRoutes = require('./routes/reportsRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -204,6 +205,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/admin/audit-logs', auditLogRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

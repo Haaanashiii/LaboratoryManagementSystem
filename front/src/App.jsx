@@ -41,6 +41,7 @@ import Settings from './pages/Settings'
 import Profile from './pages/Profile'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
+import Reports from './pages/admin/Reports'
 import Maintenance from './pages/Maintenance'
 
 import './App.css'
@@ -145,6 +146,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route element={<AdminRoute />}>
               <Route path="admin-settings" element={<AdminSettings />} />
+              <Route path="reports" element={<Reports />} />
             </Route>
           </Route>
         </Route>
