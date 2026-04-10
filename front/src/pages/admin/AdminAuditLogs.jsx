@@ -10,7 +10,7 @@ import {
   LogIn, ShieldAlert, PackagePlus, PackageCheck, RotateCcw, AlertTriangle, LayoutList,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
+import { AdminAuditLogsSkeleton } from '@/skeleton-framework/admin';
 import { useLang } from '@/components/i18n/LangContext';
 import { format } from 'date-fns';
 
@@ -110,6 +110,8 @@ export default function AdminAuditLogs() {
     h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
     h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
              { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
+  if (isLoading) return <AdminAuditLogsSkeleton />;
 
   return (
     <div className="w-full space-y-4 px-2 py-2">
@@ -228,12 +230,7 @@ export default function AdminAuditLogs() {
         </div>
 
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <BanterLoader />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+          <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
@@ -337,7 +334,6 @@ export default function AdminAuditLogs() {
                 </div>
               )}
             </div>
-          )}
         </CardContent>
       </Card>
     </div>

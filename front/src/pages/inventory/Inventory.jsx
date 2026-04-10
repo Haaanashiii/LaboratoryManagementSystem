@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Search, Pencil, Trash2, Package, Cpu, Monitor, Network, Mouse, HardDrive, Cable, Wrench, Boxes, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
-import BanterLoader from '@/components/ui/BanterLoader';
+import { InventorySkeleton } from '@/skeleton-framework/admin';
 
 const PAGE_SIZE = 10;
 
@@ -86,6 +86,8 @@ export default function Inventory() {
     h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
     h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
              { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
+  if (isLoading) return <InventorySkeleton />;
 
   return (
     <div className="w-full space-y-4 px-2 py-2">
@@ -198,11 +200,7 @@ export default function Inventory() {
         </div>
 
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <BanterLoader />
-            </div>
-          ) : isError ? (
+          {isError ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <Package className="h-5 w-5 text-red-400" />

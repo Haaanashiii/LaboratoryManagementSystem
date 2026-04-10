@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react';
 import { format } from 'date-fns';
-import BanterLoader from '@/components/ui/BanterLoader';
+import { AdminUserManagementSkeleton } from '@/skeleton-framework/admin';
 import { useLang } from '@/components/i18n/LangContext';
 
 const roles = [
@@ -254,6 +254,8 @@ export default function Users() {
     h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
              { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
 
+  if (isLoading) return <AdminUserManagementSkeleton />;
+
   return (
     <div className="w-full space-y-4 px-2 py-2">
 
@@ -377,11 +379,7 @@ export default function Users() {
         </div>
 
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <BanterLoader />
-            </div>
-          ) : isError ? (
+          {isError ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <UserPlus className="h-5 w-5 text-red-400" />

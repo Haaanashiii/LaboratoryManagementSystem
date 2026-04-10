@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Search, FileText, Clock3, CheckCircle2, RotateCcw, XCircle, Layers, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
+import { AllRequestsSkeleton } from '@/skeleton-framework/admin';
 import { format } from 'date-fns';
 
 const STATUS_TABS = [
@@ -63,6 +63,8 @@ export default function AllRequests() {
     h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
     h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
              { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+
+  if (isLoading) return <AllRequestsSkeleton />;
 
   return (
     <div className="w-full space-y-4 px-2 py-2">
@@ -151,11 +153,7 @@ export default function AllRequests() {
         </div>
 
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <BanterLoader />
-            </div>
-          ) : isError ? (
+          {isError ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <FileText className="h-5 w-5 text-red-400" />
