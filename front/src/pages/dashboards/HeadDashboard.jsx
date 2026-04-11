@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
+import BanterLoader from '@/components/ui/BanterLoader';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function StatCard({ title, value, icon: Icon, color, sub, onClick }) {
@@ -113,12 +114,12 @@ export default function HeadDashboard() {
     queryFn: () => api.auth.me(),
   });
 
-  const { data: allRequests = [] } = useQuery({
+  const { data: allRequests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['allRequests'],
     queryFn: () => api.entities.BorrowRequest.list(),
   });
 
-  const { data: equipment = [] } = useQuery({
+  const { data: equipment = [], isLoading: equipmentLoading } = useQuery({
     queryKey: ['equipment'],
     queryFn: () => api.entities.Equipment.list(),
   });
@@ -194,6 +195,14 @@ export default function HeadDashboard() {
     { key: 'borrowed', label: 'Borrowed', color: '#2563eb' },
     { key: 'returned', label: 'Returned', color: '#94a3b8' },
   ];
+
+  if (requestsLoading || equipmentLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+        <BanterLoader />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-5 px-2 py-3">

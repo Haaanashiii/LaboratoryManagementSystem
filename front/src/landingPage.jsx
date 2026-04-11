@@ -1,638 +1,788 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useNavigationType } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  CheckCircle, Package, Shield, ClipboardList, ArrowRight, 
-  Zap, Cpu, FileBadge, RotateCcw, 
-  Menu, X, Globe, Database, Bell, Lock, FileCheck, TrendingUp, Search,
-  Laptop, Wifi, Server, HardDrive, Monitor, Cable, Layers, ChevronRight,
-  Sparkles, BarChart3,
-} from 'lucide-react';
-import LandingBG from '@/components/layouts/LandingBG';
-import { useLang } from '@/components/i18n/LangContext';
-import { clearStoredAuth, getStoredToken, getStoredUser } from '@/api/apiClient';
-import equimonLogo from '@/assets/images/Equimon Logo.png';
+  FlaskConical, BookOpen, CheckCircle2, Bell, BarChart3, RotateCcw,
+  Users, ShieldCheck, ArrowRight, Globe, Menu as MenuIcon,
+  ClipboardList, Package, ChevronRight, Zap, Lock,
+  GraduationCap, ClipboardCheck, Wrench, Cpu, Wifi, Activity, Server, Gauge
+} from 'lucide-react'
+import equimonLogo from './assets/images/Equimon Logo.png'
+import ShapeGrid from './components/bits/ShapeGrid'
+import SpotlightCard from './components/bits/SpotlightCard'
+import CardSwap, { Card } from './components/bits/CardSwap'
+import StaggeredMenu from './components/bits/StaggeredMenu'
+import { useLang } from './components/i18n/LangContext'
 
-export default function Landing() {
-  const { t, lang, toggleLang } = useLang();
-  const navigate = useNavigate();
-  const navigationType = useNavigationType();
-  const [scrolled, setScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState('home');
-  const [mobileOpen, setMobileOpen] = useState(false);
+// ─── Per-page translations ────────────────────────────────────────────────────
+const LP = {
+  en: {
+    navFeatures: 'Features', navHow: 'How It Works', navCapabilities: 'Capabilities',
+    heroLabel: 'Laboratory Equipment Management',
+    heroH1a: 'Borrow, Approve &', heroH1b: 'Track', heroH1c: 'Lab Equipment',
+    heroSub: 'A smart platform purpose-built for managing lab equipment borrowing — connecting students, lecturers, and lab staff in one unified workflow.',
+    heroCTA: 'Sign In Now', heroLearn: 'Explore Features',
+    stat1: '50+ items', stat1Label: 'Equipment', stat2: '5', stat2Label: 'User roles', stat3: 'Live', stat3Label: 'Tracking',
+    featTitle: 'Everything Built In', featSub: 'End-to-end lab equipment management — from browsing to returning.',
+    f1t: 'Equipment Catalog', f1d: 'Browse the full inventory with live availability, filtering, and detailed specs.',
+    f2t: 'Smart Borrowing', f2d: 'Submit borrow requests in seconds. Full history, status, and duration tracking.',
+    f3t: 'Real-time Tracking', f3d: 'Get instant push notifications at every step of the borrowing lifecycle.',
+    f4t: 'Multi-role Access', f4d: '5 distinct role dashboards — tailored views for every type of user.',
+    f5t: 'Reports & Analytics', f5d: 'Generate usage reports, track trends, and export data for institutional records.',
+    f6t: 'Return Management', f6d: 'Log equipment returns, check conditions, and update inventory automatically.',
+    howTitle: 'How It Works', howSub: 'Four steps from request to return.',
+    s1t: 'Browse & Request', s1d: 'Pick equipment from the catalog and submit a borrow request with dates and purpose.',
+    s2t: 'Lecturer Review', s2d: 'Your assigned lecturer reviews and approves (or rejects) the request with notes.',
+    s3t: 'Head Approval', s3d: 'The Head of Lab performs final approval, verifying all institutional policies.',
+    s4t: 'Pickup & Return', s4d: 'Lab assistant prepares the equipment. You pick up, use it, and return.',
+    capTitle: 'Built for Every Role', capSub: 'Tailored dashboards and workflows for every person in the lab ecosystem.',
+    c1t: 'Students', c1d: 'Submit requests and track your borrowings from a clean personal dashboard.',
+    c2t: 'Lecturers & Head', c2d: 'Review pending approvals and manage equipment authorizations at scale.',
+    c3t: 'Lab Assistants & Admin', c3d: 'Prepare equipment, process returns, and maintain the complete inventory.',
+    ctaTitle: 'Ready to Get Started?', ctaSub: 'Sign in to access your role-specific dashboard.',
+    ctaBtn: 'Sign In to Equimon', footer: '© 2025 Equimon · All rights reserved.',
+    footerSub: 'Streamlining lab management for the modern academic institution.',
+  },
+  id: {
+    navFeatures: 'Fitur', navHow: 'Cara Kerja', navCapabilities: 'Kemampuan',
+    heroLabel: 'Sistem Manajemen Peralatan Lab',
+    heroH1a: 'Pinjam, Setujui &', heroH1b: 'Kelola', heroH1c: 'Peralatan Lab',
+    heroSub: 'Platform cerdas untuk peminjaman peralatan lab — menghubungkan mahasiswa, dosen, dan staf laboratorium dalam satu alur kerja.',
+    heroCTA: 'Masuk Sekarang', heroLearn: 'Jelajahi Fitur',
+    stat1: '50+', stat1Label: 'Peralatan', stat2: '5', stat2Label: 'Peran pengguna', stat3: 'Live', stat3Label: 'Pelacakan',
+    featTitle: 'Semua Sudah Ada', featSub: 'Manajemen end-to-end dari penelusuran hingga pengembalian.',
+    f1t: 'Katalog Peralatan', f1d: 'Telusuri inventaris lengkap dengan ketersediaan langsung dan spesifikasi detail.',
+    f2t: 'Peminjaman Cerdas', f2d: 'Ajukan permintaan dalam hitungan detik dengan pelacakan riwayat dan status.',
+    f3t: 'Pelacakan Real-time', f3d: 'Terima notifikasi instan di setiap langkah siklus peminjaman.',
+    f4t: 'Akses Multi-peran', f4d: '5 dashboard peran berbeda — tampilan khusus untuk setiap jenis pengguna.',
+    f5t: 'Laporan & Analitik', f5d: 'Buat laporan penggunaan, lacak tren, dan ekspor data untuk pencatatan institusi.',
+    f6t: 'Manajemen Pengembalian', f6d: 'Catat pengembalian, cek kondisi, dan perbarui inventaris secara otomatis.',
+    howTitle: 'Cara Kerjanya', howSub: 'Empat langkah dari permintaan hingga pengembalian.',
+    s1t: 'Telusuri & Minta', s1d: 'Pilih peralatan dari katalog dan ajukan permintaan dengan tanggal dan tujuan.',
+    s2t: 'Tinjauan Dosen', s2d: 'Dosen meninjau dan menyetujui atau menolak permintaan dengan catatan.',
+    s3t: 'Persetujuan Kepala', s3d: 'Kepala Lab melakukan persetujuan akhir sesuai kebijakan institusi.',
+    s4t: 'Ambil & Kembalikan', s4d: 'Asisten menyiapkan peralatan. Anda mengambil, menggunakan, dan mengembalikan.',
+    capTitle: 'Untuk Setiap Peran', capSub: 'Dashboard dan alur kerja yang disesuaikan untuk setiap orang di ekosistem lab.',
+    c1t: 'Mahasiswa', c1d: 'Ajukan permintaan dan pantau peminjaman dari dashboard pribadi yang bersih.',
+    c2t: 'Dosen & Kepala Lab', c2d: 'Tinjau persetujuan tertunda dan kelola otorisasi peralatan.',
+    c3t: 'Asisten & Admin', c3d: 'Siapkan peralatan, proses pengembalian, dan kelola inventaris lengkap.',
+    ctaTitle: 'Siap Memulai?', ctaSub: 'Masuk untuk mengakses dashboard sesuai peran Anda.',
+    ctaBtn: 'Masuk ke Equimon', footer: '© 2025 Equimon · Semua hak dilindungi.',
+    footerSub: 'Menyederhanakan manajemen lab untuk institusi akademik modern.',
+  },
+}
 
-  const features = [
-    { 
-      icon: Database, 
-      title: 'Centralized Inventory', 
-      desc: 'Comprehensive database to record all laboratory equipment with detailed specifications, quantities, and availability status.' 
-    },
-    { 
-      icon: ClipboardList, 
-      title: 'Borrowing Requests', 
-      desc: 'Streamlined request system allowing students to submit equipment borrowing requests with automatic tracking and notifications.' 
-    },
-    { 
-      icon: FileCheck, 
-      title: 'Lecturer Verification', 
-      desc: 'Multi-level approval workflow ensuring all requests are verified by lecturers before equipment can be borrowed.' 
-    },
-    { 
-      icon: Shield, 
-      title: 'Equipment Tracking', 
-      desc: 'Real-time monitoring of equipment status, location, and condition throughout the entire borrowing lifecycle.' 
-    },
-    { 
-      icon: Bell, 
-      title: 'Automated Notifications', 
-      desc: 'Instant alerts for request updates, approvals, return reminders, and equipment availability changes.' 
-    },
-    { 
-      icon: TrendingUp, 
-      title: 'Analytics & Reports', 
-      desc: 'Comprehensive insights on equipment utilization, borrowing patterns, and inventory management metrics.' 
-    },
-  ];
+// ─── Feature icon map ─────────────────────────────────────────────────────────
+const FEATURE_ICONS = [FlaskConical, ClipboardList, Bell, Users, BarChart3, RotateCcw]
+const FEATURE_COLORS = [
+  'rgba(59,130,246,0.15)',   // blue
+  'rgba(34,197,94,0.15)',    // green
+  'rgba(245,158,11,0.15)',   // amber
+  'rgba(139,92,246,0.15)',   // purple
+  'rgba(236,72,153,0.15)',   // pink
+  'rgba(20,184,166,0.15)',   // teal
+]
+const FEATURE_ICON_COLORS = ['#3B82F6', '#22C55E', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6']
 
-  const workflow = [
-    {
-      icon: Search,
-      step: '01',
-      title: t('browseCatalog'),
-      desc: t('browseCatalogDesc'),
-    },
-    {
-      icon: FileBadge,
-      step: '02',
-      title: t('approvalWorkflow'),
-      desc: t('approvalWorkflowDesc'),
-    },
-    {
-      icon: CheckCircle,
-      step: '03',
-      title: t('equipmentPreparationStep'),
-      desc: t('equipmentPreparationDesc'),
-    },
-    {
-      icon: RotateCcw,
-      step: '04',
-      title: t('returnAssessment'),
-      desc: t('returnAssessmentDesc'),
-    },
-  ];
+// ─── Reusable section title ───────────────────────────────────────────────────
+const SectionTitle = ({ title, subtitle, center = true }) => (
+  <div className={`mb-14 ${center ? 'text-center' : ''}`}>
+    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#E2E8F0] mb-4 leading-tight">
+      {title}
+    </h2>
+    {subtitle && <p className="text-[#475569] text-lg max-w-2xl mx-auto">{subtitle}</p>}
+  </div>
+)
 
-  const equipmentCategories = [
-    { icon: Laptop, label: 'Laptops & PCs' },
-    { icon: Cpu, label: t('electronics') },
-    { icon: Wifi, label: 'Networking Gear' },
-    { icon: Server, label: 'Servers & Racks' },
-    { icon: Monitor, label: 'Displays' },
-    { icon: HardDrive, label: 'Storage Devices' },
-    { icon: Cable, label: 'Cables & Adapters' },
-    { icon: Shield, label: t('safetyGear') },
-  ];
+// ─── Main Landing Page ────────────────────────────────────────────────────────
+export default function LandingPage() {
+  const navigate = useNavigate()
+  const { lang, toggleLang } = useLang()
+  const lp = LP[lang] || LP.en
 
-  const capabilities = [
-    { 
-      icon: Lock, 
-      title: 'Secure Authentication', 
-      desc: 'Role-based access control ensuring users only see relevant features and data.' 
-    },
-    { 
-      icon: Database, 
-      title: 'Inventory Management', 
-      desc: 'Complete equipment lifecycle management from acquisition to disposal.' 
-    },
-    { 
-      icon: FileCheck, 
-      title: 'Approval Workflows', 
-      desc: 'Configurable multi-step approval processes with delegation support.' 
-    },
-    { 
-      icon: TrendingUp, 
-      title: 'Usage Analytics', 
-      desc: 'Data-driven insights for better resource allocation and planning.' 
-    },
-  ];
+  const [scrolled, setScrolled] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const heroRef = useRef(null)
+  const heroContentRef = useRef(null)
 
-  const navLinks = [
-    { label: 'Features', href: '#features', id: 'features' },
-    { label: 'How It Works', href: '#workflow', id: 'workflow' },
-    { label: 'Capabilities', href: '#capabilities', id: 'capabilities' },
-  ];
-
+  // Navbar scroll effect
   useEffect(() => {
-    if (navigationType === 'POP') {
-      const hasToken = !!getStoredToken();
-      const hasUser = !!getStoredUser();
+    const onScroll = () => setScrolled(window.scrollY > 60)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-      if (hasToken || hasUser) {
-        clearStoredAuth();
-        navigate('/login', { replace: true });
-      }
-    }
-  }, [navigationType, navigate]);
-
+  // Mobile detection
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
+  // Scroll-reveal with IntersectionObserver
   useEffect(() => {
-    const sections = ['features', 'workflow', 'capabilities', 'cta'];
-    const observers = sections.map(id => {
-      const el = document.getElementById(id);
-      if (!el) return null;
-      const obs = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
-        { threshold: 0.3 }
-      );
-      obs.observe(el);
-      return obs;
-    });
-    return () => observers.forEach(o => o?.disconnect());
-  }, []);
-
-  // ── Fade-in on scroll ──
-  useEffect(() => {
-    const els = document.querySelectorAll('.fade-in-up');
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
-      }),
+    const obs = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
       { threshold: 0.12 }
-    );
-    els.forEach(el => io.observe(el));
-    return () => io.disconnect();
-  }, []);
+    )
+    document.querySelectorAll('.reveal').forEach(el => obs.observe(el))
+    return () => obs.disconnect()
+  }, [])
+
+  // Hero entrance animation
+  useEffect(() => {
+    if (!heroContentRef.current) return
+    const el = heroContentRef.current
+    el.style.opacity = '0'
+    el.style.transform = 'translateY(28px)'
+    const t = setTimeout(() => {
+      el.style.transition = 'opacity 0.85s cubic-bezier(0.16,1,0.3,1), transform 0.85s cubic-bezier(0.16,1,0.3,1)'
+      el.style.opacity = '1'
+      el.style.transform = 'translateY(0)'
+    }, 120)
+    return () => clearTimeout(t)
+  }, [])
+
+  const scrollTo = id => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const mobileNavItems = [
+    { label: lp.navFeatures, onClick: () => scrollTo('features') },
+    { label: lp.navHow, onClick: () => scrollTo('how-it-works') },
+    { label: lp.navCapabilities, onClick: () => scrollTo('capabilities') },
+    { label: lp.heroCTA, onClick: () => navigate('/login') },
+  ]
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white overflow-x-hidden">
-      <style>{`
-        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
-        @keyframes pulse-ring { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(1.7);opacity:0} }
-        @keyframes gradient-x { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
-        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
-        @keyframes slide-down { from{opacity:0;transform:translateY(-18px)} to{opacity:1;transform:translateY(0)} }
-        .fade-in-up { opacity:0; transform:translateY(32px); transition:opacity .65s cubic-bezier(.16,1,.3,1), transform .65s cubic-bezier(.16,1,.3,1); }
-        .fade-in-up.visible { opacity:1; transform:translateY(0); }
-        .stagger-1 { transition-delay:.08s }
-        .stagger-2 { transition-delay:.16s }
-        .stagger-3 { transition-delay:.24s }
-        .stagger-4 { transition-delay:.32s }
-        .stagger-5 { transition-delay:.40s }
-        .stagger-6 { transition-delay:.48s }
-        .animated-gradient { background-size:200% 200%; animation:gradient-x 6s ease infinite; }
-        .float-anim { animation:float 6s ease-in-out infinite; }
-        .shimmer-text { background:linear-gradient(90deg,#60a5fa,#a78bfa,#38bdf8,#60a5fa); background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; animation:shimmer 4s linear infinite; }
-        .hero-badge { animation:slide-down .6s cubic-bezier(.16,1,.3,1) both; }
-        .card-glow:hover { box-shadow:0 0 32px 0 rgba(59,130,246,.18); }
-      `}</style>
+    <div className="relative min-h-screen bg-[#0A0A0F] text-[#E2E8F0] overflow-x-hidden font-poppins">
 
-      {/* ── Orb background (full page) ── */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-30">
-        <LandingBG />
-      </div>
+      {/* ── Mobile StaggeredMenu ───────────────────────────────────── */}
+      {isMobile && (
+        <StaggeredMenu
+          items={mobileNavItems}
+          accentColor="#3B82F6"
+          menuButtonColor="#E2E8F0"
+          openMenuButtonColor="#E2E8F0"
+          colors={['rgba(17,17,30,0.93)', 'rgba(10,10,18,0.97)']}
+          displayItemNumbering
+          logoContent={
+            <div className="flex items-center gap-2">
+              <img src={equimonLogo} alt="Equimon" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'rgba(255,255,255,0.95)', padding: '2px' }} />
+              <span className="text-[#E2E8F0] text-sm font-bold tracking-tight">Equimon</span>
+            </div>
+          }
+        />
+      )}
 
-      {/* ── Top Navbar - Floating Panel ── */}
-      <header className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-        <div
-          className={`pointer-events-auto w-full max-w-5xl transition-all duration-300 rounded-2xl ${
-            scrolled
-              ? 'bg-[#0a0f1e]/95 backdrop-blur-xl shadow-2xl shadow-black/60'
-              : 'bg-[#0d1526]/80 backdrop-blur-md shadow-xl shadow-black/40'
-          }`}
-        >
-        {/* Subtle top gradient line */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent rounded-t-2xl" />
-
-        <nav className="px-6 sm:px-10 h-16 flex items-center justify-between">
-
-          {/* ── Brand ── */}
-          <a href="#" className="flex items-center gap-3 group select-none">
-            <div className="relative w-11 h-11">
-              <div className="absolute inset-0 rounded-xl bg-blue-500/30 blur-md group-hover:bg-blue-400/40 transition-all" />
-              <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shadow-lg">
-                <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
+      {/* ── Desktop Glass Navbar ───────────────────────────────────── */}
+      {!isMobile && (
+        <nav className={`glass-nav ${scrolled ? 'scrolled' : ''}`}>
+          <div className="flex items-center justify-between px-6 py-3">
+            {/* Logo */}
+            <div className="flex items-center gap-2.5 cursor-pointer select-none" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <img src={equimonLogo} alt="Equimon" className="w-9 h-9 rounded-xl object-contain shadow-lg shadow-blue-500/20" style={{ background: 'rgba(255,255,255,0.95)', padding: '3px' }} />
+              <div>
+                <span className="text-[#E2E8F0] font-bold text-sm tracking-tight">Equimon</span>
+                <span className="text-[#475569] text-xs ml-2 hidden lg:inline">Lab Management</span>
               </div>
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-[17px] font-extrabold tracking-tight">
-                Equi<span className="text-blue-400">mon</span>
-              </span>
-              <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-[0.18em] mt-0.5">
-                Lab Management
-              </span>
+
+            {/* Nav Links */}
+            <div className="flex items-center gap-8">
+              {[
+                { label: lp.navFeatures, id: 'features' },
+                { label: lp.navHow, id: 'how-it-works' },
+                { label: lp.navCapabilities, id: 'capabilities' },
+              ].map(({ label, id }) => (
+                <button key={id} onClick={() => scrollTo(id)} className="nav-link bg-transparent border-0 cursor-pointer font-poppins">
+                  {label}
+                </button>
+              ))}
             </div>
-          </a>
 
-          {/* ── Desktop Nav Links ── */}
-          <div className="hidden md:flex items-center bg-white/[0.03] border border-white/[0.06] rounded-full px-2 py-1.5 gap-1">
-            <a
-              href="#"
-              onClick={e => { e.preventDefault(); setActiveSection('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ${activeSection === 'home' || activeSection === '' ? 'text-white bg-blue-600/80 shadow-md shadow-blue-700/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-            >
-              Home
-            </a>
-            {navLinks.map(({ label, href, id }) => (
-              <a
-                key={id}
-                href={href}
-                className={`relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ${
-                  activeSection === id
-                    ? 'text-white bg-blue-600/80 shadow-md shadow-blue-700/30'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-
-          {/* ── Right: CTA + Mobile toggle ── */}
-          <div className="flex items-center gap-3">
-            {/* Language Switcher */}
-            <button
-              onClick={toggleLang}
-              className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-white px-3 py-2 rounded-lg border border-white/10 hover:border-white/20 transition-all"
-              title={lang === 'en' ? t('switchToIndonesian') : t('switchToEnglish')}
-            >
-              <Globe className="w-4 h-4" />
-              <span className="text-xs font-bold">{lang.toUpperCase()}</span>
-            </button>
-
-            <button
-              onClick={() => navigate('/login')}
-              className="hidden sm:flex items-center gap-2 text-sm font-semibold text-white px-5 py-2 rounded-full transition-all duration-200
-                bg-gradient-to-r from-blue-600 to-indigo-600
-                hover:from-blue-500 hover:to-indigo-500
-                shadow-lg shadow-blue-700/30 hover:shadow-blue-500/40
-                hover:-translate-y-0.5 active:translate-y-0"
-            >
-              {t('signIn')}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            {/* Mobile hamburger */}
-            <button
-              className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 hover:border-white/20 text-slate-400 hover:text-white transition-all"
-              onClick={() => setMobileOpen(o => !o)}
-              aria-label="Toggle menu"
-            >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </nav>
-
-        {/* ── Mobile Dropdown ── */}
-        <div
-          className={`md:hidden transition-all duration-300 overflow-hidden ${
-            mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <div className="px-4 pb-5 pt-2 border-t border-white/5 rounded-b-2xl bg-[#0a0f1e]/95 backdrop-blur-xl space-y-1">
-            <a
-              href="#"
-              onClick={e => { e.preventDefault(); setActiveSection('home'); setMobileOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeSection === 'home' || activeSection === '' ? 'text-white bg-blue-600/20 border border-blue-500/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${activeSection === 'home' || activeSection === '' ? 'bg-blue-400' : 'bg-slate-600'}`} />
-              Home
-            </a>
-            {navLinks.map(({ label, href, id }) => (
-              <a
-                key={id}
-                href={href}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                  activeSection === id
-                    ? 'text-white bg-blue-600/20 border border-blue-500/30'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${activeSection === id ? 'bg-blue-400' : 'bg-slate-600'}`} />
-                {label}
-              </a>
-            ))}
-            <div className="pt-3 border-t border-white/5 space-y-2">
-              {/* Mobile Language Switcher */}
+            {/* Right actions */}
+            <div className="flex items-center gap-3">
               <button
                 onClick={toggleLang}
-                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-slate-400 hover:text-white px-4 py-3 rounded-xl border border-white/10 hover:border-white/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#94A3B8] border border-[#2A2A3A] hover:border-[#3B82F6] hover:text-[#3B82F6] transition-all duration-250 bg-transparent cursor-pointer"
               >
-                <Globe className="w-4 h-4" />
-                <span className="font-bold">{lang.toUpperCase()}</span>
-                <span className="text-xs opacity-70">({lang === 'en' ? t('switchToIndonesian') : t('switchToEnglish')})</span>
+                <Globe size={13} />
+                <span>{lang === 'en' ? 'ID' : 'EN'}</span>
               </button>
-              
               <button
-                onClick={() => { setMobileOpen(false); navigate('/login'); }}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-all shadow-lg shadow-blue-700/30"
+                onClick={() => navigate('/login')}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-semibold transition-all duration-250 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/35 hover:-translate-y-0.5 cursor-pointer"
               >
-                {t('signIn')} <ArrowRight className="w-4 h-4" />
+                <Lock size={13} />
+                {lp.heroCTA}
               </button>
             </div>
           </div>
-        </div>
-        </div>
-      </header>
+        </nav>
+      )}
 
-      {/* ── Hero Section ── */}
-      <section className="relative z-10 px-4 sm:px-6 lg:px-12 pt-36 pb-24 text-center max-w-5xl mx-auto">
-        {/* Floating glow orbs */}
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-40 left-1/4 w-64 h-64 bg-indigo-500/8 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-40 right-1/4 w-64 h-64 bg-cyan-500/8 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Badge */}
-        <div className="hero-badge inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs sm:text-sm font-semibold px-4 py-2 rounded-full mb-8 border border-blue-500/20 backdrop-blur-sm">
-          <Sparkles className="w-3.5 h-3.5" />
-          {t('landingTagline')}
-        </div>
-
-        {/* Headline */}
-        <h1 className="text-3xl sm:text-4xl font-black leading-[1.15] tracking-tight mb-6 max-w-3xl mx-auto">
-          <span className="shimmer-text text-3xl sm:text-4xl font-extrabold tracking-widest uppercase">Equimon</span>
-          {' '}— Borrow equipment, get approvals fast, and track every request in one place.{ ' ' }
-        </h1>
-
-        <p className="text-slate-500 text-base sm:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
-          {t('modernPlatformDesc')}
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={() => navigate('/login')}
-            className="group inline-flex items-center gap-2 text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-all shadow-2xl shadow-blue-700/40 hover:shadow-blue-500/50 hover:-translate-y-0.5 animated-gradient"
-            style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5,#0ea5e9)', backgroundSize:'200% 200%' }}
-          >
-            {t('getStarted')}
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-          <a
-            href="#features"
-            className="inline-flex items-center gap-2 border border-white/10 hover:border-blue-500/40 bg-white/[0.03] hover:bg-blue-500/5 text-slate-300 hover:text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-all backdrop-blur-sm hover:-translate-y-0.5"
-          >
-            {t('exploreFeatures')}
-            <ChevronRight className="w-4 h-4" />
-          </a>
+      {/* ── HERO SECTION ──────────────────────────────────────────── */}
+      <section
+        ref={heroRef}
+        className="relative w-full min-h-screen flex items-center overflow-hidden"
+        style={{ paddingTop: '6rem' }}
+      >
+        {/* ShapeGrid background */}
+        <div className="absolute inset-0 z-0">
+          <ShapeGrid
+            direction="diagonal"
+            speed={0.45}
+            borderColor="rgba(59, 130, 246, 0.14)"
+            squareSize={46}
+            hoverFillColor="rgba(59, 130, 246, 0.09)"
+            shape="hexagon"
+            hoverTrailAmount={5}
+          />
         </div>
 
-        {/* Stat chips */}
-        <div className="mt-12 flex flex-wrap justify-center gap-3 text-xs font-semibold">
-          {[
-            { val: '500+', label: 'Devices Tracked' },
-            { val: '3-Step', label: 'Approval Flow' },
-            { val: '4 Roles', label: 'Access Levels' },
-            { val: '99.9%', label: 'Uptime' },
-          ].map(({ val, label }) => (
-            <div key={label} className="flex items-center gap-2 bg-white/[0.04] border border-white/8 rounded-full px-4 py-1.5 text-slate-400">
-              <span className="text-white font-bold">{val}</span> {label}
-            </div>
-          ))}
-        </div>
+        {/* Radial blue glow */}
+        <div
+          className="absolute inset-0 z-[1] pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 80% 60% at 30% 50%, rgba(59,130,246,0.08) 0%, transparent 70%)' }}
+        />
+        {/* Bottom gradient fade */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-48 z-[2] pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, transparent, #0A0A0F)' }}
+        />
 
-        {/* Key Benefits */}
-        <div className="mt-14 grid grid-cols-1 sm:grid-cols-3 gap-5 text-left">
-          {[
-            { Icon: Database, color: 'text-blue-400', border: 'border-blue-500/20', bg: 'bg-blue-500/10', title: t('featureCatalogTitle'), desc: t('featureCatalogDesc') },
-            { Icon: FileCheck, color: 'text-indigo-400', border: 'border-indigo-500/20', bg: 'bg-indigo-500/10', title: t('featureApprovalTitle'), desc: t('featureApprovalDesc') },
-            { Icon: Shield, color: 'text-cyan-400', border: 'border-cyan-500/20', bg: 'bg-cyan-500/10', title: t('featureStatusTitle'), desc: t('featureStatusDesc') },
-          ].map(({ Icon, color, border, bg, title, desc }, i) => (
-            <div key={title} className={`card-glow bg-[#0d1526]/70 backdrop-blur-sm border border-white/5 hover:${border} rounded-2xl p-6 transition-all hover:-translate-y-1`}>
-              <div className={`w-10 h-10 ${bg} border ${border} rounded-xl flex items-center justify-center mb-4`}>
-                <Icon className={`w-5 h-5 ${color}`} />
+        {/* Hero content */}
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 py-16">
+          <div ref={heroContentRef} className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+
+            {/* Left: Text */}
+            <div className="flex flex-col gap-6">
+              <div className="glass-badge w-fit">
+                {lp.heroLabel}
               </div>
-              <h3 className="text-white font-bold mb-1.5">{title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.08] tracking-tight">
+                <span className="text-[#E2E8F0]">{lp.heroH1a} </span>
+                <span className="gradient-text">{lp.heroH1b}</span>
+                <br />
+                <span className="text-[#E2E8F0]">{lp.heroH1c}</span>
+              </h1>
+
+              <p className="text-[#64748B] text-base md:text-lg leading-relaxed max-w-xl">
+                {lp.heroSub}
+              </p>
+
+              {/* CTA buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => navigate('/login')}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white font-semibold text-sm transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-1 cursor-pointer"
+                >
+                  {lp.heroCTA}
+                  <ArrowRight size={16} />
+                </button>
+                <button
+                  onClick={() => scrollTo('features')}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl border border-[#2A2A3A] hover:border-[#3B82F6] text-[#94A3B8] hover:text-[#E2E8F0] font-semibold text-sm transition-all duration-300 cursor-pointer bg-transparent"
+                  style={{ backdropFilter: 'blur(8px)', background: 'rgba(255,255,255,0.02)' }}
+                >
+                  {lp.heroLearn}
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+
+              {/* Stats row */}
+              <div className="flex items-center flex-wrap gap-6 pt-2">
+                {[
+                  { val: lp.stat1, label: lp.stat1Label },
+                  { val: lp.stat2, label: lp.stat2Label },
+                  { val: lp.stat3, label: lp.stat3Label },
+                ].map((s, i) => (
+                  <React.Fragment key={i}>
+                    {i > 0 && <div className="stat-divider" />}
+                    <div className="flex flex-col">
+                      <span className="text-lg font-bold text-[#3B82F6]">{s.val}</span>
+                      <span className="text-xs text-[#475569] font-medium">{s.label}</span>
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
-          ))}
+
+            {/* Right: CardSwap */}
+            <div className="flex justify-center lg:justify-end items-center float-animation">
+              <div style={{ position: 'relative', width: 400, height: 380, overflow: 'visible' }}>
+                <CardSwap
+                  width={400}
+                  height={300}
+                  cardDistance={26}
+                  verticalDistance={18}
+                  delay={4200}
+                  pauseOnHover
+                  skewAmount={4}
+                  easing="elastic"
+                >
+                  {/* Card 1: Equipment Catalog */}
+                  <Card style={{ width: 380, height: 300 }}>
+                    <div className="p-5 h-full flex flex-col gap-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/15 flex items-center justify-center">
+                          <FlaskConical size={16} color="#3B82F6" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-[#E2E8F0]">Equipment Catalog</div>
+                          <div className="text-[10px] text-[#475569]">Live availability</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 flex-1">
+                        {[
+                          { name: 'Microscope Pro Set', status: 'Ready', avail: true },
+                          { name: 'Centrifuge X-200', status: 'Ready', avail: true },
+                          { name: 'Spectrophotometer', status: 'Borrowed', avail: false },
+                          { name: 'PCR Thermocycler', status: 'Ready', avail: true },
+                          { name: 'pH Meter Digital', status: 'Ready', avail: true },
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-center justify-between py-1.5 border-b border-[#1A1A24]">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${item.avail ? 'bg-[#22C55E]' : 'bg-[#F59E0B]'}`} />
+                              <span className="text-[11px] text-[#94A3B8]">{item.name}</span>
+                            </div>
+                            <span className={`hero-card-badge ${!item.avail ? 'borrowed' : ''}`}>
+                              {item.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 2: Borrow Request */}
+                  <Card style={{ width: 380, height: 300 }}>
+                    <div className="p-5 h-full flex flex-col gap-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#22C55E]/15 flex items-center justify-center">
+                          <ClipboardList size={16} color="#22C55E" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-[#E2E8F0]">New Borrow Request</div>
+                          <div className="text-[10px] text-[#475569]">Just submitted</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 flex-1">
+                        {[
+                          { label: 'Equipment', val: 'Microscope Pro Set' },
+                          { label: 'Duration', val: 'Mar 15 → Mar 18, 2025' },
+                          { label: 'Purpose', val: 'Lab Assignment #3' },
+                          { label: 'Requester', val: 'Ahmad Rizki' },
+                        ].map((row, i) => (
+                          <div key={i} className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-[#2A2A3A] uppercase tracking-wider">{row.label}</span>
+                            <span className="text-[11px] text-[#94A3B8] font-medium">{row.val}</span>
+                          </div>
+                        ))}
+                        <div className="mt-auto pt-2">
+                          <span className="hero-card-badge pending">● Awaiting Lecturer Review</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 3: Approval Flow */}
+                  <Card style={{ width: 380, height: 300 }}>
+                    <div className="p-5 h-full flex flex-col gap-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#8B5CF6]/15 flex items-center justify-center">
+                          <CheckCircle2 size={16} color="#8B5CF6" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-[#E2E8F0]">Approval Progress</div>
+                          <div className="text-[10px] text-[#475569]">Step 2 of 4</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2.5 flex-1">
+                        {[
+                          { step: 1, label: 'Submitted', status: 'done' },
+                          { step: 2, label: 'Lecturer Review', status: 'active' },
+                          { step: 3, label: 'Head of Lab', status: 'pending' },
+                          { step: 4, label: 'Ready for Pickup', status: 'pending' },
+                        ].map(({ step, label, status }) => (
+                          <div key={step} className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                              status === 'done' ? 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30'
+                              : status === 'active' ? 'bg-[#3B82F6]/20 text-[#3B82F6] border border-[#3B82F6]/40'
+                              : 'bg-[#2A2A3A] text-[#475569] border border-[#3A3A5A]'
+                            }`}>
+                              {status === 'done' ? '✓' : step}
+                            </div>
+                            <span className={`text-[11px] font-medium ${
+                              status === 'done' ? 'text-[#22C55E]'
+                              : status === 'active' ? 'text-[#60A5FA]'
+                              : 'text-[#475569]'
+                            }`}>{label}</span>
+                            {status === 'active' && (
+                              <span className="ml-auto text-[9px] font-medium text-[#3B82F6] bg-[#3B82F6]/10 px-2 py-0.5 rounded-full border border-[#3B82F6]/20">In Review</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 4: Dashboard */}
+                  <Card style={{ width: 380, height: 300 }}>
+                    <div className="p-5 h-full flex flex-col gap-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#F59E0B]/15 flex items-center justify-center">
+                          <BarChart3 size={16} color="#F59E0B" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-[#E2E8F0]">Lab Overview</div>
+                          <div className="text-[10px] text-[#475569]">Today's stats</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 flex-1">
+                        {[
+                          { label: 'Total Equipment', val: '48', color: '#3B82F6' },
+                          { label: 'Available', val: '36', color: '#22C55E' },
+                          { label: 'Active Loans', val: '12', color: '#F59E0B' },
+                          { label: 'Pending Review', val: '5', color: '#8B5CF6' },
+                        ].map((stat, i) => (
+                          <div key={i} className="rounded-xl p-3 flex flex-col gap-1" style={{ background: `${stat.color}0d`, border: `1px solid ${stat.color}22` }}>
+                            <span className="text-xl font-bold" style={{ color: stat.color }}>{stat.val}</span>
+                            <span className="text-[10px] text-[#475569]">{stat.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+                </CardSwap>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── Features Grid ── */}
-      <section id="features" className="relative z-10 px-4 sm:px-6 lg:px-12 py-24 max-w-7xl mx-auto">
-        {/* Section divider glow */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
-
-        <div className="text-center mb-14 fade-in-up">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-blue-400 mb-4">
-            <Sparkles className="w-3 h-3" /> {t('features')}
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            {t('everythingYouNeedToRunLab')}{' '}
-            <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-              {t('runTheLab')}
-            </span>
-          </h2>
-          <p className="text-slate-400 text-base max-w-2xl mx-auto">
-            {t('equimonCoversLifecycle')}
-          </p>
+      {/* ── STATS STRIP ───────────────────────────────────────────── */}
+      <div className="relative py-10 border-y border-[#111118]" style={{ background: 'rgba(17,17,24,0.8)' }}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {[
+              { val: '48+', label: lang === 'en' ? 'Lab Equipment Items' : 'Item Peralatan Lab', color: '#3B82F6' },
+              { val: '5', label: lang === 'en' ? 'Distinct User Roles' : 'Peran Pengguna', color: '#22C55E' },
+              { val: '4-Step', label: lang === 'en' ? 'Approval Workflow' : 'Alur Persetujuan', color: '#8B5CF6' },
+              { val: '100%', label: lang === 'en' ? 'Real-time Updates' : 'Pembaruan Real-time', color: '#F59E0B' },
+            ].map(({ val, label, color }, i) => (
+              <div key={i} className="flex flex-col items-center gap-1.5">
+                <span className="text-2xl md:text-3xl font-bold" style={{ color }}>{val}</span>
+                <span className="text-xs text-[#475569] font-medium tracking-wide uppercase">{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map(({ icon: Icon, title, desc }, i) => (
-            <div
-              key={title}
-              className={`fade-in-up stagger-${Math.min(i + 1, 6)} group relative bg-gradient-to-br from-[#0d1526]/80 to-[#0a0f1e]/60 backdrop-blur-sm border border-white/5 hover:border-blue-500/30 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1.5 card-glow`}
-            >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/0 to-blue-500/0 group-hover:from-blue-500/5 group-hover:to-transparent transition-all duration-300" />
-              <div className="relative">
-                <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-5 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-300">
-                  <Icon className="w-5 h-5 text-blue-400" />
+      {/* ── FEATURES SECTION ──────────────────────────────────────── */}
+      <section id="features" className="relative py-24 px-6 lg:px-12">
+        {/* Subtle background glow */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#2A2A3A] to-transparent" />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(59,130,246,0.04), transparent 60%)' }} />
+
+        <div className="max-w-7xl mx-auto">
+          <div className="reveal text-center mb-14">
+            <SectionTitle title={lp.featTitle} subtitle={lp.featSub} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              { t: lp.f1t, d: lp.f1d },
+              { t: lp.f2t, d: lp.f2d },
+              { t: lp.f3t, d: lp.f3d },
+              { t: lp.f4t, d: lp.f4d },
+              { t: lp.f5t, d: lp.f5d },
+              { t: lp.f6t, d: lp.f6d },
+            ].map((feat, i) => {
+              const Icon = FEATURE_ICONS[i]
+              return (
+                <div key={i} className={`reveal reveal-delay-${i + 1}`}>
+                  <SpotlightCard
+                    spotlightColor={FEATURE_COLORS[i]}
+                    className="h-full p-6"
+                  >
+                    <div className="flex flex-col gap-4">
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center"
+                        style={{ background: FEATURE_COLORS[i], border: `1px solid ${FEATURE_ICON_COLORS[i]}22` }}
+                      >
+                        <Icon size={20} color={FEATURE_ICON_COLORS[i]} strokeWidth={2} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-[#E2E8F0] mb-1.5">{feat.t}</h3>
+                        <p className="text-sm text-[#475569] leading-relaxed">{feat.d}</p>
+                      </div>
+                    </div>
+                  </SpotlightCard>
                 </div>
-                <h3 className="font-bold text-base text-white mb-2">{title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
-              </div>
-            </div>
-          ))}
+              )
+            })}
+          </div>
         </div>
       </section>
 
-      {/* ── How It Works / Workflow ── */}
-      <section id="workflow" className="relative z-10 px-4 sm:px-6 lg:px-12 py-24 max-w-7xl mx-auto">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
+      {/* ── IT EQUIPMENT SHOWCASE ─────────────────────────────────── */}
+      <section className="relative py-24 px-6 lg:px-12">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#2A2A3A] to-transparent" />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 30%, rgba(245,158,11,0.04), transparent 60%)' }} />
+        <div className="max-w-7xl mx-auto">
+          <div className="reveal text-center mb-14">
+            <SectionTitle
+              title={lang === 'en' ? 'What You Can Borrow' : 'Apa yang Bisa Dipinjam'}
+              subtitle={lang === 'en' ? 'A diverse range of IT lab equipment available for student borrowing — from signal analyzers to embedded systems.' : 'Beragam peralatan lab IT tersedia untuk peminjaman mahasiswa — dari analis sinyal hingga sistem embedded.'}
+            />
+          </div>
 
-        <div className="text-center mb-14 fade-in-up">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-400 mb-4">
-            <Layers className="w-3 h-3" /> {t('processLabel')}
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            How{' '}
-            <span className="bg-gradient-to-r from-indigo-400 to-blue-400 bg-clip-text text-transparent">Equimon</span>
-            {' '}{t('howEquimonWorks')}
-          </h2>
-          <p className="text-slate-400 text-base max-w-2xl mx-auto">
-            {t('requestToReturn')}
-          </p>
-        </div>
-
-        <div className="relative">
-          {/* Connector line */}
-          <div className="hidden lg:block absolute top-10 left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-blue-500/10 via-blue-500/40 to-blue-500/10" />
-          {/* Connector dots */}
-          {[0,1,2,3].map(i => (
-            <div key={i} className="hidden lg:block absolute top-[36px] w-2 h-2 rounded-full bg-blue-400 ring-4 ring-blue-500/20" style={{ left: `calc(12.5% + ${i * 25}% - 4px)` }} />
-          ))}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {workflow.map(({ icon: Icon, step, title, desc }, i) => (
-              <div key={step} className={`fade-in-up stagger-${i + 1} relative bg-gradient-to-b from-[#0d1526]/80 to-[#0a0f1e]/60 backdrop-blur-sm border border-white/5 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 group hover:-translate-y-1.5 card-glow`}>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all duration-300">
-                    <Icon className="w-5 h-5 text-indigo-400" />
+          {/* Featured equipment grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
+            {[
+              { name: 'Oscilloscope', icon: Activity, color: '#3B82F6', sub: 'Signal Analysis' },
+              { name: 'Arduino Kit', icon: Cpu, color: '#22C55E', sub: 'Microcontrollers' },
+              { name: 'Network Analyzer', icon: Wifi, color: '#8B5CF6', sub: 'Protocol Testing' },
+              { name: 'Raspberry Pi', icon: Server, color: '#F59E0B', sub: 'SBC Computing' },
+              { name: 'Multimeter', icon: Gauge, color: '#EC4899', sub: 'Measurement' },
+              { name: 'Soldering Set', icon: Wrench, color: '#14B8A6', sub: 'PCB Assembly' },
+            ].map(({ name, icon: Icon, color, sub }, i) => (
+              <div key={i} className={`reveal reveal-delay-${i + 1}`}>
+                <div
+                  className="flex flex-col items-center gap-3 p-5 rounded-2xl border border-[#1A1A24] text-center transition-all duration-300 cursor-default"
+                  style={{ background: 'rgba(17,17,24,0.7)' }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = `${color}40`
+                    e.currentTarget.style.transform = 'translateY(-4px)'
+                    e.currentTarget.style.background = `${color}08`
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = '#1A1A24'
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.background = 'rgba(17,17,24,0.7)'
+                  }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `${color}12`, border: `1px solid ${color}28` }}>
+                    <Icon size={22} color={color} strokeWidth={1.8} />
                   </div>
-                  <span className="text-2xl font-black text-white/10 group-hover:text-white/20 transition-colors">{step}</span>
+                  <div>
+                    <div className="text-xs font-bold text-[#E2E8F0]">{name}</div>
+                    <div className="text-[10px] text-[#475569] mt-0.5">{sub}</div>
+                  </div>
                 </div>
-                <h3 className="font-bold text-white mb-2">{title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Additional equipment tags */}
+          <div className="flex flex-wrap gap-2 justify-center pt-8 border-t border-[#111118]">
+            {[
+              'Function Generator', 'LCR Meter', 'Spectrum Analyzer', 'FPGA Board',
+              'Servo Motor Set', 'Sensor Kit', 'Logic Analyzer', 'DC Motor Driver',
+              'RF Signal Generator', 'Digital Caliper', 'Benchtop Power Supply', 'Protocol Analyzer',
+              'Signal Generator', 'Network Switch', 'Thermal Camera',
+            ].map((item, i) => (
+              <span key={i} className="px-3 py-1.5 text-xs text-[#475569] border border-[#1A1A24] rounded-full" style={{ background: 'rgba(17,17,24,0.5)' }}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ──────────────────────────────────────────── */}
+      <section id="how-it-works" className="relative py-24 px-6 lg:px-12">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#2A2A3A] to-transparent" />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 50% at 50% 50%, rgba(139,92,246,0.04), transparent 70%)' }} />
+
+        <div className="max-w-7xl mx-auto">
+          <div className="reveal text-center mb-16">
+            <SectionTitle title={lp.howTitle} subtitle={lp.howSub} />
+          </div>
+
+          {/* Steps grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { step: '01', title: lp.s1t, desc: lp.s1d, icon: BookOpen, color: '#3B82F6' },
+              { step: '02', title: lp.s2t, desc: lp.s2d, icon: ShieldCheck, color: '#22C55E' },
+              { step: '03', title: lp.s3t, desc: lp.s3d, icon: CheckCircle2, color: '#8B5CF6' },
+              { step: '04', title: lp.s4t, desc: lp.s4d, icon: Package, color: '#F59E0B' },
+            ].map(({ step, title, desc, icon: Icon, color }, i) => (
+              <div key={i} className={`reveal reveal-delay-${i + 1}`}>
+                <SpotlightCard spotlightColor={`${color}18`} className="h-full p-6 relative">
+                  {/* Connector line (desktop only) */}
+                  {i < 3 && (
+                    <div
+                      className="hidden lg:block absolute top-8 left-[calc(100%+0.75rem)] w-6 z-10"
+                      style={{ height: 1, background: `linear-gradient(90deg, ${color}60, transparent)` }}
+                    />
+                  )}
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="step-ring" style={{ borderColor: `${color}45`, color, background: `${color}10` }}>
+                        {step}
+                      </div>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}12`, border: `1px solid ${color}25` }}>
+                        <Icon size={18} color={color} strokeWidth={2} />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#E2E8F0] mb-2">{title}</h3>
+                      <p className="text-xs text-[#475569] leading-relaxed">{desc}</p>
+                    </div>
+                  </div>
+                </SpotlightCard>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Equipment Categories ── */}
-      <section className="relative z-10 px-4 sm:px-6 lg:px-12 py-20 max-w-6xl mx-auto fade-in-up">
-        <div className="text-center mb-10">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-cyan-400 mb-4">
-            <Database className="w-3 h-3" /> {t('inventoryLabel')}
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">{t('whatsInCatalog')}</h2>
-          <p className="text-slate-400 text-sm max-w-2xl mx-auto">
-            Equimon manages a broad range of IT assets across multiple categories.
-          </p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-3">
-          {equipmentCategories.map(({ icon: Icon, label }, i) => (
-            <div
-              key={label}
-              className="group flex items-center gap-2.5 bg-[#0d1526]/60 border border-white/5 hover:border-blue-500/40 hover:bg-blue-500/8 rounded-full px-5 py-2.5 text-sm font-medium text-slate-400 hover:text-white transition-all duration-200 cursor-default"
-              style={{ animationDelay: `${i * 0.06}s` }}
-            >
-              <Icon className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
-              {label}
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ── CAPABILITIES ──────────────────────────────────────────── */}
+      <section id="capabilities" className="relative py-24 px-6 lg:px-12">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#2A2A3A] to-transparent" />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(34,197,94,0.03), transparent 60%)' }} />
 
-      {/* ── System Capabilities ── */}
-      <section id="capabilities" className="relative z-10 px-4 sm:px-6 lg:px-12 py-24 max-w-7xl mx-auto">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+        <div className="max-w-7xl mx-auto">
+          <div className="reveal text-center mb-16">
+            <SectionTitle title={lp.capTitle} subtitle={lp.capSub} />
+          </div>
 
-        <div className="text-center mb-14 fade-in-up">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-cyan-400 mb-4">
-            <BarChart3 className="w-3 h-3" /> {t('capabilities')}
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-            {t('builtForEvery')}{' '}
-            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              {t('stakeholder')}
-            </span>
-          </h2>
-          <p className="text-slate-400 text-base max-w-2xl mx-auto">
-            {t('equimonAdapts')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {capabilities.map(({ icon: Icon, title, desc }, i) => (
-            <div
-              key={title}
-              className={`fade-in-up stagger-${i + 1} group relative overflow-hidden bg-gradient-to-b from-blue-500/10 via-[#0d1526]/60 to-transparent backdrop-blur-sm border border-blue-500/20 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-400/50 card-glow`}
-            >
-              <div className="absolute -top-8 -right-8 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all" />
-              <div className="relative">
-                <div className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Icon className="w-5 h-5 text-blue-400" />
-                </div>
-                <h3 className="font-extrabold text-white text-base mb-3">{title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {[
+              {
+                title: lp.c1t, desc: lp.c1d, color: '#3B82F6',
+                icon: GraduationCap,
+                items: lang === 'id'
+                  ? ['Katalog peralatan IT', 'Pengajuan permintaan', 'Pantau status real-time', 'Pusat notifikasi', 'Riwayat peminjaman']
+                  : ['IT equipment catalog', 'Request submission', 'Real-time status tracking', 'Notification center', 'Borrowing history'],
+              },
+              {
+                title: lp.c2t, desc: lp.c2d, color: '#8B5CF6',
+                icon: ClipboardCheck,
+                items: lang === 'id'
+                  ? ['Persetujuan tertunda', 'Riwayat persetujuan', 'Detail permintaan', 'Tindakan cepat', 'Kebijakan peralatan']
+                  : ['Pending approvals', 'Approval history', 'Request details', 'Quick decisions', 'Equipment policies'],
+              },
+              {
+                title: lp.c3t, desc: lp.c3d, color: '#22C55E',
+                icon: Wrench,
+                items: lang === 'id'
+                  ? ['Manajemen inventaris', 'Persiapan & pengecekan', 'Proses pengembalian', 'Laporan & analitik', 'Pemeliharaan aset']
+                  : ['Inventory management', 'Equipment prep & check', 'Return processing', 'Reports & analytics', 'Asset maintenance'],
+              },
+            ].map(({ title, desc, color, icon: Icon, items }, i) => (
+              <div key={i} className={`reveal reveal-delay-${i + 1}`}>
+                <SpotlightCard spotlightColor={`${color}14`} className="h-full p-7">
+                  <div className="flex flex-col gap-5 h-full">
+                    {/* Header */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${color}12`, border: `1px solid ${color}28` }}>
+                        <Icon size={22} color={color} strokeWidth={2} />
+                      </div>
+                      <h3 className="text-lg font-bold text-[#E2E8F0]">{title}</h3>
+                    </div>
+                    <p className="text-sm text-[#475569] leading-relaxed">{desc}</p>
+                    {/* Feature list */}
+                    <ul className="flex flex-col gap-2 mt-auto">
+                      {items.map((item, j) => (
+                        <li key={j} className="flex items-center gap-2.5">
+                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+                          <span className="text-sm text-[#64748B]">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {/* CTA */}
+                    <button
+                      onClick={() => navigate('/login')}
+                      className="mt-4 w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-250 cursor-pointer"
+                      style={{
+                        background: `${color}12`,
+                        border: `1px solid ${color}28`,
+                        color,
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = `${color}22`
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = `${color}12`
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      {lp.heroCTA} →
+                    </button>
+                  </div>
+                </SpotlightCard>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section id="cta" className="relative z-10 px-4 sm:px-6 lg:px-12 py-24 max-w-7xl mx-auto fade-in-up">
-        <div className="relative overflow-hidden rounded-3xl border border-blue-500/25 bg-gradient-to-br from-blue-600/20 via-indigo-600/15 to-cyan-600/10 backdrop-blur-sm p-12 sm:p-20 text-center">
-          {/* Animated glow orbs */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none float-anim" />
-          <div className="absolute -bottom-24 right-1/4 w-64 h-64 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" style={{ animation: 'float 8s ease-in-out infinite reverse' }} />
-          {/* Grid texture */}
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+      {/* ── CTA SECTION ───────────────────────────────────────────── */}
+      <section className="cta-section relative py-24 px-6 lg:px-12">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#3B82F6]/30 to-transparent" />
+        {/* Grid background */}
+        <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
+          <ShapeGrid
+            direction="diagonal"
+            speed={0.3}
+            borderColor="rgba(139, 92, 246, 0.18)"
+            squareSize={54}
+            hoverFillColor="rgba(59, 130, 246, 0.1)"
+            shape="square"
+            hoverTrailAmount={3}
+          />
+        </div>
+        <div className="cta-glow" />
+        <div className="absolute inset-0 z-[1] pointer-events-none" style={{ background: 'radial-gradient(ellipse 75% 80% at 50% 50%, rgba(59,130,246,0.08) 0%, transparent 70%)' }} />
 
-          <div className="relative">
-            <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-300 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full border border-blue-500/20 mb-6">
-              <Sparkles className="w-3 h-3" /> Ready to begin?
+        <div className="max-w-3xl mx-auto text-center relative z-10">
+          <div className="reveal">
+            <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full border border-[#3B82F6]/20 bg-[#3B82F6]/06 text-[#60A5FA] text-xs font-semibold uppercase tracking-widest">
+              <Zap size={12} />
+              {lang === 'en' ? 'Get Started Today' : 'Mulai Sekarang'}
             </div>
-            <h2 className="text-4xl sm:text-5xl font-black mb-4 leading-tight">
-              {t('readyToGetStarted')}
+            <h2 className="text-3xl md:text-5xl font-bold text-[#E2E8F0] mb-4 leading-tight">
+              {lp.ctaTitle}
             </h2>
-            <p className="text-slate-400 mb-10 max-w-md mx-auto text-base">
-              {t('signInToAccess')}
-            </p>
+            <p className="text-[#475569] text-base md:text-lg mb-8">{lp.ctaSub}</p>
             <button
               onClick={() => navigate('/login')}
-              className="group inline-flex items-center gap-2 text-white font-bold px-12 py-4 rounded-2xl text-base transition-all shadow-2xl shadow-blue-700/40 hover:shadow-blue-500/60 hover:-translate-y-1 animated-gradient"
-              style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5,#0ea5e9)', backgroundSize:'200% 200%' }}
+              className="inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold text-base transition-all duration-300 shadow-xl shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-1 cursor-pointer"
             >
-              {t('signInNow')}
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <Lock size={16} />
+              {lp.ctaBtn}
+              <ArrowRight size={16} />
             </button>
           </div>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="relative z-10 border-t border-white/5 bg-[#080c18]/60 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Brand */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-                <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
-              </div>
-              <span className="text-lg font-extrabold">Equi<span className="text-blue-400">mon</span></span>
+      {/* ── FOOTER ────────────────────────────────────────────────── */}
+      <footer className="relative border-t border-[#111118] py-10 px-6 lg:px-12">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <img src={equimonLogo} alt="Equimon" className="w-8 h-8 rounded-lg object-contain" style={{ background: 'rgba(255,255,255,0.95)', padding: '2px' }} />
+            <div>
+              <span className="text-[#E2E8F0] font-bold text-sm">Equimon</span>
+              <p className="text-[#2A2A3A] text-[11px] mt-0.5">{lp.footerSub}</p>
             </div>
-            <p className="text-slate-500 text-sm leading-relaxed max-w-xs">
-              {t('footerTagline')}
-            </p>
           </div>
-
-          {/* Quick links */}
-          <div>
-            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('navigationLabel')}</h4>
-            <ul className="space-y-2.5 text-sm text-slate-500">
-              <li><a href="#features" className="hover:text-blue-400 transition-colors">{t('features')}</a></li>
-              <li><a href="#workflow" className="hover:text-blue-400 transition-colors">{t('howItWorks')}</a></li>
-              <li><a href="#capabilities" className="hover:text-blue-400 transition-colors">{t('capabilities')}</a></li>
-              <li><a href="#cta" className="hover:text-blue-400 transition-colors">{t('getStarted')}</a></li>
-            </ul>
+          <div className="flex items-center gap-4">
+            <button onClick={toggleLang} className="text-xs text-[#2A2A3A] hover:text-[#475569] transition-colors cursor-pointer bg-transparent border-0 font-poppins">
+              <Globe size={12} className="inline mr-1" />
+              {lang === 'en' ? 'Bahasa Indonesia' : 'English'}
+            </button>
+            <span className="text-[#2A2A3A] text-xs">{lp.footer}</span>
           </div>
-
-          {/* System info */}
-          <div>
-            <h4 className="text-white font-semibold text-sm mb-4 uppercase tracking-widest">{t('systemLabel')}</h4>
-            <ul className="space-y-2.5 text-sm text-slate-500">
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('roleBasedAuth')}</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('auditTrailHistory')}</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('multiStepApprovals')}</li>
-              <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-blue-400" /> {t('realTimeStatusTracking')}</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="border-t border-white/5 px-4 sm:px-6 lg:px-12 py-5 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-slate-600 text-xs">
-            © {new Date().getFullYear()} <span className="text-slate-500 font-semibold">Equimon</span>. {t('allRightsReserved')}
-          </p>
-          <p className="text-slate-700 text-xs">{t('landingTagline')}</p>
         </div>
       </footer>
     </div>
-  );
+  )
 }

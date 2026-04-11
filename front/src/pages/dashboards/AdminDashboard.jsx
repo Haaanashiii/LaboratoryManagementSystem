@@ -17,6 +17,7 @@ import {
 import { useLang } from '@/components/i18n/LangContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 import { ChartTooltipContent } from '@/components/ui/chart';
+import BanterLoader from '@/components/ui/BanterLoader';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const REQUEST_STATUS_COLORS = {
@@ -236,17 +237,17 @@ export default function AdminDashboard() {
     queryFn: () => api.auth.me(),
   });
 
-  const { data: users = [] } = useQuery({
+  const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.entities.User.list(),
   });
 
-  const { data: equipment = [] } = useQuery({
+  const { data: equipment = [], isLoading: equipmentLoading } = useQuery({
     queryKey: ['equipment'],
     queryFn: () => api.entities.Equipment.list(),
   });
 
-  const { data: allRequests = [] } = useQuery({
+  const { data: allRequests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['allRequests'],
     queryFn: () => api.entities.BorrowRequest.list(),
   });
@@ -361,6 +362,15 @@ export default function AdminDashboard() {
     return         { greeting: t('goodEvening') || 'Good evening',   Icon: Moon,   color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
   };
   const gc = getGreetingConfig();
+
+  // ── loading guard ──
+  if (usersLoading || requestsLoading || equipmentLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+        <BanterLoader />
+      </div>
+    );
+  }
 
   // ── render ──
   return (

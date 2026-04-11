@@ -5,3 +5,4 @@ export { default as ReportsSkeleton }           from './ReportsSkeleton';
 export { default as AdminSettingsSkeleton }     from './AdminSettingsSkeleton';
 export { default as InventorySkeleton }         from './InventorySkeleton';
 export { default as AllRequestsSkeleton }       from './AllRequestsSkeleton';
+export { default as EquipmentPreparationSkeleton } from './EquipmentPreparationSkeleton';

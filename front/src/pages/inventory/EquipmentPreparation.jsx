@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, CheckCircle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
+import { EquipmentPreparationSkeleton } from '@/skeleton-framework/admin';
 import { format } from 'date-fns';
 
 const PAGE_SIZE = 10;
@@ -204,9 +204,7 @@ export default function EquipmentPrep() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <BanterLoader />
-            </div>
+            <EquipmentPreparationSkeleton />
           ) : isError ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
