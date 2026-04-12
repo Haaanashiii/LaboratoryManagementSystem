@@ -2,7 +2,6 @@ import React from 'react';
 import EquipmentCard from '@/components/equipment/EquipmentCard';
 import { Input } from '@/components/ui/input';
 import { Search, SlidersHorizontal, Package } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
 
 const catalogStyles = `
   @keyframes fadeUp {
@@ -383,7 +382,7 @@ export default function CatalogContent({
       <div className="catalog-fade-up catalog-fade-up-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
-            <BanterLoader />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
           </div>
         ) : isError ? (
           <div className={emptyStateClass}>

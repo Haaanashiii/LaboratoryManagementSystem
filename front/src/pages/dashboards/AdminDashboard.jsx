@@ -17,7 +17,8 @@ import {
 import { useLang } from '@/components/i18n/LangContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 import { ChartTooltipContent } from '@/components/ui/chart';
-import BanterLoader from '@/components/ui/BanterLoader';
+import { AdminDashboardSkeleton } from '@/skeleton-framework/admin';
+
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const REQUEST_STATUS_COLORS = {
@@ -364,13 +365,7 @@ export default function AdminDashboard() {
   const gc = getGreetingConfig();
 
   // ── loading guard ──
-  if (usersLoading || requestsLoading || equipmentLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-        <BanterLoader />
-      </div>
-    );
-  }
+  if (usersLoading || requestsLoading || equipmentLoading) return <AdminDashboardSkeleton />;
 
   // ── render ──
   return (

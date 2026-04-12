@@ -9,9 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Package, Calendar, CheckCircle, XCircle, Loader2, Search, ClipboardList, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, User, Clock, FileText, Hash } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 import { useLang } from '@/components/i18n/LangContext';
+import { LecturerPendingApprovalSkeleton } from '@/skeleton-framework/lecturer';
 
 const PAGE_SIZE = 10;
 
@@ -117,13 +117,7 @@ export default function LecturerApprovals() {
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20 relative">
-        <BanterLoader />
-      </div>
-    );
-  }
+  if (isLoading) return <LecturerPendingApprovalSkeleton />;
 
   return (
     <div className="w-full space-y-4 px-2 py-2">

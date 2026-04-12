@@ -142,7 +142,7 @@ const translations = {
     adminLoginSubtitle: 'Sign in to manage laboratory operations.',
     adminEmailLabel: 'Email',
     adminPasswordLabel: 'Password',
-    adminEmailPlaceholder: 'admin@lab.edu',
+    adminEmailPlaceholder: 'Enter your email here',
     adminPasswordPlaceholder: 'Enter your password',
     adminErrorRequired: 'Email and password are required.',
     adminErrorEmailRequired: 'Email is required.',

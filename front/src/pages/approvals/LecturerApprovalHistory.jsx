@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, History, CheckCircle, XCircle, Package, LayoutList } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
+import { LecturerApprovalHistorySkeleton } from '@/skeleton-framework/lecturer';
 
 const STATUS_FILTERS = [
   { key: 'all',       label: 'All',       statuses: null,        color: 'bg-slate-50 text-slate-700 border-slate-200',    dot: '#64748b', activeBg: 'bg-slate-50',   activeText: 'text-slate-700',   activeBorder: 'border-slate-300',   icon: LayoutList,    iconColor: '#64748b',   iconBg: 'bg-slate-100' },
@@ -62,13 +62,7 @@ export default function LecturerApprovalHistory() {
 
   const activeFilterConfig = STATUS_FILTERS.find(f => f.key === statusFilter) ?? STATUS_FILTERS[0];
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20 relative">
-        <BanterLoader />
-      </div>
-    );
-  }
+  if (isLoading) return <LecturerApprovalHistorySkeleton />;
 
   return (
     <div className="w-full space-y-4 px-2 py-2">

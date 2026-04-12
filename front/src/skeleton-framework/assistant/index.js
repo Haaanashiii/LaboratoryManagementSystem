@@ -1,0 +1,3 @@
+export { default as AssistantDashboardSkeleton } from './AssistantDashboardSkeleton';
+export { default as AssistantReturnsSkeleton }   from './AssistantReturnsSkeleton';
+export { default as AssistantSettingsSkeleton }  from './AssistantSettingsSkeleton';

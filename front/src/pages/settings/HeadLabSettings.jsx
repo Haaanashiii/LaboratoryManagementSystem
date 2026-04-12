@@ -60,7 +60,7 @@ const PWD_CHECKS = [
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'security', label: 'Security', icon: Shield,          color: 'bg-violet-50 text-violet-700 border-violet-200', dot: '#8b5cf6' },
+  { id: 'security', label: 'Security', icon: Shield,          color: 'bg-slate-50 text-slate-700 border-slate-200',   dot: '#64748b' },
   { id: 'sidebar',  label: 'Sidebar',  icon: LayoutDashboard, color: 'bg-amber-50 text-amber-700 border-amber-200',    dot: '#f59e0b' },
 ];
 
@@ -277,8 +277,8 @@ export default function HeadLabSettings() {
           {/* ── Change Password card ── */}
           <Card className="border-slate-200 shadow-none overflow-hidden">
             <div className="flex items-center gap-4 border-b border-slate-100 px-6 py-5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-50 border border-violet-100">
-                <Lock className="w-5 h-5 text-violet-600" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200">
+                <Lock className="w-5 h-5 text-slate-600" />
               </div>
               <div>
                 <p className="text-base font-bold text-slate-800">Change Password</p>
@@ -291,7 +291,7 @@ export default function HeadLabSettings() {
 
                 {/* Current password */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="cur-pw" className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                  <Label htmlFor="cur-pw" className="flex items-center gap-4 text-xs font-semibold text-slate-600">
                     <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-slate-100 text-[9px] font-bold text-slate-500">1</span>
                     Current Password
                   </Label>
@@ -376,7 +376,7 @@ export default function HeadLabSettings() {
                 <Button
                   type="submit"
                   disabled={pwMutation.isPending}
-                  className="w-full gap-2 bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+                  className="w-full gap-2 bg-slate-700 hover:bg-slate-800 text-white transition-colors"
                 >
                   {pwMutation.isPending
                     ? <Loader2 className="w-4 h-4 animate-spin" />

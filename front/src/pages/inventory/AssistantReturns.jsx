@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, RotateCcw, AlertTriangle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
+import { AssistantReturnsSkeleton } from '@/skeleton-framework/assistant';
 
 const PAGE_SIZE = 10;
 
@@ -256,9 +256,7 @@ export default function Returns() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <BanterLoader />
-            </div>
+            <AssistantReturnsSkeleton />
           ) : isError ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
@@ -324,8 +322,9 @@ export default function Returns() {
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
+                              variant="ghost"
                               size="sm"
-                              className="h-7 gap-1.5 text-xs bg-slate-800 hover:bg-slate-900"
+                              className="h-7 gap-1.5 px-2.5 text-xs font-medium text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
                               onClick={() => openReturnDialog(request)}
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
@@ -384,33 +383,32 @@ export default function Returns() {
 
       {/* Return Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Process Return</DialogTitle>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                <RotateCcw className="h-4 w-4 text-blue-600" />
+              </div>
+              Process Return
+            </DialogTitle>
           </DialogHeader>
 
           <div className="py-4 space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
-              <div>
-                <p className="text-xs text-slate-500">Equipment</p>
-                <p className="text-sm font-medium text-slate-900">{selectedRequest?.equipment_name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Borrower</p>
-                <p className="text-sm font-medium text-slate-900">{selectedRequest?.borrower_name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Expected Return</p>
-                <p className="text-sm font-medium text-slate-900">
-                  {selectedRequest?.return_date ? format(new Date(selectedRequest.return_date), 'MMM d, yyyy') : '—'}
-                </p>
-              </div>
-            </div>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Processing return for{' '}
+              <span className="font-medium text-slate-700">{selectedRequest?.equipment_name}</span>
+              {' '}borrowed by{' '}
+              <span className="font-medium text-slate-700">{selectedRequest?.borrower_name}</span>.
+              {' '}Expected by{' '}
+              <span className="font-medium text-slate-700">
+                {selectedRequest?.return_date ? format(new Date(selectedRequest.return_date), 'MMM d, yyyy') : '—'}
+              </span>.
+            </p>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Equipment Condition</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-600">Equipment Condition</label>
               <Select value={returnCondition} onValueChange={handleConditionChange}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -437,8 +435,8 @@ export default function Returns() {
             </div>
 
             {returnCondition === 'Damaged' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">
                   What is damaged? <span className="text-red-500">*</span>
                 </label>
                 <Textarea
@@ -446,18 +444,19 @@ export default function Returns() {
                   onChange={(e) => setDamageDetails(e.target.value)}
                   placeholder="Example: cracked screen, broken cable, missing charger tip..."
                   rows={3}
+                  className="resize-none text-sm"
                 />
               </div>
             )}
 
             {returnCondition === 'Damaged' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Damage image (optional but recommended)</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">Damage image (optional but recommended)</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setDamageImage(e.target.files?.[0] || null)}
-                  className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-2 file:py-1 file:text-xs file:font-medium file:text-slate-700"
                 />
                 {damageImage && (
                   <p className="text-xs text-slate-500">Selected: {damageImage.name}</p>
@@ -466,12 +465,12 @@ export default function Returns() {
             )}
 
             {returnCondition === 'Damaged' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">
                   Will the borrower replace it? <span className="text-red-500">*</span>
                 </label>
                 <Select value={studentWillReplace} onValueChange={handleStudentReplacementChange}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm">
                     <SelectValue placeholder="Select replacement responsibility" />
                   </SelectTrigger>
                   <SelectContent>
@@ -483,19 +482,19 @@ export default function Returns() {
             )}
 
             {returnCondition === 'Lost' && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                <p className="font-medium">Lost item policy</p>
-                <p>{selectedRequest?.borrower_name} must replace this lost item.</p>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="text-xs font-medium text-red-700">Lost item policy</p>
+                <p className="mt-0.5 text-xs text-red-600">{selectedRequest?.borrower_name} must replace this lost item.</p>
               </div>
             )}
 
             {shouldTrackReplacement && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">
                   Has the replacement already been completed? <span className="text-red-500">*</span>
                 </label>
                 <Select value={replacementCompleted} onValueChange={setReplacementCompleted}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm">
                     <SelectValue placeholder="Select replacement status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -506,8 +505,8 @@ export default function Returns() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-600">
                 Remarks {returnCondition !== 'Good' && <span className="text-red-500">*</span>}
               </label>
               <Textarea
@@ -517,26 +516,32 @@ export default function Returns() {
                   ? 'Please describe the damage or issue...'
                   : 'Optional: Add any notes...'}
                 rows={3}
+                className="resize-none text-sm"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+          <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
+            <Button variant="outline" size="sm" onClick={closeDialog} className="text-xs">
+              Cancel
+            </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => handleReturn(true)}
               disabled={returnMutation.isPending || isFormInvalid || (selectedRequest ? isOverdue(selectedRequest.return_date) : true)}
+              className="text-xs"
             >
               Mark Returned Early
             </Button>
             <Button
+              size="sm"
               onClick={() => handleReturn(false)}
               disabled={returnMutation.isPending || isFormInvalid}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="text-xs text-white bg-blue-600 hover:bg-blue-700"
             >
               {returnMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing…</>
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Processing…</>
               ) : (
                 'Confirm Return'
               )}

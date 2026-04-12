@@ -3,10 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Package, Calendar, Clock, CheckCircle, RotateCcw, BookOpen, ChevronRight, AlertCircle, X, History, ChevronLeft } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
+import {
+  Package, Calendar, CheckCircle, RotateCcw, BookOpen, ChevronRight, AlertCircle,
+  X, History, ChevronLeft, FilePlus2, UserCheck, BadgeCheck, PackageCheck, Laptop,
+  MessageSquare, User, Tag, Hash
+} from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { useTheme } from '@/components/hooks/ThemeContext';
+import { StudentRequestsSkeleton } from '@/skeleton-framework/student';
 
 const pageStyles = `
   @keyframes fadeUp {
@@ -56,16 +60,127 @@ const pageStyles = `
   .tab-pill.inactive-light { color: #64748b; }
   .tab-pill.inactive-dark  { color: #475569; }
   .tab-pill:focus-visible { box-shadow: 0 0 0 2px #3b82f6; }
+
+  /* ── NEW MODAL STYLES ── */
+  @keyframes modalSlideIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+  }
+  .req-modal-panel {
+    animation: modalSlideIn 0.25s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  .req-img-banner {
+    position: relative;
+    overflow: hidden;
+    height: 180px;
+    border-radius: 16px 16px 0 0;
+    background: #0d1117;
+  }
+  .req-img-banner img {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  .req-img-banner:hover img { transform: scale(1.03); }
+
+  /* diagonal scanline overlay */
+  .req-img-banner::before {
+    content: '';
+    position: absolute; inset: 0; z-index: 1;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 3px,
+      rgba(0,0,0,0.04) 3px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+  }
+  /* bottom gradient fade */
+  .req-img-banner::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+    height: 80px;
+    background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+    pointer-events: none;
+  }
+  .req-img-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px;
+    background: repeating-linear-gradient(
+      135deg,
+      #0d0d14 0px, #0d0d14 20px,
+      #111118 20px, #111118 40px
+    );
+  }
+  .req-img-placeholder-light {
+    background: repeating-linear-gradient(
+      135deg,
+      #f1f5f9 0px, #f1f5f9 20px,
+      #e2e8f0 20px, #e2e8f0 40px
+    );
+  }
+
+  /* Journey timeline */
+  .journey-line {
+    position: absolute; left: 15px; top: 20px; bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #3b82f6, transparent);
+  }
+  .journey-line-done {
+    background: linear-gradient(to bottom, #22c55e, #3b82f6);
+  }
+
+  @keyframes stepPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+    50%      { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
+  }
+  .step-current { animation: stepPulse 2s ease-in-out infinite; }
+
+  @keyframes imgFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .req-img-fade { animation: imgFade 0.3s ease forwards; }
+
+  .req-img-nav {
+    position: absolute; z-index: 10; top: 50%; transform: translateY(-50%);
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s ease;
+    color: white;
+  }
+  .req-img-nav:hover { background: rgba(0,0,0,0.75); }
+
+  .req-img-dots {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    z-index: 10; display: flex; gap: 4px;
+  }
+  .req-img-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(255,255,255,0.4); transition: background 0.2s, width 0.2s;
+  }
+  .req-img-dot.active { background: white; width: 10px; border-radius: 3px; }
+
+  /* Glowing status chip */
+  .status-glow-pending { box-shadow: 0 0 12px rgba(234,179,8,0.4); }
+  .status-glow-approved { box-shadow: 0 0 12px rgba(59,130,246,0.4); }
+  .status-glow-borrowed { box-shadow: 0 0 12px rgba(168,85,247,0.4); }
+  .status-glow-returned { box-shadow: 0 0 12px rgba(34,197,94,0.4); }
+  .status-glow-rejected { box-shadow: 0 0 12px rgba(239,68,68,0.4); }
 `;
 
 
-const trackerSteps = [
-  { key: 'pending_lecturer', label: 'Lecturer' },
-  { key: 'pending_head', label: 'Head' },
-  { key: 'head_approved', label: 'Approved' },
-  { key: 'ready_pickup', label: 'Ready' },
-  { key: 'borrowed', label: 'Borrowed' },
-  { key: 'returned', label: 'Returned' },
+const journeySteps = [
+  { key: 'pending_lecturer', label: 'Request Submitted',  subtitle: 'Awaiting lecturer review',     Icon: FilePlus2    },
+  { key: 'pending_head',     label: 'Lecturer Approved',  subtitle: 'Forwarded to head of lab',     Icon: UserCheck    },
+  { key: 'head_approved',    label: 'Head Approved',      subtitle: 'Being prepared by lab staff',  Icon: BadgeCheck   },
+  { key: 'ready_pickup',     label: 'Ready for Pickup',   subtitle: 'Please collect at the lab',    Icon: PackageCheck },
+  { key: 'borrowed',         label: 'Equipment In Use',   subtitle: 'You currently have this item', Icon: Laptop      },
+  { key: 'returned',         label: 'Returned',           subtitle: 'Transaction complete',         Icon: RotateCcw    },
 ];
 
 const ACTIVE_PAGE_SIZE = 5;
@@ -86,6 +201,7 @@ export default function MyRequests() {
   const [activePage, setActivePage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyFilter, setHistoryFilter] = useState('all');
+  const [modalImageIndex, setModalImageIndex] = useState(0);
   const { isDark } = useTheme();
 
   const { data: user } = useQuery({
@@ -163,8 +279,17 @@ export default function MyRequests() {
     : {};
 
   const getStatusStep = (status) => {
-    const index = trackerSteps.findIndex((step) => step.key === status);
+    const index = journeySteps.findIndex((step) => step.key === status);
     return index >= 0 ? index + 1 : 1;
+  };
+
+  const getStatusGlowClass = (status) => {
+    if (['pending_lecturer', 'pending_head'].includes(status)) return 'status-glow-pending';
+    if (['head_approved', 'ready_pickup'].includes(status)) return 'status-glow-approved';
+    if (status === 'borrowed') return 'status-glow-borrowed';
+    if (status === 'returned') return 'status-glow-returned';
+    if (status === 'rejected') return 'status-glow-rejected';
+    return '';
   };
 
   const renderProgressTracker = (request) => {
@@ -178,13 +303,13 @@ export default function MyRequests() {
     }
 
     const currentStep = getStatusStep(request.status);
-    const progress = (currentStep / trackerSteps.length) * 100;
+    const progress = (currentStep / journeySteps.length) * 100;
 
     return (
       <div className={`mt-4 rounded-xl border p-4 ${isDark ? 'border-white/[0.08] bg-white/[0.03]' : 'border-slate-100 bg-slate-50'}`}>
         <div className="mb-3 flex items-center justify-between">
           <p className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Progress</p>
-          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Step {currentStep} of {trackerSteps.length}</p>
+          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Step {currentStep} of {journeySteps.length}</p>
         </div>
         <div className={`relative mb-4 h-1.5 w-full overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
           <div
@@ -193,7 +318,7 @@ export default function MyRequests() {
           />
         </div>
         <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
-          {trackerSteps.map((step, index) => {
+          {journeySteps.map((step, index) => {
             const stepNumber = index + 1;
             const isDone = currentStep > stepNumber;
             const isCurrent = currentStep === stepNumber;
@@ -278,13 +403,7 @@ export default function MyRequests() {
     </div>
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20 relative">
-        <BanterLoader />
-      </div>
-    );
-  }
+  if (isLoading) return <StudentRequestsSkeleton />;
 
   if (isError) {
     return (
@@ -540,75 +659,257 @@ export default function MyRequests() {
       </div>
 
       {/* ── REQUEST DETAILS DIALOG ──────────────────────────────── */}
-      <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className={`sm:max-w-lg rounded-2xl shadow-2xl ${isDark ? 'bg-[#111118] border-white/10 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
-          <DialogHeader>
-            <DialogTitle className={`text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-              Request Details
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog open={!!selectedRequest} onOpenChange={() => { setSelectedRequest(null); setModalImageIndex(0); }}>
+        <DialogContent className={`p-0 overflow-hidden sm:max-w-xl rounded-2xl shadow-2xl border-0 req-modal-panel ${isDark ? 'bg-[#0d0d14] text-slate-200' : 'bg-white text-slate-900'}`}>
+          {selectedRequest && (() => {
+            const images = selectedRequest.equipment_images_urls || [];
+            const hasImages = images.length > 0;
+            const currentImg = hasImages ? images[modalImageIndex] : null;
+            const currentStep = selectedRequest.status !== 'rejected' ? getStatusStep(selectedRequest.status) : 0;
+            const hasRemarks = selectedRequest.lecturer_remarks || selectedRequest.head_remarks || (selectedRequest.status === 'rejected' && selectedRequest.rejection_reason);
 
-          {selectedRequest && (
-            <div className="space-y-1 mt-2">
-              {/* Equipment info row */}
-              <div className={`flex items-center gap-3 p-4 rounded-xl ${isDark ? 'bg-white/[0.04]' : 'bg-slate-50'}`}>
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                  <Package className="w-5 h-5 text-blue-500" />
+            return (
+              <>
+                {/* ── IMAGE BANNER ── */}
+                <div className="req-img-banner">
+                  {hasImages ? (
+                    <>
+                      <img
+                        key={currentImg}
+                        src={currentImg}
+                        alt={selectedRequest.equipment_name}
+                        className="req-img-fade"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            className="req-img-nav"
+                            style={{ left: 8 }}
+                            onClick={() => setModalImageIndex(i => (i === 0 ? images.length - 1 : i - 1))}
+                            aria-label="Previous image"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            className="req-img-nav"
+                            style={{ right: 8 }}
+                            onClick={() => setModalImageIndex(i => (i === images.length - 1 ? 0 : i + 1))}
+                            aria-label="Next image"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                          <div className="req-img-dots">
+                            {images.map((_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setModalImageIndex(i)}
+                                className={`req-img-dot ${i === modalImageIndex ? 'active' : ''}`}
+                                aria-label={`Image ${i + 1}`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div className={`req-img-placeholder ${isDark ? '' : 'req-img-placeholder-light'}`}>
+                      <Package className={`w-10 h-10 ${isDark ? 'text-slate-700' : 'text-slate-300'}`} />
+                      <span className={`text-xs font-medium ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>No image available</span>
+                    </div>
+                  )}
+
+                  {/* Floating name + status over the banner */}
+                  <div className="absolute bottom-0 left-0 right-0 z-10 px-5 pb-4 flex items-end justify-between">
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${hasImages ? 'text-blue-300' : isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                        Equipment
+                      </p>
+                      <h2 className={`text-lg font-black leading-tight drop-shadow-md ${hasImages ? 'text-white' : isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                        {selectedRequest.equipment_name}
+                      </h2>
+                    </div>
+                    <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider border backdrop-blur-sm ${getStatusGlowClass(selectedRequest.status)} ${
+                      selectedRequest.status === 'rejected'
+                        ? 'bg-red-500/20 border-red-500/50 text-red-300'
+                        : selectedRequest.status === 'returned'
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                        : selectedRequest.status === 'borrowed'
+                        ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
+                        : ['head_approved','ready_pickup'].includes(selectedRequest.status)
+                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
+                        : 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300'
+                    }`}>
+                      {selectedRequest.status.replace(/_/g, ' ')}
+                    </div>
+                  </div>
                 </div>
+
+                {/* ── BODY (no scroll) ── */}
                 <div>
-                  <p className={`font-semibold text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{selectedRequest.equipment_name}</p>
-                  <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Quantity: {selectedRequest.quantity}</p>
-                </div>
-                <div className="ml-auto">
-                  <StatusBadge status={selectedRequest.status} />
-                </div>
-              </div>
 
-              {/* Key-value pairs */}
-              {[
-                { label: 'Borrow Date', value: format(new Date(selectedRequest.borrow_date), 'MMM d, yyyy') },
-                { label: 'Return Date', value: format(new Date(selectedRequest.return_date), 'MMM d, yyyy') },
-              ].map(row => (
-                <div key={row.label} className={`flex items-center justify-between px-4 py-3 rounded-xl ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/60'}`}>
-                  <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{row.label}</span>
-                  <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{row.value}</span>
-                </div>
-              ))}
+                  {/* ── META PILLS + PURPOSE ROW ── */}
+                  <div className={`px-5 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {[
+                        { Icon: Hash,     text: `Qty: ${selectedRequest.quantity}` },
+                        { Icon: Calendar, text: format(new Date(selectedRequest.borrow_date), 'MMM d') + ' → ' + format(new Date(selectedRequest.return_date), 'MMM d, yyyy') },
+                      ].map(({ Icon, text }) => (
+                        <span key={text} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                          <Icon className="w-3 h-3 opacity-60" />{text}
+                        </span>
+                      ))}
+                      {selectedRequest.equipment?.category && (
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${isDark ? 'bg-white/[0.04] border-white/[0.08] text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                          <Tag className="w-3 h-3 opacity-60" />{selectedRequest.equipment.category}
+                        </span>
+                      )}
+                    </div>
+                    {selectedRequest.purpose && (
+                      <p className={`text-xs leading-relaxed line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <span className={`font-bold mr-1.5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Purpose:</span>{selectedRequest.purpose}
+                      </p>
+                    )}
+                  </div>
 
-              {/* Purpose */}
-              {selectedRequest.purpose && (
-                <div className={`px-4 py-3 rounded-xl ${isDark ? 'bg-white/[0.03]' : 'bg-slate-50/60'}`}>
-                  <p className={`text-xs mb-1 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Purpose</p>
-                  <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{selectedRequest.purpose}</p>
-                </div>
-              )}
+                  {/* ── HORIZONTAL JOURNEY STEPPER ── */}
+                  <div className={`px-5 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Request Journey</p>
 
-              {/* Remarks */}
-              {selectedRequest.lecturer_remarks && (
-                <div className={`px-4 py-3 rounded-xl border ${isDark ? 'bg-amber-950/20 border-amber-900/30' : 'bg-amber-50 border-amber-100'}`}>
-                  <p className={`text-xs mb-1 font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Lecturer Remarks</p>
-                  <p className={`text-xs leading-relaxed ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{selectedRequest.lecturer_remarks}</p>
-                </div>
-              )}
+                    {selectedRequest.status === 'rejected' ? (
+                      <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 border ${
+                        isDark ? 'bg-red-950/30 border-red-900/40' : 'bg-red-50 border-red-100'
+                      }`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isDark ? 'bg-red-900/60 text-red-400' : 'bg-red-100 text-red-600'
+                        }`}>
+                          <X className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <p className={`text-xs font-bold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Request Rejected</p>
+                          <p className={`text-[10px] ${isDark ? 'text-red-600' : 'text-red-500'}`}>This request was not approved.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start">
+                        {journeySteps.map((step, index) => {
+                          const stepNum = index + 1;
+                          const isDone = currentStep > stepNum;
+                          const isCurrent = currentStep === stepNum;
+                          const isLast = index === journeySteps.length - 1;
+                          const { Icon } = step;
+                          return (
+                            <div key={step.key} className="flex-1 flex flex-col items-center relative">
+                              {/* Connector left */}
+                              {index > 0 && (
+                                <div className={`absolute left-0 right-1/2 top-[14px] h-px ${
+                                  isDone || isCurrent
+                                    ? isDone ? 'bg-emerald-500/70' : 'bg-indigo-500/50'
+                                    : isDark ? 'bg-white/[0.08]' : 'bg-slate-200'
+                                }`} />
+                              )}
+                              {/* Connector right */}
+                              {!isLast && (
+                                <div className={`absolute left-1/2 right-0 top-[14px] h-px ${
+                                  isDone ? 'bg-emerald-500/70' : isDark ? 'bg-white/[0.08]' : 'bg-slate-200'
+                                }`} />
+                              )}
+                              {/* Step dot */}
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all duration-300 ${
+                                isDone
+                                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                                  : isCurrent
+                                  ? 'bg-indigo-600 text-white step-current'
+                                  : isDark
+                                  ? 'bg-[#1a1a24] text-slate-600 border border-white/[0.08]'
+                                  : 'bg-slate-100 text-slate-300 border border-slate-200'
+                              }`}>
+                                {isDone
+                                  ? <CheckCircle className="w-3.5 h-3.5" />
+                                  : <Icon className={`w-3 h-3 ${isCurrent ? '' : 'opacity-40'}`} />
+                                }
+                              </div>
+                              {/* Label */}
+                              <p className={`text-[9px] font-semibold text-center mt-1.5 leading-tight px-0.5 ${
+                                isDone
+                                  ? isDark ? 'text-emerald-500' : 'text-emerald-600'
+                                  : isCurrent
+                                  ? isDark ? 'text-indigo-300' : 'text-indigo-600'
+                                  : isDark ? 'text-slate-700' : 'text-slate-300'
+                              }`}>{step.label}</p>
+                              {isCurrent && (
+                                <span className="w-1 h-1 rounded-full bg-indigo-500 animate-pulse mt-0.5" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
-              {selectedRequest.head_remarks && (
-                <div className={`px-4 py-3 rounded-xl border ${isDark ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50 border-blue-100'}`}>
-                  <p className={`text-xs mb-1 font-semibold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Head of Lab Remarks</p>
-                  <p className={`text-xs leading-relaxed ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>{selectedRequest.head_remarks}</p>
-                </div>
-              )}
+                  {/* ── REMARKS ── */}
+                  {hasRemarks && (
+                    <div className={`px-5 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <MessageSquare className={`w-3 h-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Remarks</p>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedRequest.lecturer_remarks && (
+                          <div className={`rounded-xl px-3 py-2.5 ${
+                            isDark ? 'bg-white/[0.03]' : 'bg-slate-50'
+                          }`}>
+                            <div className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                              isDark ? 'bg-white/[0.06] text-slate-400' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              <User className="w-2.5 h-2.5" /> Lecturer
+                            </div>
+                            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{selectedRequest.lecturer_remarks}</p>
+                          </div>
+                        )}
+                        {selectedRequest.head_remarks && (
+                          <div className={`rounded-xl px-3 py-2.5 ${
+                            isDark ? 'bg-white/[0.03]' : 'bg-slate-50'
+                          }`}>
+                            <div className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                              isDark ? 'bg-white/[0.06] text-slate-400' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              <User className="w-2.5 h-2.5" /> Head of Lab
+                            </div>
+                            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{selectedRequest.head_remarks}</p>
+                          </div>
+                        )}
+                        {selectedRequest.status === 'rejected' && selectedRequest.rejection_reason && (
+                          <div className={`rounded-xl px-3 py-2.5 ${
+                            isDark ? 'bg-white/[0.03]' : 'bg-slate-50'
+                          }`}>
+                            <div className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                              isDark ? 'bg-white/[0.06] text-slate-400' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              <AlertCircle className="w-2.5 h-2.5" /> Rejection Reason
+                            </div>
+                            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{selectedRequest.rejection_reason}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-              {selectedRequest.status === 'rejected' && selectedRequest.rejection_reason && (
-                <div className={`px-4 py-3 rounded-xl border ${isDark ? 'bg-red-950/20 border-red-900/30' : 'bg-red-50 border-red-100'}`}>
-                  <p className={`text-xs mb-1 font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Rejection Reason</p>
-                  <p className={`text-xs leading-relaxed ${isDark ? 'text-red-300' : 'text-red-800'}`}>{selectedRequest.rejection_reason}</p>
+                  {/* ── CLOSE ── */}
+                  <div className="px-5 py-3">
+                    <button
+                      onClick={() => { setSelectedRequest(null); setModalImageIndex(0); }}
+                      className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                        isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              {/* Progress tracker inside dialog */}
-              {renderProgressTracker(selectedRequest)}
-            </div>
-          )}
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

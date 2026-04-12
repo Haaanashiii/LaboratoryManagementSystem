@@ -12,7 +12,7 @@ import {
   MapPin, Tag, Package, CheckCircle2, ImagePlus, Link2, Plus,
   AlertCircle,
 } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
+import { EditEquipmentSkeleton } from '@/skeleton-framework/admin';
 
 /* ─── Static config ─────────────────────────────────────────── */
 
@@ -175,13 +175,7 @@ export default function EditEquipmentPage() {
   const isSubmitting = uploading || updateMutation.isPending;
 
   /* ─── Loading / error states ─────────────────────────────────── */
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <BanterLoader />
-      </div>
-    );
-  }
+  if (isLoading) return <EditEquipmentSkeleton />;
 
   if (isError || (!isLoading && !equipment)) {
     return (

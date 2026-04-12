@@ -597,7 +597,10 @@ export const api = {
       },
       myRequests: async () => {
         const data = await request('/borrow-requests/my-requests');
-        return data.data.map(item => ({ ...item, id: item._id || item.id }));
+        return data.data.map(item => {
+          const eqImages = item.equipment ? normalizeEquipmentImages(item.equipment) : { image_url: '', images_urls: [] };
+          return { ...item, id: item._id || item.id, equipment_image_url: eqImages.image_url, equipment_images_urls: eqImages.images_urls };
+        });
       },
       filter: async (filters) => {
         const params = new URLSearchParams(filters).toString();

@@ -1,5 +1,4 @@
 import { Navigate } from 'react-router-dom';
-import BanterLoader from '@/components/ui/BanterLoader';
 import { useAuth } from '@/components/hooks/useAuth.js';
 import { getCatalogRouteForRole } from '@/utils/roleCatalogRoutes';
 
@@ -9,7 +8,7 @@ export default function CatalogRedirect() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <BanterLoader />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
       </div>
     );
   }

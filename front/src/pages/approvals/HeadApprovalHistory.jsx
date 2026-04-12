@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, History, CheckCircle, XCircle, Package, LayoutList } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
 import { format } from 'date-fns';
 import { useLang } from '@/components/i18n/LangContext';
+import { HeadApprovalHistorySkeleton } from '@/skeleton-framework/head of lab';
 
 const APPROVED_STATUSES = ['head_approved', 'ready_pickup', 'borrowed', 'returned'];
 
@@ -71,13 +71,7 @@ export default function HeadApprovalHistory() {
       ? myActedRequests.filter(r => filter.statuses.includes(r.status)).length
       : myActedRequests.length;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20 relative">
-        <BanterLoader />
-      </div>
-    );
-  }
+  if (isLoading) return <HeadApprovalHistorySkeleton />;
 
   return (
     <div className="w-full space-y-4 px-2 py-2">

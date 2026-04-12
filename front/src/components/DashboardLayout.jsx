@@ -47,7 +47,6 @@ const navigationConfig = {
     { name: 'dashboard', href: '/dashboard', icon: Home },
     { name: 'equipmentCatalog', href: CATALOG_ROUTES_BY_ROLE.student, icon: Package },
     { name: 'myRequests', href: '/requests', icon: FileText },
-    { name: 'myHistory', href: '/approval-history', icon: History },
   ],
   
   lecturer: [
@@ -102,7 +101,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, lang, toggleLang } = useLang();
-  const { logout } = useAuth();
+  const { logout, user: authUser } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
 
   useEffect(() => {
@@ -360,8 +359,12 @@ export default function DashboardLayout() {
     await logout();
   };
 
+  // Use authUser (from context, already loaded by ProtectedRoute) for role-based
+  // layout decisions to prevent a brief flash of the student layout on refresh.
+  const resolvedUser = authUser || user;
+
   // Determine if current user should use sidebar (all roles except student)
-  const useSidebar = user?.role && user.role !== 'student';
+  const useSidebar = resolvedUser?.role && resolvedUser.role !== 'student';
 
   // If using sidebar layout
   if (useSidebar) {
@@ -369,7 +372,7 @@ export default function DashboardLayout() {
       <div className="flex h-screen bg-slate-50 overflow-hidden">
         {/* Sidebar Component */}
         <Sidebar 
-          user={user} 
+          user={resolvedUser} 
           currentPage={location.pathname}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}

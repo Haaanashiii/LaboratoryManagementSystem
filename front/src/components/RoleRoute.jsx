@@ -1,7 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/components/hooks/useAuth.js';
 import { getCatalogRouteForRole } from '@/utils/roleCatalogRoutes';
-import BanterLoader from '@/components/ui/BanterLoader';
 
 export default function RoleRoute({ allowedRoles }) {
   const location = useLocation();
@@ -10,7 +9,7 @@ export default function RoleRoute({ allowedRoles }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <BanterLoader />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
       </div>
     );
   }

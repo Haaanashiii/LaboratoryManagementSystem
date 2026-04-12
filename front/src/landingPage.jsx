@@ -21,26 +21,26 @@ const LP = {
     heroH1a: 'Borrow, Approve &', heroH1b: 'Track', heroH1c: 'Lab Equipment',
     heroSub: 'A smart platform purpose-built for managing lab equipment borrowing — connecting students, lecturers, and lab staff in one unified workflow.',
     heroCTA: 'Sign In Now', heroLearn: 'Explore Features',
-    stat1: '50+ items', stat1Label: 'Equipment', stat2: '5', stat2Label: 'User roles', stat3: 'Live', stat3Label: 'Tracking',
-    featTitle: 'Everything Built In', featSub: 'End-to-end lab equipment management — from browsing to returning.',
+    stat1: '50+ items', stat1Label: 'Equipment', stat2: '4-step', stat2Label: 'Borrow flow', stat3: 'Live', stat3Label: 'Tracking',
+    featTitle: 'Everything Built In', featSub: 'The complete borrowing lifecycle — from a catalog browse to a verified return.',
     f1t: 'Equipment Catalog', f1d: 'Browse the full inventory with live availability, filtering, and detailed specs.',
-    f2t: 'Smart Borrowing', f2d: 'Submit borrow requests in seconds. Full history, status, and duration tracking.',
-    f3t: 'Real-time Tracking', f3d: 'Get instant push notifications at every step of the borrowing lifecycle.',
-    f4t: 'Multi-role Access', f4d: '5 distinct role dashboards — tailored views for every type of user.',
-    f5t: 'Reports & Analytics', f5d: 'Generate usage reports, track trends, and export data for institutional records.',
-    f6t: 'Return Management', f6d: 'Log equipment returns, check conditions, and update inventory automatically.',
+    f2t: 'Borrow in Seconds', f2d: 'Fill in dates and purpose, submit, and your request enters the approval queue instantly.',
+    f3t: 'Live Status Updates', f3d: 'Get push notifications the moment your request is approved, rejected, or ready for pickup.',
+    f4t: 'Two-stage Approval', f4d: 'Requests pass through lecturer review then head-of-lab sign-off before any equipment leaves.',
+    f5t: 'Reports & Analytics', f5d: 'Track borrow frequency, overdue returns, and equipment utilisation across the lab.',
+    f6t: 'Return & Inventory Sync', f6d: 'Log returns, verify condition, and watch inventory update automatically in real time.',
     howTitle: 'How It Works', howSub: 'Four steps from request to return.',
     s1t: 'Browse & Request', s1d: 'Pick equipment from the catalog and submit a borrow request with dates and purpose.',
     s2t: 'Lecturer Review', s2d: 'Your assigned lecturer reviews and approves (or rejects) the request with notes.',
-    s3t: 'Head Approval', s3d: 'The Head of Lab performs final approval, verifying all institutional policies.',
-    s4t: 'Pickup & Return', s4d: 'Lab assistant prepares the equipment. You pick up, use it, and return.',
-    capTitle: 'Built for Every Role', capSub: 'Tailored dashboards and workflows for every person in the lab ecosystem.',
-    c1t: 'Students', c1d: 'Submit requests and track your borrowings from a clean personal dashboard.',
-    c2t: 'Lecturers & Head', c2d: 'Review pending approvals and manage equipment authorizations at scale.',
-    c3t: 'Lab Assistants & Admin', c3d: 'Prepare equipment, process returns, and maintain the complete inventory.',
-    ctaTitle: 'Ready to Get Started?', ctaSub: 'Sign in to access your role-specific dashboard.',
+    s3t: 'Head Approval', s3d: 'The Head of Lab gives final sign-off, confirming the request meets lab policy.',
+    s4t: 'Pickup & Return', s4d: 'Lab assistant hands over the equipment. You use it, bring it back, and the system closes the loop.',
+    capTitle: 'From Request to Return', capSub: 'Every phase of the borrowing lifecycle — browse, request, approve, collect, and return — in one unified flow.',
+    c1t: 'Browse & Request', c1d: 'Search the catalog, check live availability, and submit a borrow request in under a minute.',
+    c2t: 'Review & Approve', c2d: 'Requests get lecturer review followed by head-of-lab sign-off before any item is released.',
+    c3t: 'Pickup & Return', c3d: 'Lab staff prepares and hands over equipment; returns are logged and inventory updated instantly.',
+    ctaTitle: 'Ready to Borrow?', ctaSub: 'Sign in to browse the catalog and submit your first borrow request.',
     ctaBtn: 'Sign In to Equimon', footer: '© 2025 Equimon · All rights reserved.',
-    footerSub: 'Streamlining lab management for the modern academic institution.',
+    footerSub: 'Streamlining lab equipment borrowing for the modern academic institution.'
   },
   id: {
     navFeatures: 'Fitur', navHow: 'Cara Kerja', navCapabilities: 'Kemampuan',
@@ -48,26 +48,26 @@ const LP = {
     heroH1a: 'Pinjam, Setujui &', heroH1b: 'Kelola', heroH1c: 'Peralatan Lab',
     heroSub: 'Platform cerdas untuk peminjaman peralatan lab — menghubungkan mahasiswa, dosen, dan staf laboratorium dalam satu alur kerja.',
     heroCTA: 'Masuk Sekarang', heroLearn: 'Jelajahi Fitur',
-    stat1: '50+', stat1Label: 'Peralatan', stat2: '5', stat2Label: 'Peran pengguna', stat3: 'Live', stat3Label: 'Pelacakan',
-    featTitle: 'Semua Sudah Ada', featSub: 'Manajemen end-to-end dari penelusuran hingga pengembalian.',
+    stat1: '50+', stat1Label: 'Peralatan', stat2: '4 langkah', stat2Label: 'Alur pinjam', stat3: 'Live', stat3Label: 'Pelacakan',
+    featTitle: 'Semua Sudah Ada', featSub: 'Siklus peminjaman lengkap — dari penelusuran katalog hingga pengembalian terverifikasi.',
     f1t: 'Katalog Peralatan', f1d: 'Telusuri inventaris lengkap dengan ketersediaan langsung dan spesifikasi detail.',
-    f2t: 'Peminjaman Cerdas', f2d: 'Ajukan permintaan dalam hitungan detik dengan pelacakan riwayat dan status.',
-    f3t: 'Pelacakan Real-time', f3d: 'Terima notifikasi instan di setiap langkah siklus peminjaman.',
-    f4t: 'Akses Multi-peran', f4d: '5 dashboard peran berbeda — tampilan khusus untuk setiap jenis pengguna.',
-    f5t: 'Laporan & Analitik', f5d: 'Buat laporan penggunaan, lacak tren, dan ekspor data untuk pencatatan institusi.',
-    f6t: 'Manajemen Pengembalian', f6d: 'Catat pengembalian, cek kondisi, dan perbarui inventaris secara otomatis.',
+    f2t: 'Pinjam dalam Detik', f2d: 'Isi tanggal dan tujuan, kirim, dan permintaan langsung masuk antrean persetujuan.',
+    f3t: 'Update Status Langsung', f3d: 'Terima notifikasi segera saat permintaan disetujui, ditolak, atau siap diambil.',
+    f4t: 'Persetujuan Dua Tahap', f4d: 'Permintaan melalui tinjauan dosen lalu persetujuan kepala lab sebelum peralatan diserahkan.',
+    f5t: 'Laporan & Analitik', f5d: 'Lacak frekuensi peminjaman, keterlambatan pengembalian, dan utilisasi peralatan di lab.',
+    f6t: 'Pengembalian & Sinkronisasi', f6d: 'Catat pengembalian, verifikasi kondisi, dan inventaris diperbarui otomatis secara real time.',
     howTitle: 'Cara Kerjanya', howSub: 'Empat langkah dari permintaan hingga pengembalian.',
     s1t: 'Telusuri & Minta', s1d: 'Pilih peralatan dari katalog dan ajukan permintaan dengan tanggal dan tujuan.',
     s2t: 'Tinjauan Dosen', s2d: 'Dosen meninjau dan menyetujui atau menolak permintaan dengan catatan.',
-    s3t: 'Persetujuan Kepala', s3d: 'Kepala Lab melakukan persetujuan akhir sesuai kebijakan institusi.',
-    s4t: 'Ambil & Kembalikan', s4d: 'Asisten menyiapkan peralatan. Anda mengambil, menggunakan, dan mengembalikan.',
-    capTitle: 'Untuk Setiap Peran', capSub: 'Dashboard dan alur kerja yang disesuaikan untuk setiap orang di ekosistem lab.',
-    c1t: 'Mahasiswa', c1d: 'Ajukan permintaan dan pantau peminjaman dari dashboard pribadi yang bersih.',
-    c2t: 'Dosen & Kepala Lab', c2d: 'Tinjau persetujuan tertunda dan kelola otorisasi peralatan.',
-    c3t: 'Asisten & Admin', c3d: 'Siapkan peralatan, proses pengembalian, dan kelola inventaris lengkap.',
-    ctaTitle: 'Siap Memulai?', ctaSub: 'Masuk untuk mengakses dashboard sesuai peran Anda.',
+    s3t: 'Persetujuan Kepala', s3d: 'Kepala Lab memberikan tanda tangan akhir, memastikan permintaan sesuai kebijakan lab.',
+    s4t: 'Ambil & Kembalikan', s4d: 'Asisten menyerahkan peralatan. Anda menggunakannya, mengembalikan, dan sistem menutup siklus.',
+    capTitle: 'Dari Permintaan hingga Pengembalian', capSub: 'Setiap fase siklus peminjaman — telusuri, minta, setujui, ambil, dan kembalikan — dalam satu alur terpadu.',
+    c1t: 'Telusuri & Minta', c1d: 'Cari di katalog, cek ketersediaan langsung, dan ajukan permintaan pinjam dalam hitungan detik.',
+    c2t: 'Tinjauan & Persetujuan', c2d: 'Permintaan ditinjau dosen lalu disetujui kepala lab sebelum peralatan dikeluarkan.',
+    c3t: 'Ambil & Kembalikan', c3d: 'Staf lab menyiapkan dan menyerahkan peralatan; pengembalian dicatat dan inventaris diperbarui.',
+    ctaTitle: 'Siap Meminjam?', ctaSub: 'Masuk untuk menelusuri katalog dan mengajukan permintaan peminjaman pertama Anda.',
     ctaBtn: 'Masuk ke Equimon', footer: '© 2025 Equimon · Semua hak dilindungi.',
-    footerSub: 'Menyederhanakan manajemen lab untuk institusi akademik modern.',
+    footerSub: 'Menyederhanakan peminjaman peralatan lab untuk institusi akademik modern.'
   },
 }
 
@@ -292,22 +292,6 @@ export default function LandingPage() {
                 </button>
               </div>
 
-              {/* Stats row */}
-              <div className="flex items-center flex-wrap gap-6 pt-2">
-                {[
-                  { val: lp.stat1, label: lp.stat1Label },
-                  { val: lp.stat2, label: lp.stat2Label },
-                  { val: lp.stat3, label: lp.stat3Label },
-                ].map((s, i) => (
-                  <React.Fragment key={i}>
-                    {i > 0 && <div className="stat-divider" />}
-                    <div className="flex flex-col">
-                      <span className="text-lg font-bold text-[#3B82F6]">{s.val}</span>
-                      <span className="text-xs text-[#475569] font-medium">{s.label}</span>
-                    </div>
-                  </React.Fragment>
-                ))}
-              </div>
             </div>
 
             {/* Right: CardSwap */}
@@ -462,25 +446,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* ── STATS STRIP ───────────────────────────────────────────── */}
-      <div className="relative py-10 border-y border-[#111118]" style={{ background: 'rgba(17,17,24,0.8)' }}>
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {[
-              { val: '48+', label: lang === 'en' ? 'Lab Equipment Items' : 'Item Peralatan Lab', color: '#3B82F6' },
-              { val: '5', label: lang === 'en' ? 'Distinct User Roles' : 'Peran Pengguna', color: '#22C55E' },
-              { val: '4-Step', label: lang === 'en' ? 'Approval Workflow' : 'Alur Persetujuan', color: '#8B5CF6' },
-              { val: '100%', label: lang === 'en' ? 'Real-time Updates' : 'Pembaruan Real-time', color: '#F59E0B' },
-            ].map(({ val, label, color }, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5">
-                <span className="text-2xl md:text-3xl font-bold" style={{ color }}>{val}</span>
-                <span className="text-xs text-[#475569] font-medium tracking-wide uppercase">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* ── FEATURES SECTION ──────────────────────────────────────── */}
       <section id="features" className="relative py-24 px-6 lg:px-12">
@@ -696,26 +661,7 @@ export default function LandingPage() {
                         </li>
                       ))}
                     </ul>
-                    {/* CTA */}
-                    <button
-                      onClick={() => navigate('/login')}
-                      className="mt-4 w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-250 cursor-pointer"
-                      style={{
-                        background: `${color}12`,
-                        border: `1px solid ${color}28`,
-                        color,
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = `${color}22`
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = `${color}12`
-                        e.currentTarget.style.transform = 'translateY(0)'
-                      }}
-                    >
-                      {lp.heroCTA} →
-                    </button>
+
                   </div>
                 </SpotlightCard>
               </div>

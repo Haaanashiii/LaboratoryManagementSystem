@@ -115,7 +115,6 @@ function App() {
             {/* Approvals */}
             <Route path="lecturer-approvals" element={<LecturerApprovals />} />
             <Route path="head-approvals" element={<HeadApproval />} />
-            <Route path="approval-history" element={<FunctionsApprovalHistory />} />
             <Route path="lecturer-approval-history" element={<LecturerApprovalHistory />} />
             <Route path="head-approval-history" element={<HeadApprovalHistory />} />
             

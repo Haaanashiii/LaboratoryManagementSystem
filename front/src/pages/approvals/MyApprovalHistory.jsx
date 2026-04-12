@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Search, History, Package, Calendar, CheckCircle, RotateCcw, AlertCircle, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import BanterLoader from '@/components/ui/BanterLoader';
 import { addDays, format } from 'date-fns';
+import { StudentApprovalHistorySkeleton } from '@/skeleton-framework/student';
 import { useTheme } from '@/components/hooks/ThemeContext';
 import { useLang } from '@/components/i18n/LangContext';
 import { Input } from '@/components/ui/input';
@@ -263,13 +263,7 @@ export default function ApprovalHistory() {
   const returnedCount = requests.filter(r => r.status === 'returned').length;
   const pendingCount  = requests.filter(r => r.status === 'pending_lecturer' || r.status === 'pending_head').length;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20 relative">
-        <BanterLoader />
-      </div>
-    );
-  }
+  if (isLoading) return <StudentApprovalHistorySkeleton />;
 
   if (isError) {
     return (

@@ -6,7 +6,6 @@ import LecturerDashboard from './LecturerDashboard';
 import HeadDashboard from './HeadDashboard';
 import LabAssistantDashboard from './LabAssistantDashboard';
 import AdminDashboard from './AdminDashboard';
-import BanterLoader from '@/components/ui/BanterLoader';
 
 export default function Dashboard() {
   const { data: user, isLoading } = useQuery({
@@ -17,7 +16,7 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-        <BanterLoader />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
       </div>
     );
   }

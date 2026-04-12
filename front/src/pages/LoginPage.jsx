@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, X } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
-import LandingBG from '@/components/layouts/LandingBG';
+import ShapeGrid from '@/components/bits/ShapeGrid';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
-import BanterLoader from '@/components/ui/BanterLoader';
 
 const ADMIN_ACCESS_ROLES = ['lecturer', 'head', 'head_of_lab', 'lab_assistant', 'admin'];
 const MIN_SIGNUP_PASSWORD_LENGTH = 6;
@@ -78,6 +77,12 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [rateLimitUntil, setRateLimitUntil] = useState(null);
   const [countdownNow, setCountdownNow] = useState(0);
+  const [isExiting, setIsExiting] = useState(false);
+
+  const navigateWithTransition = (destination) => {
+    setIsExiting(true);
+    setTimeout(() => navigate(destination, { replace: true }), 550);
+  };
 
   // Sign-up modal state
   const [showSignup, setShowSignup] = useState(false);
@@ -207,7 +212,7 @@ export default function LoginPage() {
       console.log('Login successful:', user);
 
       if (location.state?.from?.pathname) {
-        navigate(location.state.from.pathname, { replace: true });
+        navigateWithTransition(location.state.from.pathname);
         return;
       }
 
@@ -215,7 +220,7 @@ export default function LoginPage() {
       const defaultDestination = ADMIN_ACCESS_ROLES.includes(normalizedRole)
         ? '/admin-dashboard'
         : '/dashboard';
-      navigate(defaultDestination, { replace: true });
+      navigateWithTransition(defaultDestination);
     } catch (error) {
       console.error('Login failed:', error);
       if (error?.status === 429) {
@@ -254,75 +259,246 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative bg-white">
-        <BanterLoader />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0A0F' }}>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-900 border-t-blue-500" />
       </div>
     );
   }
 
+  const featureItems = [
+    { icon: ClipboardList, label: 'Browse & submit borrow requests' },
+    { icon: Bell, label: 'Live status updates at every step' },
+    { icon: RotateCcw, label: 'Return logged, inventory synced' },
+  ];
+
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative overflow-hidden" style={{ background: '#0A0A0F' }}>
       <style>{`
-        @keyframes loginFadeIn {
-          from { opacity: 0; transform: translateY(12px); }
+        @keyframes lp-fadeUp {
+          from { opacity: 0; transform: translateY(22px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes lp-scaleIn {
+          from { opacity: 0; transform: scale(0.95) translateY(12px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes lp-lineGrow {
+          from { transform: scaleX(0); transform-origin: left; }
+          to   { transform: scaleX(1); transform-origin: left; }
+        }
+        .lp-a1 { animation: lp-fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.05s both; }
+        .lp-a2 { animation: lp-fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.15s both; }
+        .lp-a3 { animation: lp-fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
+        .lp-a4 { animation: lp-fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.35s both; }
+        .lp-a5 { animation: lp-fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.42s both; }
+        .lp-a6 { animation: lp-fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.49s both; }
+        .lp-a7 { animation: lp-fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) 0.56s both; }
+        .lp-card { animation: lp-scaleIn 0.55s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+        .lp-line { animation: lp-lineGrow 0.8s cubic-bezier(0.16,1,0.3,1) 0.4s both; }
+        @keyframes lp-exitFade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .lp-exit-overlay {
+          animation: lp-exitFade 0.45s cubic-bezier(0.4,0,0.2,1) forwards;
+        }
+        .lp-input {
+          background: #1A1A24;
+          border: 1px solid rgba(71,85,105,0.4);
+          color: #E2E8F0;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .lp-input:focus {
+          outline: none;
+          border-color: #3B82F6;
+          box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .lp-input::placeholder { color: #334155; }
+        .lp-input-err { border-color: #EF4444 !important; }
+        .lp-btn-primary {
+          background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+          box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .lp-btn-primary:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 30px rgba(59,130,246,0.45);
+        }
+        .lp-btn-primary:active { transform: translateY(0px); }
+        .lp-btn-ghost {
+          background: transparent;
+          border: 1px solid rgba(71,85,105,0.45);
+          color: #64748B;
+          transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+        }
+        .lp-btn-ghost:hover {
+          border-color: rgba(59,130,246,0.5);
+          color: #93C5FD;
+          background: rgba(59,130,246,0.06);
+        }
+        .lp-feature-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(30,41,59,0.6);
+          transition: opacity 0.2s ease;
+        }
+        .lp-feature-row:last-child { border-bottom: none; }
+        .su-input {
+          background: #13131c;
+          border: 1px solid rgba(71,85,105,0.3);
+          color: #E2E8F0;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .su-input:focus {
+          outline: none;
+          border-color: #3B82F6;
+          box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+        .su-input::placeholder { color: #334155; }
+        .su-input-err { border-color: #EF4444 !important; }
+        @keyframes su-fadeInUp {
+          from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-900 items-center justify-center p-12 overflow-hidden">
-        {/* Background with Orb */}
-        <div className="absolute inset-0">
-          <LandingBG />
-        </div>
 
-        {/* Content */}
-        <div className="relative z-10 max-w-md text-center">
-          <div className="mb-8 flex items-center justify-center">
-            <div className="w-40 h-40 rounded-3xl flex items-center justify-center">
-              <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
+      {/* ── Exit transition overlay ── */}
+      {isExiting && (
+        <div
+          className="lp-exit-overlay fixed inset-0 z-[100] pointer-events-none"
+          style={{ background: '#0A0A0F' }}
+        />
+      )}
+
+      {/* ── Full-page ShapeGrid background ── */}
+      <div className="absolute inset-0 z-0">
+        <ShapeGrid
+          shape="hexagon"
+          direction="diagonal"
+          speed={0.25}
+          borderColor="rgba(59, 130, 246, 0.09)"
+          hoverFillColor="rgba(59, 130, 246, 0.07)"
+          squareSize={52}
+          className="w-full h-full"
+        />
+      </div>
+
+      {/* Depth gradient — fades right side to keep card readable */}
+      <div
+        className="absolute inset-0 z-[1] pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 65% 80% at 15% 50%, rgba(59,130,246,0.06) 0%, transparent 65%), ' +
+            'linear-gradient(to right, transparent 40%, rgba(10,10,15,0.55) 100%)',
+        }}
+      />
+
+      {/* ── Left Branding Panel ── */}
+      <div className="hidden lg:flex lg:w-1/2 relative z-10 items-center justify-center p-16">
+        <div className="max-w-[420px] w-full">
+
+          {/* Logo + system tag */}
+          <div className="flex items-center gap-3 mb-14 lp-a1">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: '#111118', border: '1px solid rgba(59,130,246,0.2)' }}
+            >
+              <img src={equimonLogo} alt="Equimon Logo" className="w-7 h-7 object-contain" />
             </div>
+            <div
+              className="h-6 w-px flex-shrink-0"
+              style={{ background: 'rgba(71,85,105,0.35)' }}
+            />
+            <span
+              className="text-xs font-semibold tracking-[0.2em] uppercase"
+              style={{ color: '#3B82F6' }}
+            >
+              Intitut Teknologi Sepuluh Nopember
+            </span>
           </div>
 
-          <h2 className="text-4xl font-bold text-white mb-4">
+          {/* Headline */}
+          <h1
+            className="font-bold text-white leading-[1.1] mb-5 lp-a2"
+            style={{ fontSize: 'clamp(2.4rem, 3.5vw, 3.2rem)' }}
+          >
             {t('welcomeToEquimon')}
-          </h2>
-          <p className="text-slate-300 text-lg mb-8">
+          </h1>
+
+          {/* Tagline */}
+          <p className="text-base leading-relaxed mb-10 lp-a3" style={{ color: '#64748B' }}>
             {t('equimonHelps')}
           </p>
+
+          {/* Accent line */}
+          <div
+            className="h-px mb-10 lp-line"
+            style={{ background: 'linear-gradient(to right, rgba(59,130,246,0.5), rgba(59,130,246,0.05))' }}
+          />
+
+          {/* Feature rows */}
+          <div className="lp-a4">
+            {featureItems.map(({ icon: Icon, label }, i) => (
+              <div key={i} className="lp-feature-row">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.15)' }}
+                >
+                  <Icon className="w-4 h-4" style={{ color: '#60A5FA' }} />
+                </div>
+                <span className="text-sm" style={{ color: '#94A3B8' }}>{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative overflow-hidden">
-        {/* Back to Home Button - Top Right */}
+      {/* ── Right Form Panel ── */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative z-10">
+
+        {/* Back to Home */}
         <button
           onClick={() => navigate('/')}
-          className="absolute top-6 right-6 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors flex items-center gap-2"
+          className="absolute top-6 right-6 flex items-center gap-1.5 text-sm font-medium transition-colors"
+          style={{ color: '#475569' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#94A3B8'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#475569'; }}
         >
           ← {t('backToHome')}
         </button>
 
+        {/* Glass card */}
         <div
-          className="w-full max-w-md"
-          style={{ animation: 'loginFadeIn 0.45s cubic-bezier(0.16,1,0.3,1) both' }}
+          className="w-full max-w-md rounded-2xl p-8 lg:p-9 lp-card"
+          style={{
+            background: 'rgba(13,13,20,0.85)',
+            border: '1px solid rgba(59,130,246,0.13)',
+            backdropFilter: 'blur(24px)',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.03), 0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(59,130,246,0.06)',
+          }}
         >
-          {/* Logo and Title */}
-          <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-xl mb-4">
-              <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
+          {/* Logo + title */}
+          <div className="mb-8 lp-a1">
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-5"
+              style={{ background: '#1A1A24', border: '1px solid rgba(59,130,246,0.18)' }}
+            >
+              <img src={equimonLogo} alt="Equimon Logo" className="w-8 h-8 object-contain" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('signIn')}</h1>
-            <p className="text-slate-600 text-sm">{t('loginWelcome')}</p>
+            <h2 className="text-2xl font-bold text-white mb-1">{t('signIn')}</h2>
+            <p className="text-sm" style={{ color: '#475569' }}>{t('loginWelcome')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+            {/* Email */}
+            <div className="lp-a2">
+              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
                 {t('emailAddress')}
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
                 <input
                   type="email"
                   id="email"
@@ -331,80 +507,90 @@ export default function LoginPage() {
                   onChange={handleInputChange}
                   placeholder={t('placeholderEmail')}
                   autoComplete="off"
-                  className={`w-full pl-11 pr-4 py-3 bg-white border ${
-                    errors.email ? 'border-red-500' : 'border-slate-300'
-                  } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                  className={`lp-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${errors.email ? 'lp-input-err' : ''}`}
                 />
               </div>
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              {errors.email && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{errors.email}</p>}
               {rateLimitUntil && countdownLabel && (
-                <p className="mt-1 text-sm text-red-600">Try again in {countdownLabel}</p>
+                <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>Try again in {countdownLabel}</p>
               )}
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+            {/* Password */}
+            <div className="lp-a3">
+              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
                 {t('password')}
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   id="password"
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder={t('placeholderPassword')}
                   autoComplete="new-password"
-                  className={`w-full pl-11 pr-12 py-3 bg-white border ${
-                    errors.password ? 'border-red-500' : 'border-slate-300'
-                  } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                  className={`lp-input w-full pl-10 pr-11 py-3 rounded-xl text-sm ${errors.password ? 'lp-input-err' : ''}`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: '#334155' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#64748B'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = '#334155'; }}
                   aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+              {errors.password && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{errors.password}</p>}
             </div>
 
-            {/* Remember Me and Forgot Password */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
+            {/* Remember me + Forgot */}
+            <div className="flex items-center justify-between lp-a4">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  onChange={e => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded cursor-pointer"
+                  style={{ accentColor: '#3B82F6' }}
                 />
-                <span className="text-sm text-slate-700">{t('rememberMe')}</span>
+                <span className="text-sm" style={{ color: '#64748B' }}>{t('rememberMe')}</span>
               </label>
               <button
                 type="button"
-                className="text-sm text-slate-900 hover:text-blue-600 font-medium transition-colors"
+                className="text-sm font-medium transition-colors"
+                style={{ color: '#3B82F6' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#93C5FD'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#3B82F6'; }}
               >
                 {t('forgotPassword')}
               </button>
             </div>
 
-            {/* Submit Button */}
-            <Button
+            {/* Submit */}
+            <button
               type="submit"
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 h-12 rounded-xl transition-all shadow-lg shadow-slate-900/20"
+              className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm lp-a5"
             >
               {t('Login Now!')}
-            </Button>
+            </button>
 
-            {/* Sign Up — opens sliding modal */}
+            {/* Divider */}
+            <div className="flex items-center gap-3 lp-a6">
+              <div className="flex-1 h-px" style={{ background: 'rgba(30,41,59,0.8)' }} />
+              <span className="text-xs font-medium" style={{ color: '#334155' }}>or</span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(30,41,59,0.8)' }} />
+            </div>
+
+            {/* Sign Up */}
             <button
               type="button"
               onClick={openSignupModal}
-              className="w-full mt-3 py-3 h-12 rounded-xl font-semibold border-2 border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 transition-all duration-300"
+              className="lp-btn-ghost w-full py-3 h-12 rounded-xl font-semibold text-sm lp-a7"
             >
               {t('signUp')}
             </button>
@@ -416,236 +602,258 @@ export default function LoginPage() {
 
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-500 ${
+        className={`fixed inset-0 z-40 transition-opacity duration-500 ${
           showSignup ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
+        style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
         onClick={closeSignupModal}
       />
 
-      {/* Drawer — slides in from the right */}
+      {/* Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-full lg:w-1/2 z-50 bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`fixed top-0 right-0 h-full w-full lg:w-[480px] z-50 shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           showSignup ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{
+          background: '#0D0D14',
+          borderLeft: '1px solid rgba(59,130,246,0.12)',
+        }}
       >
-        {/* Inner wrapper needed for absolute-positioned steps */}
         <div className="relative w-full h-full overflow-hidden">
-        {/* Close Button */}
-        <button
-          onClick={closeSignupModal}
-          className="absolute top-6 right-6 text-slate-500 hover:text-slate-900 transition-colors p-1 rounded-lg hover:bg-slate-100 z-10"
-          aria-label="Close sign-up"
-        >
-          <X className="w-5 h-5" />
-        </button>
+          {/* Close */}
+          <button
+            onClick={closeSignupModal}
+            className="absolute top-6 right-6 p-2 rounded-lg z-10 transition-all"
+            style={{ color: '#475569', background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; e.currentTarget.style.color = '#94A3B8'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569'; }}
+            aria-label="Close sign-up"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
-        {/* ── STEP 0: Welcome Page ── */}
-        <div
-          key={showSignup ? 'open' : 'closed'}
-          className={`absolute inset-0 flex flex-col items-center justify-center px-8 pb-10 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            signupStep === 0 ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 -translate-x-full pointer-events-none'
-          }`}
-        >
-          <div className="w-full max-w-md text-center">
-            <div className="inline-flex items-center justify-center w-28 h-28 rounded-3xl mb-8 animate-[fadeInUp_0.5s_ease_0.05s_both]">
-              <img src={equimonLogo} alt="Equimon Logo" className="w-full h-full object-contain" />
-            </div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-4 animate-[fadeInUp_0.5s_ease_0.15s_both]">
-              {t('welcomeToEquimon')}
-            </h1>
-            <p className="text-slate-500 text-base leading-relaxed max-w-sm mx-auto mb-10 animate-[fadeInUp_0.5s_ease_0.25s_both]">
-              Borrow smarter, manage better — your lab, your rules.
-            </p>
-            <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-10 animate-[fadeInUp_0.5s_ease_0.35s_both]" />
-            <Button
-              type="button"
-              onClick={() => setSignupStep(1)}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 h-12 rounded-xl transition-all shadow-lg shadow-slate-900/20 animate-[fadeInUp_0.5s_ease_0.4s_both]"
-            >
-              Get Started →
-            </Button>
-            <button
-              type="button"
-              onClick={closeSignupModal}
-              className="w-full mt-3 py-3 h-12 rounded-xl font-semibold border-2 border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 transition-all duration-300 animate-[fadeInUp_0.5s_ease_0.45s_both]"
-            >
-              {t('Back to Login')}
-            </button>
-          </div>
-        </div>
-
-        {/* ── STEP 1: Sign-Up Form ── */}
-        <div
-          className={`absolute inset-0 overflow-y-auto flex flex-col items-center justify-start px-8 pt-14 pb-10 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            signupStep === 1 ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-full pointer-events-none'
-          }`}
-        >
-          <div className="w-full max-w-md">
-            {/* Section header */}
-            <div className="mb-6">
+          {/* ── STEP 0: Welcome ── */}
+          <div
+            key={showSignup ? 'open' : 'closed'}
+            className={`absolute inset-0 flex flex-col items-center justify-center px-8 pb-10 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              signupStep === 0 ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 -translate-x-full pointer-events-none'
+            }`}
+          >
+            <div className="w-full max-w-sm text-center">
+              <div
+                className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-8"
+                style={{
+                  background: '#111118',
+                  border: '1px solid rgba(59,130,246,0.2)',
+                  animation: 'su-fadeInUp 0.5s ease 0.05s both',
+                }}
+              >
+                <img src={equimonLogo} alt="Equimon Logo" className="w-12 h-12 object-contain" />
+              </div>
+              <h1
+                className="text-3xl font-bold text-white mb-3"
+                style={{ animation: 'su-fadeInUp 0.5s ease 0.15s both' }}
+              >
+                {t('welcomeToEquimon')}
+              </h1>
+              <p
+                className="text-sm leading-relaxed max-w-xs mx-auto mb-10"
+                style={{ color: '#64748B', animation: 'su-fadeInUp 0.5s ease 0.25s both' }}
+              >
+                Borrow smarter, manage better — your lab, your rules.
+              </p>
+              <div
+                className="h-px mb-10"
+                style={{
+                  background: 'linear-gradient(to right, transparent, rgba(59,130,246,0.25), transparent)',
+                  animation: 'su-fadeInUp 0.5s ease 0.3s both',
+                }}
+              />
               <button
                 type="button"
-                onClick={() => setSignupStep(0)}
-                className="text-sm text-slate-500 hover:text-slate-900 transition-colors mb-4 flex items-center gap-1"
+                onClick={() => setSignupStep(1)}
+                className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm"
+                style={{ animation: 'su-fadeInUp 0.5s ease 0.38s both' }}
               >
-                ← Back
+                Get Started →
               </button>
-              <h2 className="text-2xl font-bold text-slate-900">{t('signUp')}</h2>
-              <p className="text-slate-500 text-sm mt-1">{t('loginWelcome')}</p>
+              <button
+                type="button"
+                onClick={closeSignupModal}
+                className="lp-btn-ghost w-full mt-3 py-3 h-12 rounded-xl font-semibold text-sm"
+                style={{ animation: 'su-fadeInUp 0.5s ease 0.45s both' }}
+              >
+                {t('Back to Login')}
+              </button>
             </div>
+          </div>
 
-          <form onSubmit={handleSignupSubmit} className="space-y-5" autoComplete="off">
-            {/* Name Field */}
-            <div>
-              <label htmlFor="signup-name" className="block text-sm font-medium text-slate-700 mb-2">
-                {t('fullName')}
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  id="signup-name"
-                  name="name"
-                  value={signupForm.name}
-                  onChange={handleSignupChange}
-                  placeholder={t('placeholderFullName')}
-                  autoComplete="off"
-                  className={`w-full pl-11 pr-4 py-3 bg-white border ${
-                    signupErrors.name ? 'border-red-500' : 'border-slate-300'
-                  } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                />
-              </div>
-              {signupErrors.name && <p className="mt-1 text-sm text-red-600">{signupErrors.name}</p>}
-            </div>
-
-            {/* Email Field */}
-            <div>
-              <label htmlFor="signup-email" className="block text-sm font-medium text-slate-700 mb-2">
-                {t('emailAddress')}
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  id="signup-email"
-                  name="email"
-                  value={signupForm.email}
-                  onChange={handleSignupChange}
-                  placeholder={t('placeholderEmail')}
-                  autoComplete="off"
-                  className={`w-full pl-11 pr-4 py-3 bg-white border ${
-                    signupErrors.email ? 'border-red-500' : 'border-slate-300'
-                  } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                />
-              </div>
-              {signupErrors.email && <p className="mt-1 text-sm text-red-600">{signupErrors.email}</p>}
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label htmlFor="signup-password" className="block text-sm font-medium text-slate-700 mb-2">
-                {t('password')}
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type={showSignupPassword ? "text" : "password"}
-                  id="signup-password"
-                  name="password"
-                  value={signupForm.password}
-                  onChange={handleSignupChange}
-                  placeholder={t('placeholderPassword')}
-                  autoComplete="new-password"
-                  className={`w-full pl-11 pr-12 py-3 bg-white border ${
-                    signupErrors.password ? 'border-red-500' : 'border-slate-300'
-                  } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                />
+          {/* ── STEP 1: Sign-Up Form ── */}
+          <div
+            className={`absolute inset-0 overflow-y-auto flex flex-col items-center justify-start px-8 pt-14 pb-10 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              signupStep === 1 ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-full pointer-events-none'
+            }`}
+          >
+            <div className="w-full max-w-sm">
+              {/* Header */}
+              <div className="mb-7">
                 <button
                   type="button"
-                  onClick={() => setShowSignupPassword(!showSignupPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  aria-label={showSignupPassword ? t('hidePassword') : t('showPassword')}
+                  onClick={() => setSignupStep(0)}
+                  className="flex items-center gap-1.5 text-sm mb-5 transition-colors"
+                  style={{ color: '#475569' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#94A3B8'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = '#475569'; }}
                 >
-                  {showSignupPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  ← Back
                 </button>
+                <h2 className="text-2xl font-bold text-white">{t('signUp')}</h2>
+                <p className="text-sm mt-1" style={{ color: '#475569' }}>{t('loginWelcome')}</p>
               </div>
-              {signupErrors.password && <p className="mt-1 text-sm text-red-600">{signupErrors.password}</p>}
-              {!signupErrors.password && signupForm.password && (
-                <div className="mt-2 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-500">Password strength</p>
-                    <p className={`text-xs font-semibold ${
-                      passwordStrength.tone === 'emerald'
-                        ? 'text-emerald-600'
-                        : passwordStrength.tone === 'blue'
-                        ? 'text-blue-600'
-                        : 'text-red-600'
-                    }`}>
-                      {passwordStrength.label}
-                    </p>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                    <span
-                      className={`block h-full rounded-full transition-all duration-300 ${
-                        passwordStrength.tone === 'emerald'
-                          ? 'bg-emerald-500'
-                          : passwordStrength.tone === 'blue'
-                          ? 'bg-blue-500'
-                          : 'bg-red-500'
-                      }`}
-                      style={{ width: `${(passwordStrength.segments / 4) * 100}%` }}
+
+              <form onSubmit={handleSignupSubmit} className="space-y-5" autoComplete="off">
+                {/* Name */}
+                <div>
+                  <label htmlFor="signup-name" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                    {t('fullName')}
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                    <input
+                      type="text"
+                      id="signup-name"
+                      name="name"
+                      value={signupForm.name}
+                      onChange={handleSignupChange}
+                      placeholder={t('placeholderFullName')}
+                      autoComplete="off"
+                      className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.name ? 'su-input-err' : ''}`}
                     />
                   </div>
-                  <p className="text-xs text-slate-500">
-                    Use at least 6 characters, 1 uppercase letter, and 5 unique characters.
-                  </p>
+                  {signupErrors.name && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.name}</p>}
                 </div>
-              )}
-            </div>
 
-            {/* Confirm Password Field */}
-            <div>
-              <label htmlFor="signup-confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
-                {t('confirmPassword')}
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type={showSignupPassword ? "text" : "password"}
-                  id="signup-confirmPassword"
-                  name="confirmPassword"
-                  value={signupForm.confirmPassword}
-                  onChange={handleSignupChange}
-                  placeholder={t('placeholderConfirmPassword')}
-                  autoComplete="new-password"
-                  className={`w-full pl-11 pr-4 py-3 bg-white border ${
-                    signupErrors.confirmPassword ? 'border-red-500' : 'border-slate-300'
-                  } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                />
-              </div>
-              {signupErrors.confirmPassword && <p className="mt-1 text-sm text-red-600">{signupErrors.confirmPassword}</p>}
-            </div>
+                {/* Email */}
+                <div>
+                  <label htmlFor="signup-email" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                    {t('emailAddress')}
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                    <input
+                      type="email"
+                      id="signup-email"
+                      name="email"
+                      value={signupForm.email}
+                      onChange={handleSignupChange}
+                      placeholder={t('placeholderEmail')}
+                      autoComplete="off"
+                      className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.email ? 'su-input-err' : ''}`}
+                    />
+                  </div>
+                  {signupErrors.email && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.email}</p>}
+                </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 h-12 rounded-xl transition-all shadow-lg shadow-slate-900/20"
-            >
-              {t('createAccount')}
-            </Button>
+                {/* Password */}
+                <div>
+                  <label htmlFor="signup-password" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                    {t('password')}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                    <input
+                      type={showSignupPassword ? 'text' : 'password'}
+                      id="signup-password"
+                      name="password"
+                      value={signupForm.password}
+                      onChange={handleSignupChange}
+                      placeholder={t('placeholderPassword')}
+                      autoComplete="new-password"
+                      className={`su-input w-full pl-10 pr-11 py-3 rounded-xl text-sm ${signupErrors.password ? 'su-input-err' : ''}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                      style={{ color: '#334155' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#64748B'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#334155'; }}
+                      aria-label={showSignupPassword ? t('hidePassword') : t('showPassword')}
+                    >
+                      {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {signupErrors.password && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.password}</p>}
+                  {!signupErrors.password && signupForm.password && (
+                    <div className="mt-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs" style={{ color: '#475569' }}>Password strength</p>
+                        <p className={`text-xs font-semibold`} style={{
+                          color: passwordStrength.tone === 'emerald' ? '#34D399'
+                            : passwordStrength.tone === 'blue' ? '#60A5FA'
+                            : '#F87171',
+                        }}>
+                          {passwordStrength.label}
+                        </p>
+                      </div>
+                      <div className="h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(30,41,59,0.8)' }}>
+                        <span
+                          className="block h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${(passwordStrength.segments / 4) * 100}%`,
+                            background: passwordStrength.tone === 'emerald' ? '#34D399'
+                              : passwordStrength.tone === 'blue' ? '#3B82F6'
+                              : '#EF4444',
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs" style={{ color: '#334155' }}>
+                        Use at least 6 characters, 1 uppercase letter, and 5 unique characters.
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-            {/* Back to Sign In */}
-            <button
-              type="button"
-              onClick={closeSignupModal}
-              className="w-full mt-3 py-3 h-12 rounded-xl font-semibold border-2 border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 transition-all duration-300"
-            >
-              {t('Back to Login')}
-            </button>
-          </form>
+                {/* Confirm Password */}
+                <div>
+                  <label htmlFor="signup-confirmPassword" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                    {t('confirmPassword')}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                    <input
+                      type={showSignupPassword ? 'text' : 'password'}
+                      id="signup-confirmPassword"
+                      name="confirmPassword"
+                      value={signupForm.confirmPassword}
+                      onChange={handleSignupChange}
+                      placeholder={t('placeholderConfirmPassword')}
+                      autoComplete="new-password"
+                      className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.confirmPassword ? 'su-input-err' : ''}`}
+                    />
+                  </div>
+                  {signupErrors.confirmPassword && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.confirmPassword}</p>}
+                </div>
 
-          </div>{/* /max-w-md */}
-        </div>{/* /step-1 */}
+                {/* Submit */}
+                <button
+                  type="submit"
+                  className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm"
+                >
+                  {t('createAccount')}
+                </button>
+
+                {/* Back to login */}
+                <button
+                  type="button"
+                  onClick={closeSignupModal}
+                  className="lp-btn-ghost w-full py-3 h-12 rounded-xl font-semibold text-sm"
+                >
+                  {t('Back to Login')}
+                </button>
+              </form>
+            </div>{/* /max-w-sm */}
+          </div>{/* /step-1 */}
         </div>{/* /inner relative wrapper */}
       </div>{/* /drawer */}
     </div>

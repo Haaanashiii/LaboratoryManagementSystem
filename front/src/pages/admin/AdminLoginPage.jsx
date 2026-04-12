@@ -184,8 +184,8 @@ export default function AdminLoginPage() {
               <div className="flex items-center gap-3">
                 <img src={equimonLogo} alt="Equimon" className="h-8 w-8 object-contain" />
                 <div>
-                  <p className="text-[9px] font-mono tracking-[0.28em] text-slate-600 uppercase">
-                    EQ-LABS · v2.0
+                  <p className="text-[9px] font-mono tracking-[0.28em] text-slate-300 uppercase">
+                    Inventory Portal
                   </p>
                   <p className="text-sm font-bold tracking-widest text-white">EQUIMON</p>
                 </div>
@@ -202,13 +202,13 @@ export default function AdminLoginPage() {
 
               {/* Title block */}
               <div className="mb-7">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-600">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300">
                   {t('adminAccess')}
                 </p>
                 <h1 className="text-[26px] font-bold leading-tight text-white">
                   {t('adminLoginTitle')}
                 </h1>
-                <p className="mt-1.5 text-xs text-slate-500">{t('adminLoginSubtitle')}</p>
+                <p className="mt-1.5 text-xs text-slate-300">{t('adminLoginSubtitle')}</p>
               </div>
 
               {/* ── Form ── */}
@@ -218,7 +218,7 @@ export default function AdminLoginPage() {
                 <div>
                   <label
                     htmlFor="email"
-                    className="mb-2.5 block text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500"
+                    className="mb-2.5 block text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300"
                   >
                     {t('adminEmailLabel')}
                   </label>
@@ -235,7 +235,7 @@ export default function AdminLoginPage() {
                   >
                     <Mail
                       className={`pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 ${
-                        fieldErrors.email ? 'text-red-500/60' : 'text-slate-600'
+                        fieldErrors.email ? 'text-red-500/70' : 'text-slate-400'
                       }`}
                     />
                     <input
@@ -248,7 +248,7 @@ export default function AdminLoginPage() {
                       onBlur={() => setFocused((p) => ({ ...p, email: false }))}
                       placeholder={t('adminEmailPlaceholder')}
                       autoComplete="username"
-                      className="w-full bg-transparent py-2.5 pl-7 pr-3 text-sm text-white placeholder-slate-700 outline-none"
+                      className="w-full bg-transparent py-2.5 pl-7 pr-3 text-sm text-white placeholder-slate-400 outline-none"
                     />
                   </div>
                   {fieldErrors.email && fieldErrors.email.trim() && (
@@ -260,7 +260,7 @@ export default function AdminLoginPage() {
                 <div>
                   <label
                     htmlFor="password"
-                    className="mb-2.5 block text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500"
+                    className="mb-2.5 block text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300"
                   >
                     {t('adminPasswordLabel')}
                   </label>
@@ -277,7 +277,7 @@ export default function AdminLoginPage() {
                   >
                     <Lock
                       className={`pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 ${
-                        fieldErrors.password ? 'text-red-500/60' : 'text-slate-600'
+                        fieldErrors.password ? 'text-red-500/70' : 'text-slate-400'
                       }`}
                     />
                     <input
@@ -290,12 +290,12 @@ export default function AdminLoginPage() {
                       onBlur={() => setFocused((p) => ({ ...p, password: false }))}
                       placeholder={t('adminPasswordPlaceholder')}
                       autoComplete="current-password"
-                      className="w-full bg-transparent py-2.5 pl-7 pr-10 text-sm text-white placeholder-slate-700 outline-none"
+                      className="w-full bg-transparent py-2.5 pl-7 pr-10 text-sm text-white placeholder-slate-400 outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-600 transition hover:text-cyan-300"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-cyan-300"
                       aria-label={showPassword ? t('hidePassword') : t('showPassword')}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -343,13 +343,13 @@ export default function AdminLoginPage() {
             <div className="flex items-center justify-between border-t border-white/[0.04] px-7 py-3.5">
               <div className="flex items-center gap-2">
                 <img src={itsSecondLogo} alt="ITS" className="h-5 w-5 object-contain opacity-30" />
-                <span className="text-[9px] font-mono tracking-widest text-slate-700 uppercase">
-                  Smart City Lab · ITS
+                <span className="text-[9px] font-mono tracking-widest text-slate-300 uppercase">
+                  Institut Teknologi Sepuluh Nopember
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                <span className="text-[9px] font-mono text-slate-700">secure channel</span>
+                <span className="text-[9px] font-mono text-slate-300">secure channel</span>
               </div>
             </div>
 

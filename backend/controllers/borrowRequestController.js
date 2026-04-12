@@ -943,7 +943,7 @@ exports.getMyRequests = async (req, res, next) => {
     await reconcileLegacyStockReservations();
 
     const requests = await BorrowRequest.find({ student: req.user.id })
-      .populate('equipment', 'name category')
+      .populate('equipment', 'name category image images')
       .sort('-createdAt');
 
     res.json({
