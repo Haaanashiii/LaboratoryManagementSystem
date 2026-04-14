@@ -501,3 +501,33 @@ exports.updatePassword = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Verify current password (no change — used for UX gating)
+// @route   POST /api/auth/verify-password
+// @access  Private
+exports.verifyCurrentPassword = async (req, res, next) => {
+  try {
+    const { currentPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is required'
+      });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    const isMatch = await user.comparePassword(String(currentPassword));
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Incorrect password. Please try again.'
+      });
+    }
+
+    return res.json({ success: true, message: 'Password verified.' });
+  } catch (error) {
+    next(error);
+  }
+};

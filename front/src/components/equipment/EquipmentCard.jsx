@@ -5,16 +5,18 @@ import { useLang } from '@/components/i18n/LangContext';
 import './ViewBorrowButton.css';
 
 const cardStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
   @keyframes shimmer {
     0%   { background-position: -200% center; }
     100% { background-position: 200% center; }
   }
 
   .eq-card-img {
-    transition: transform 0.35s ease;
+    transition: transform 0.4s ease;
   } 
   .eq-card:hover .eq-card-img {
-    transform: scale(1.04);
+    transform: scale(1.02);
   }
 
   .eq-availability-bar-fill {
@@ -135,7 +137,7 @@ const cardStyles = `
   }
 
   .eq-card--light:hover {
-    border-color: rgba(59,130,246,0.5);
+    border-color: rgba(59,130,246,0.3);
     box-shadow: none;
   }
 
@@ -147,18 +149,14 @@ const cardStyles = `
     background: linear-gradient(160deg, #f1f5f9 0%, #e2e8f0 100%);
   }
 
-  .eq-card--light .eq-cat-tag {
-    background: rgba(255,255,255,0.85);
-    border-color: rgba(148,163,184,0.35);
-    color: #64748b;
-  }
+
 
   .eq-card::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 55%);
+    background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, transparent 55%);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -169,13 +167,13 @@ const cardStyles = `
   }
 
   .eq-card:hover {
-    transform: translateY(-5px);
-    border-color: rgba(59,130,246,0.5);
-    box-shadow: 0 20px 50px rgba(4, 6, 15, 0.55), 0 0 0 1px rgba(59,130,246,0.18);
+    transform: translateY(-1px);
+    border-color: rgba(59,130,246,0.35);
+    box-shadow: 0 6px 16px rgba(4, 6, 15, 0.3);
   }
 
   .eq-card .eq-card-name {
-    font-family: 'Space Grotesk', 'DM Sans', sans-serif;
+    font-family: 'Poppins', 'Space Grotesk', sans-serif;
     font-size: 14px;
     font-weight: 700;
     color: var(--eq-text);
@@ -196,14 +194,21 @@ const cardStyles = `
 
   .eq-card .eq-cat-tag {
     font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    padding: 0.22rem 0.65rem;
-    border-radius: 999px;
-    background: rgba(10, 10, 20, 0.75);
-    border: 1px solid rgba(148,163,184,0.22);
-    color: var(--eq-muted);
-    backdrop-filter: blur(4px);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    background: rgba(6, 8, 18, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .eq-card--light .eq-cat-tag {
+    background: rgba(6, 8, 18, 0.52);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
   }
 
   .eq-card .eq-avail-track {
@@ -319,6 +324,52 @@ const cardStyles = `
     inset: 0;
     background: linear-gradient(180deg, rgba(10, 10, 15, 0.05), rgba(10, 10, 15, 0.8));
     pointer-events: none;
+  }
+
+  .eq-card .eq-img-overlay-content {
+    background: linear-gradient(to top, rgba(8, 10, 20, 0.82) 0%, rgba(8, 10, 20, 0.45) 60%, transparent 100%);
+    border-top: none;
+    padding: 2.5rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .eq-card--light .eq-img-overlay-content {
+    background: linear-gradient(to top, rgba(6, 8, 20, 0.80) 0%, rgba(6, 8, 20, 0.35) 60%, transparent 100%);
+    border-top: none;
+  }
+
+  .eq-card--light .eq-img-overlay-content .eq-card-name,
+  .eq-card--light .eq-img-overlay-content .eq-card-desc,
+  .eq-card--light .eq-img-overlay-content .eq-qty-val {
+    color: #e2e8f0 !important;
+  }
+
+  .eq-card--light .eq-img-overlay-content .eq-qty-label {
+    color: #94a3b8 !important;
+  }
+
+  .eq-card .eq-img-overlay-stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .eq-card .eq-img-overlay-stat .eq-qty-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--eq-muted);
+    margin-bottom: 0.2rem;
+  }
+
+  .eq-card .eq-img-overlay-stat .eq-qty-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--eq-text);
+    font-family: 'Poppins', sans-serif;
+    line-height: 1;
   }
 `;
 
@@ -519,8 +570,8 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
         onClick={handleClick}
         className={`eq-card${isDark ? '' : ' eq-card--light'} group flex flex-col cursor-pointer`}
       >
-        {/* Image area */}
-        <div className="eq-img-wrap relative aspect-[16/10]">
+        {/* Image area — name, desc, quantities overlaid */}
+        <div className="eq-img-wrap relative aspect-square">
           {currentImage ? (
             <img
               src={currentImage}
@@ -533,8 +584,8 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
             </div>
           )}
 
-          {/* Gradient overlay — lightened in light mode */}
-          <div className={`absolute inset-0 pointer-events-none ${isDark ? 'bg-gradient-to-t from-black/60 via-transparent to-transparent' : 'bg-gradient-to-t from-black/20 via-transparent to-transparent'}`} />
+          {/* Gradient overlay for readability */}
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
 
           {/* Navigation arrows */}
           {hasMultipleImages && (
@@ -553,7 +604,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
-              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
+              <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-medium z-10">
                 {currentImageIndex + 1} / {allImages.length}
               </div>
             </>
@@ -561,39 +612,39 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
 
           {/* Category pill */}
           {equipment.category && (
-            <span className="eq-cat-tag absolute top-2 left-2">
+            <span className="eq-cat-tag absolute top-2 left-2 z-10">
               {equipment.category}
             </span>
           )}
 
           {/* Accent top bar */}
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-350 origin-left" />
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500/60 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left z-10" />
+
+          {/* Gradient overlay — full image size, content at bottom */}
+          <div className="eq-img-overlay-content absolute inset-0 z-10 pointer-events-none">
+            <h3 className="eq-card-name line-clamp-1 mb-0.5">{equipment.name}</h3>
+            {equipment.description && (
+              <p className="eq-card-desc text-[11px] line-clamp-2 leading-relaxed mt-0.5">
+                {equipment.description}
+              </p>
+            )}
+            <div className="flex gap-5 mt-2.5">
+              <div className="eq-img-overlay-stat">
+                <p className="eq-qty-label">{t('total')}</p>
+                <p className="eq-qty-val">{total}</p>
+              </div>
+              <div className="eq-img-overlay-stat">
+                <p className="eq-qty-label">{t('availableLabel')}</p>
+                <p className={`eq-qty-val ${availTextColor}`}>{available}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="flex flex-col flex-1 p-4 gap-3">
-          {/* Title + description */}
-          <div>
-            <h3 className="eq-card-name line-clamp-1 mb-1">{equipment.name}</h3>
-            <p className="eq-card-desc line-clamp-2" style={{ minHeight: '2.5em' }}>
-              {equipment.description || ''}
-            </p>
-          </div>
-
-          {/* Quantity chips */}
-          <div className="eq-qty-row">
-            <div className="eq-qty-chip">
-              <p className="eq-qty-chip-label">{t('total')}</p>
-              <p className="eq-qty-chip-value">{total}</p>
-            </div>
-            <div className="eq-qty-chip">
-              <p className="eq-qty-chip-label">{t('availableLabel')}</p>
-              <p className={`eq-qty-chip-value ${availTextColor}`}>{available}</p>
-            </div>
-          </div>
-
+        {/* Bottom — availability bar + borrow button */}
+        <div className="flex flex-col p-3 gap-2.5">
           {/* Availability bar */}
-          <div className="mt-auto space-y-1.5">
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="eq-avail-label">{t('availability')}</span>
               <span className={`text-[11px] font-bold ${availTextColor}`}>
@@ -611,7 +662,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
           {/* Borrow button */}
           {canBorrow && (
             hasActiveRequest ? (
-              <div className="mt-1 w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-semibold cursor-not-allowed"
+              <div className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-semibold cursor-not-allowed"
                 style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#f59e0b' }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -621,7 +672,7 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
               <button
                 onClick={handleViewAndBorrowClick}
                 disabled={available === 0}
-                className="learn-more-card-btn mt-1 w-full"
+                className="learn-more-card-btn w-full"
               >
                 <span className="circle" aria-hidden="true">
                   <span className="icon arrow"></span>
@@ -630,7 +681,6 @@ export default function EquipmentCard({ equipment, onBorrow, onSelect, userRole,
               </button>
             )
           )}
-          
         </div>
       </div>
     </>

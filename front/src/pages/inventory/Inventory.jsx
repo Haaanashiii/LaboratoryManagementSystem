@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, Pencil, Trash2, Package, Cpu, Monitor, Network, Mouse, HardDrive, Cable, Wrench, Boxes, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Plus, Search, Pencil, Trash2, Package, Cpu, Monitor, Network, Mouse, HardDrive, Cable, Wrench, Boxes, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { InventorySkeleton } from '@/skeleton-framework/admin';
 
@@ -351,45 +351,44 @@ export default function Inventory() {
       </Card>
 
       {/* ── Delete Confirmation ── */}
-      <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
-        <AlertDialogContent className="max-w-sm overflow-hidden rounded-2xl p-0">
-          {/* Illustration */}
-          <div className="flex flex-col items-center bg-red-50 px-6 pt-8 pb-6">
-            {/* Item image with trash overlay */}
-            <div className="relative">
-              <div className="flex h-50 w-50 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-4 ring-red-100">
-                {deleteItem?.image_url ? (
-                  <img src={deleteItem.image_url} alt={deleteItem.name} className="h-full w-full object-cover" />
-                ) : (
-                  <Package className="h-8 w-8 text-slate-300" />
-                )}
+      <Dialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
+                <Trash2 className="h-4 w-4 text-red-500" />
               </div>
-              {/* Trash badge */}
-              <div className="absolute -bottom-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 shadow">
-                <Trash2 className="h-3.5 w-3.5 text-white" />
-              </div>
-            </div>
-            <h2 className="mt-5 text-base font-semibold text-slate-900">Delete Equipment?</h2>
-            <p className="mt-1 text-center text-xs text-slate-500">
+              Delete Equipment
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-slate-500 leading-relaxed">
               You're about to permanently delete{' '}
-              <span className="font-semibold text-slate-700">"{deleteItem?.name}"</span>.
-              <br />This action cannot be undone.
+              <span className="font-medium text-slate-700">"{deleteItem?.name}"</span>.
+              {' '}This action <span className="font-medium text-slate-700">cannot be undone</span> and will remove all associated data.
             </p>
           </div>
-          {/* Actions */}
-          <div className="flex gap-2 bg-white px-6 py-4">
-            <AlertDialogCancel className="h-9 flex-1 rounded-lg text-xs">
+
+          <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
+            <Button variant="outline" size="sm" onClick={() => setDeleteItem(null)} className="text-xs">
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
+              size="sm"
               onClick={() => deleteMutation.mutate(deleteItem.id)}
-              className="h-9 flex-1 rounded-lg bg-red-600 text-xs hover:bg-red-700"
+              disabled={deleteMutation.isPending}
+              className="text-xs text-white bg-red-500 hover:bg-red-600"
             >
-              Delete
-            </AlertDialogAction>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+              {deleteMutation.isPending ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Deleting...</>
+              ) : (
+                'Delete Equipment'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

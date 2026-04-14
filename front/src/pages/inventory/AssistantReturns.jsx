@@ -28,6 +28,7 @@ export default function Returns() {
   const [damageImage, setDamageImage] = useState(null);
   const [studentWillReplace, setStudentWillReplace] = useState('');
   const [replacementCompleted, setReplacementCompleted] = useState('');
+  const [dragOver, setDragOver] = useState(false);
   const [search, setSearch] = useState('');
   const [activeSection, setActiveSection] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -90,6 +91,13 @@ export default function Returns() {
   const handleDamageImageChange = (event) => {
     const file = event.target.files?.[0] || null;
     setDamageImage(file);
+  };
+
+  const handleDamageDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) setDamageImage(file);
   };
 
   const handleStudentReplacementChange = (value) => {
@@ -383,7 +391,7 @@ export default function Returns() {
 
       {/* Return Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-md rounded-2xl bg-white text-slate-900">
+        <DialogContent className="sm:max-w-xl rounded-2xl bg-white text-slate-900">
           <DialogHeader className="border-b border-slate-100 pb-4">
             <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
@@ -393,19 +401,18 @@ export default function Returns() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-slate-500 leading-relaxed">
-              Processing return for{' '}
+          <div className="py-3 space-y-2.5">
+            <p className="text-xs text-slate-500">
               <span className="font-medium text-slate-700">{selectedRequest?.equipment_name}</span>
-              {' '}borrowed by{' '}
-              <span className="font-medium text-slate-700">{selectedRequest?.borrower_name}</span>.
-              {' '}Expected by{' '}
+              {' · '}
+              <span>{selectedRequest?.borrower_name}</span>
+              {' · Due '}
               <span className="font-medium text-slate-700">
                 {selectedRequest?.return_date ? format(new Date(selectedRequest.return_date), 'MMM d, yyyy') : '—'}
-              </span>.
+              </span>
             </p>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">Equipment Condition</label>
               <Select value={returnCondition} onValueChange={handleConditionChange}>
                 <SelectTrigger className="text-sm">
@@ -435,37 +442,64 @@ export default function Returns() {
             </div>
 
             {returnCondition === 'Damaged' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">
-                  What is damaged? <span className="text-red-500">*</span>
-                </label>
-                <Textarea
-                  value={damageDetails}
-                  onChange={(e) => setDamageDetails(e.target.value)}
-                  placeholder="Example: cracked screen, broken cable, missing charger tip..."
-                  rows={3}
-                  className="resize-none text-sm"
-                />
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">
+                    What is damaged? <span className="text-red-500">*</span>
+                  </label>
+                  <Textarea
+                    value={damageDetails}
+                    onChange={(e) => setDamageDetails(e.target.value)}
+                    placeholder="e.g. cracked screen, broken cable..."
+                    rows={2}
+                    className="resize-none text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Damage image (optional)</label>
+                  <label
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDamageDrop}
+                    className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-3 transition-colors ${
+                      dragOver
+                        ? 'border-blue-400 bg-blue-50'
+                        : damageImage
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    {damageImage ? (
+                      <>
+                        <img
+                          src={URL.createObjectURL(damageImage)}
+                          alt="preview"
+                          className="h-16 w-full rounded-md object-cover"
+                        />
+                        <p className="truncate text-[11px] text-slate-500 w-full text-center">{damageImage.name}</p>
+                        <span className="text-[10px] text-slate-400 underline">click to change</span>
+                      </>
+                    ) : (
+                      <>
+                        <Package className="h-5 w-5 text-slate-400" />
+                        <p className="text-[11px] text-slate-500">
+                          {dragOver ? 'Drop image here' : 'Drag & drop or click'}
+                        </p>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => setDamageImage(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                </div>
               </div>
             )}
 
             {returnCondition === 'Damaged' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">Damage image (optional but recommended)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setDamageImage(e.target.files?.[0] || null)}
-                  className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-2 file:py-1 file:text-xs file:font-medium file:text-slate-700"
-                />
-                {damageImage && (
-                  <p className="text-xs text-slate-500">Selected: {damageImage.name}</p>
-                )}
-              </div>
-            )}
-
-            {returnCondition === 'Damaged' && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">
                   Will the borrower replace it? <span className="text-red-500">*</span>
                 </label>
@@ -489,7 +523,7 @@ export default function Returns() {
             )}
 
             {shouldTrackReplacement && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">
                   Has the replacement already been completed? <span className="text-red-500">*</span>
                 </label>
@@ -505,7 +539,7 @@ export default function Returns() {
               </div>
             )}
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">
                 Remarks {returnCondition !== 'Good' && <span className="text-red-500">*</span>}
               </label>
@@ -515,7 +549,7 @@ export default function Returns() {
                 placeholder={returnCondition !== 'Good'
                   ? 'Please describe the damage or issue...'
                   : 'Optional: Add any notes...'}
-                rows={3}
+                rows={2}
                 className="resize-none text-sm"
               />
             </div>

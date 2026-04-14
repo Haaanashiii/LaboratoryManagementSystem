@@ -7,8 +7,8 @@ export default function ProtectedRoute() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-600 text-sm">
-        Verifying your session...
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0A0F' }}>
+        <div className="h-16 w-16 animate-spin rounded-full border-[6px] border-blue-900 border-t-blue-500" />
       </div>
     );
   }

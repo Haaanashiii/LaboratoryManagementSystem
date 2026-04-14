@@ -9,7 +9,8 @@ const {
   getMe,
   logout,
   updatePassword,
-  updateName
+  updateName,
+  verifyCurrentPassword
 } = require('../controllers/authController');
 const { protect, authorizeAdminAccess } = require('../middleware/auth');
 const { getMaintenanceMode } = require('../middleware/maintenanceMode');
@@ -158,6 +159,7 @@ router.get('/admin/session', protect, authorizeAdminAccess, (req, res) => {
   });
 });
 router.post('/logout', protect, logout);
+router.post('/verify-password', protect, verifyCurrentPassword);
 router.put('/update-password', protect, updatePassword);
 router.put('/update-name', protect, updateName);
 

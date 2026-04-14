@@ -40,7 +40,6 @@ const menuConfig = {
         },
         { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
         { label: 'reports', icon: ClipboardList, href: '/reports' },
-        { label: 'equipmentPrep', icon: CheckCircle, href: '/equipment-prep' },
       ],
     },
     {
@@ -95,18 +94,6 @@ const menuConfig = {
       ],
     },
     {
-      groupLabel: 'Management',
-      items: [
-        {
-          label: 'inventory', icon: Package, href: '/inventory',
-          children: [
-            { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },
-            { label: 'editEquipment', icon: Pencil, href: '/inventory' },
-          ],
-        },
-      ],
-    },
-    {
       groupLabel: 'System',
       items: [
         { label: 'settings', icon: Settings, href: '/head-settings' },
@@ -118,13 +105,6 @@ const menuConfig = {
       groupLabel: 'sidebarGroupApplication',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
-        {
-          label: 'inventory', icon: Package, href: '/inventory',
-          children: [
-            { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },
-            { label: 'editEquipment', icon: Pencil, href: '/inventory' },
-          ],
-        },
       ],
     },
     {

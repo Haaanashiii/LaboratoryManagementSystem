@@ -47,6 +47,7 @@ import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import Reports from './pages/admin/Reports'
 import Maintenance from './pages/Maintenance'
 
+import { Toaster } from 'sonner'
 import './App.css'
 
 const HIDDEN_ADMIN_ROUTE = '/secure-admin-portal-9f3Xk'
@@ -91,6 +92,7 @@ function App() {
     <Router>
       <AdminShortcutHandler />
       <MaintenanceRedirectHandler />
+      <Toaster position="bottom-right" richColors theme="dark" />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />

@@ -343,6 +343,13 @@ export const api = {
       });
     },
 
+    verifyPassword: async (currentPassword) => {
+      return await request('/auth/verify-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword }),
+      });
+    },
+
     updateName: async (name) => {
       const data = await request('/auth/update-name', {
         method: 'PUT',

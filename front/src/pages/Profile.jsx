@@ -1,28 +1,90 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Lock, Loader2, Eye, EyeOff,
   CheckCircle, ArrowLeft, AlertCircle,
-  ShieldCheck,
+  ShieldCheck, UserCircle2, ShieldCheck as ShieldOk,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import { useTheme } from '@/components/hooks/ThemeContext';
 
+// ─── Password requirement checks ─────────────────────────────────────────────
+const PWD_CHECKS = [
+  { label: 'At least 6 characters',  fn: (p) => p.length >= 6 },
+  { label: 'One uppercase letter',    fn: (p) => /[A-Z]/.test(p) },
+  { label: 'One lowercase letter',    fn: (p) => /[a-z]/.test(p) },
+  { label: 'One number',              fn: (p) => /[0-9]/.test(p) },
+];
+
 const profileStyles = `
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(14px); }
+    from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .pf-fade-up { opacity: 0; animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .pf-fade-up { opacity: 0; animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
   .pf-fade-up-1 { animation-delay: 0.04s; }
-  .pf-fade-up-2 { animation-delay: 0.12s; }
-  .pf-fade-up-3 { animation-delay: 0.22s; }
-  .pf-fade-up-4 { animation-delay: 0.32s; }
+  .pf-fade-up-2 { animation-delay: 0.14s; }
+  .pf-fade-up-3 { animation-delay: 0.24s; }
+  .pf-fade-up-4 { animation-delay: 0.34s; }
+  .pf-fade-up-5 { animation-delay: 0.44s; }
 `;
+
+// ─── Reusable password field ──────────────────────────────────────────────────
+function PasswordField({ id, value, visible, onChange, onToggle, placeholder, autoComplete = 'new-password', disabled = false, isDark = false }) {
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={isDark ? { background: '#1e293b', color: '#f1f5f9', borderColor: 'rgba(255,255,255,0.1)' } : {}}
+        className={`h-10 pr-10 text-sm transition-colors ${
+          isDark
+            ? 'border-white/10 placeholder:text-slate-500 focus:border-blue-500'
+            : 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400'
+        }`}
+        autoComplete={autoComplete}
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        className={`absolute inset-y-0 right-0 flex items-center pr-3 disabled:opacity-40 disabled:cursor-not-allowed ${
+          isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+        }`}
+      >
+        {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
+
+// ─── Inline message ───────────────────────────────────────────────────────────
+function Msg({ msg, isDark = false }) {
+  if (!msg) return null;
+  return (
+    <div className={`flex items-center gap-2.5 text-xs rounded-xl px-4 py-3 border ${
+      msg.type === 'ok'
+        ? isDark ? 'bg-emerald-900/30 text-emerald-300 border-emerald-700/40' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        : isDark ? 'bg-red-900/30 text-red-300 border-red-700/40' : 'bg-red-50 text-red-600 border-red-200'
+    }`}>
+      {msg.type === 'ok'
+        ? <CheckCircle className="w-4 h-4 shrink-0" />
+        : <AlertCircle className="w-4 h-4 shrink-0" />}
+      {msg.text}
+    </div>
+  );
+}
 
 
 export default function ProfilePage() {
@@ -30,38 +92,97 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { isDark } = useTheme();
 
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword]         = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  React.useEffect(() => {
+    const el = document.querySelector('main');
+    if (!el) return;
+    const prev = el.style.overflowY;
+    const apply = () => {
+      if (window.innerWidth >= 1024) {
+        el.style.overflowY = 'hidden';
+        document.body.style.overflowY = 'hidden';
+      } else {
+        el.style.overflowY = prev;
+        document.body.style.overflowY = '';
+      }
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => {
+      window.removeEventListener('resize', apply);
+      el.style.overflowY = prev;
+      document.body.style.overflowY = '';
+    };
+  }, []);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.auth.me(),
   });
 
-  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [passwordError, setPasswordError]   = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const initials = useMemo(
+    () => (user?.name || 'U').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase(),
+    [user?.name]
+  );
 
-  const updatePasswordMutation = useMutation({
+  // ── Password state ────────────────────────────────────────────────────────
+  const [pw, setPw]        = useState({ cur: '', next: '', confirm: '' });
+  const [vis, setVis]      = useState({ cur: false, next: false, confirm: false });
+  const [pwMsg, setPwMsg]  = useState(null);
+  const [curVerified, setCurVerified] = useState(false);
+  const [verifyMsg, setVerifyMsg]     = useState(null);
+
+  const pwScore = useMemo(
+    () => PWD_CHECKS.filter(({ fn }) => fn(pw.next)).length,
+    [pw.next]
+  );
+  const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][pwScore] || '';
+  const strengthColor = ['', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-emerald-400'][pwScore] || 'bg-red-500';
+
+  const verifyMutation = useMutation({
+    mutationFn: (password) => api.auth.verifyPassword(password),
+    onSuccess: () => {
+      setCurVerified(true);
+      setVerifyMsg(null);
+    },
+    onError: (err) => setVerifyMsg(err.message || 'Incorrect password. Please try again.'),
+  });
+
+  const handleVerify = () => {
+    if (!pw.cur) { setVerifyMsg('Please enter your current password.'); return; }
+    setVerifyMsg(null);
+    verifyMutation.mutate(pw.cur);
+  };
+
+  const handleResetVerify = () => {
+    setCurVerified(false);
+    setVerifyMsg(null);
+    setPw({ cur: '', next: '', confirm: '' });
+    setPwMsg(null);
+  };
+
+  const pwMutation = useMutation({
     mutationFn: (data) => api.auth.changePassword(data),
     onSuccess: () => {
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setPasswordSuccess(true);
-      setTimeout(() => setPasswordSuccess(false), 3000);
+      setPw({ cur: '', next: '', confirm: '' });
+      setCurVerified(false);
+      setPwMsg(null);
+      toast.success('Password updated successfully.', {
+        description: 'Your new password is now active.',
+        duration: 3000,
+      });
     },
-    onError: (error) => {
-      setPasswordError(error.message || t('passwordUpdateError'));
+    onError: (err) => {
+      toast.error(err.message || 'Failed to update password.');
     },
   });
 
-  const handlePasswordUpdate = (e) => {
+  const handlePwSave = (e) => {
     e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess(false);
-    if (passwordData.newPassword.length < 6) { setPasswordError(t('passwordTooShort')); return; }
-    if (passwordData.newPassword !== passwordData.confirmPassword) { setPasswordError(t('passwordsDoNotMatch')); return; }
-    updatePasswordMutation.mutate({ currentPassword: passwordData.currentPassword, newPassword: passwordData.newPassword });
+    if (pw.next.length < 6)     { setPwMsg({ type: 'err', text: 'New password must be at least 6 characters.' }); return; }
+    if (pw.next === pw.cur)      { setPwMsg({ type: 'err', text: 'New password must differ from your current password.' }); return; }
+    if (pw.next !== pw.confirm)  { setPwMsg({ type: 'err', text: 'Passwords do not match.' }); return; }
+    setPwMsg(null);
+    pwMutation.mutate({ currentPassword: pw.cur, newPassword: pw.next });
   };
 
   const roleLabel = (role) => {
@@ -69,239 +190,391 @@ export default function ProfilePage() {
     return map[role] || role?.replace(/_/g, ' ') || 'User';
   };
 
-  const inputCls = `h-10 text-sm transition-colors ${
-    isDark
-      ? 'bg-slate-800 border-white/10 text-slate-100 placeholder:text-slate-500 focus:border-blue-500'
-      : 'bg-slate-100 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-400'
-  }`;
-
-  const labelCls = `text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-500'}`;
-
-  const cardCls = `rounded-2xl border overflow-hidden ${isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-slate-100 border-slate-300'}`;
-  const cardHeaderCls = `px-6 py-4 border-b ${isDark ? 'border-white/[0.08]' : 'border-slate-200'}`;
-
-  const initials = (user?.name || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const roleBadge = isDark ? {
+    admin:         'bg-red-500/20 text-red-300 border-red-500/30',
+    lecturer:      'bg-violet-500/20 text-violet-300 border-violet-500/30',
+    head_of_lab:   'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    lab_assistant: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  } : {
+    admin:         'bg-red-100 text-red-700 border-red-200',
+    lecturer:      'bg-violet-100 text-violet-700 border-violet-200',
+    head_of_lab:   'bg-amber-100 text-amber-700 border-amber-200',
+    lab_assistant: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  };
 
   return (
-    <div className={`overflow-x-hidden ${isDark ? 'bg-slate-950' : ''}`}>
+    <div className={`w-full space-y-6 px-2 pt-0 pb-2 min-h-screen overflow-hidden ${isDark ? 'bg-slate-950' : ''}`}>
       <style>{profileStyles}</style>
 
-      {/* ── PAGE HEADER ── */}
-      <div className={`px-4 sm:px-6 lg:px-8 pt-5 pb-4 pf-fade-up pf-fade-up-1`}>
+      {/* ── Page Header ── */}
+      <div className={`pf-fade-up pf-fade-up-1 flex flex-wrap items-center justify-between gap-4 rounded-2xl border px-6 py-5 shadow-sm ${
+        isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white border-slate-200'
+      }`}>
+        <div className="flex items-center gap-4">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${
+            isDark ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-slate-50 border-slate-200'
+          }`}>
+            <UserCircle2 className={`h-6 w-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+          </div>
+          <div>
+            <p className={`text-[11px] font-medium uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Account</p>
+            <h1 className={`text-xl font-bold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Profile Settings</h1>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-2.5 rounded-xl border px-4 py-2.5 ${
+            isDark ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-slate-50 border-slate-100'
+          }`}>
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
+              isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-600'
+            }`}>
+              {initials}
+            </div>
+            <div className="text-left">
+              <p className={`text-sm font-semibold leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{user?.name || 'User'}</p>
+              <p className={`mt-0.5 text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{user?.email || '—'}</p>
+            </div>
+          </div>
           <button
             onClick={() => navigate(-1)}
-            className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-xl border transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
               isDark
-                ? 'border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/05 hover:border-white/20'
-                : 'border-slate-300 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                ? 'bg-white/[0.04] border-white/[0.08] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back
+            <ArrowLeft className="w-4 h-4" /> Back
           </button>
-          <div className={`h-4 w-px ${isDark ? 'bg-white/10' : 'bg-slate-300'}`} />
-          <div>
-            <h1 className={`text-base font-semibold leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Profile Settings</h1>
-            <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Manage your account security</p>
-          </div>
         </div>
       </div>
 
-      {/* ── CONTENT ── */}
-      <div className="px-4 sm:px-6 lg:px-8 pb-8">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5 items-start">
+      {/* ── Main grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-start">
 
-          {/* ── LEFT: Account Details (sticky sidebar) ── */}
-          <div className={`${cardCls} pf-fade-up pf-fade-up-2 lg:sticky lg:top-6`}>
-            {/* Avatar block */}
-            <div className={`px-6 pt-6 pb-5 border-b ${isDark ? 'border-white/[0.08]' : 'border-slate-200'} flex flex-col items-center text-center`}>
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white mb-3">
-                {initials}
-              </div>
-              <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{user?.name || '—'}</p>
-              <p className={`text-xs mt-0.5 truncate max-w-full ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user?.email || '—'}</p>
-              <span className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                user?.role === 'admin'         ? (isDark ? 'bg-red-500/20 text-red-300 border-red-500/30'     : 'bg-red-50 text-red-700 border-red-200') :
-                user?.role === 'lecturer'      ? (isDark ? 'bg-violet-500/20 text-violet-300 border-violet-500/30' : 'bg-violet-50 text-violet-700 border-violet-200') :
-                user?.role === 'head_of_lab'   ? (isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'   : 'bg-amber-50 text-amber-700 border-amber-200') :
-                user?.role === 'lab_assistant' ? (isDark ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200') :
-                                                 (isDark ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'   : 'bg-blue-50 text-blue-700 border-blue-200')
+        {/* ── LEFT: Account Info Sidebar ── */}
+        <div className="pf-fade-up pf-fade-up-2 space-y-4 lg:sticky lg:top-6">
+
+          {/* Account card */}
+          <Card
+            style={{ background: isDark ? '#0d0d14' : '#ffffff' }}
+            className={`shadow-none overflow-hidden ${
+              isDark ? 'border-white/[0.08]' : 'border-slate-200'
+            }`}
+          >
+            <div className={`flex items-center gap-3 border-b px-5 py-4 ${
+              isDark ? 'border-white/[0.08]' : 'border-slate-100'
+            }`}>
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                isDark ? 'bg-blue-500/20 border-blue-500/30' : 'bg-blue-50 border-blue-100'
               }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  user?.role === 'admin' ? 'bg-red-500' : user?.role === 'lecturer' ? 'bg-violet-500' :
-                  user?.role === 'head_of_lab' ? 'bg-amber-500' : user?.role === 'lab_assistant' ? 'bg-emerald-500' : 'bg-blue-500'
-                }`} />
-                {roleLabel(user?.role)}
-              </span>
+                <UserCircle2 className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+              </div>
+              <div>
+                <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Account Details</p>
+                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Your identity information</p>
+              </div>
             </div>
-
-            {/* Info tiles */}
-            <div className="p-4 space-y-2">
-              {[
-                { label: 'User ID',  value: user?.student_id || user?.id?.slice(-10)?.toUpperCase() || '—', mono: true },
-                { label: 'Phone',    value: user?.phone || '—', mono: false },
-              ].map(({ label, value, mono }) => (
-                <div key={label} className={`rounded-xl px-4 py-3 border ${isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-slate-100 border-slate-200'}`}>
-                  <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
-                  <p className={`text-sm font-semibold truncate ${mono ? 'font-mono tracking-wide' : ''} ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{value}</p>
+            <CardContent className="p-5 space-y-4">
+              {/* Avatar + name block */}
+              <div className={`flex flex-col items-center text-center pt-2 pb-4 border-b ${
+                isDark ? 'border-white/[0.06]' : 'border-slate-100'
+              }`}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shadow-md bg-gradient-to-br from-blue-500 to-indigo-600 text-white mb-3">
+                  {initials}
                 </div>
-              ))}
+                <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{user?.name || '—'}</p>
+                <p className={`text-xs mt-0.5 truncate max-w-full ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user?.email || '—'}</p>
+                <span className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                  roleBadge[user?.role] || (isDark ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-blue-100 text-blue-700 border-blue-200')
+                }`}>
+                  {roleLabel(user?.role)}
+                </span>
+              </div>
+
+              {/* User ID tile */}
+              <div className={`rounded-xl border px-4 py-3.5 ${
+                isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>User ID</p>
+                <p className={`text-sm font-semibold font-mono tracking-wide truncate ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {user?.student_id || user?.id?.slice(-10)?.toUpperCase() || '—'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security tip */}
+          <div className={`rounded-xl border px-4 py-4 flex items-start gap-3 ${
+            isDark ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200'
+          }`}>
+            <ShieldCheck className={`w-4 h-4 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+            <p className={`text-xs leading-relaxed ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+              Never share your credentials with anyone. Use a strong, unique password for this account.
+            </p>
+          </div>
+        </div>
+
+        {/* ── RIGHT: Password + Requirements ── */}
+        <div className="grid gap-5 lg:grid-cols-[1fr_260px] items-start">
+
+          {/* Change Password card */}
+          <Card
+            style={{ background: isDark ? '#0d0d14' : '#ffffff' }}
+            className={`pf-fade-up pf-fade-up-3 shadow-none overflow-hidden ${
+              isDark ? 'border-white/[0.08]' : 'border-slate-200'
+            }`}
+          >
+            <div className={`flex items-center gap-4 border-b px-6 py-5 ${
+              isDark ? 'border-white/[0.08]' : 'border-slate-100'
+            }`}>
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
+                isDark ? 'bg-white/[0.06] border-white/[0.08]' : 'bg-slate-100 border-slate-200'
+              }`}>
+                <Lock className={`w-5 h-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} />
+              </div>
+              <div>
+                <p className={`text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Change Password</p>
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Keep your account secure with a strong password</p>
+              </div>
             </div>
 
-            {/* Tip */}
-            <div className={`mx-4 mb-4 px-4 py-3 rounded-xl flex items-start gap-2.5 ${isDark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-100/70 border border-blue-200'}`}>
-              <ShieldCheck className={`w-4 h-4 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
-              <p className={`text-[11px] leading-relaxed ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-                Keep your info up to date. Never share your credentials with anyone.
+            <CardContent className="px-6 pt-8 pb-6">
+              <form onSubmit={handlePwSave} className="space-y-6">
+
+                {/* Step 1: Current password */}
+                <div className="space-y-2">
+                  <Label htmlFor="cur-pw" className={`flex items-center gap-2 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-bold ${
+                      curVerified
+                        ? 'bg-emerald-500 text-white'
+                        : isDark ? 'bg-white/[0.08] text-slate-400' : 'bg-slate-100 text-slate-500'
+                    }`}>{curVerified ? '✓' : '1'}</span>
+                    Current Password
+                    {curVerified && (
+                      <span className={`ml-auto flex items-center gap-1 text-[10px] font-semibold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        <CheckCircle className="w-3 h-3" /> Verified
+                        <button
+                          type="button"
+                          onClick={handleResetVerify}
+                          className={`ml-2 underline underline-offset-2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                          Change
+                        </button>
+                      </span>
+                    )}
+                  </Label>
+                  {!curVerified ? (
+                    <>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <PasswordField
+                            id="cur-pw"
+                            value={pw.cur}
+                            visible={vis.cur}
+                            onChange={(e) => { setPw((p) => ({ ...p, cur: e.target.value })); setVerifyMsg(null); }}
+                            onToggle={() => setVis((v) => ({ ...v, cur: !v.cur }))}
+                            placeholder="Enter your current password"
+                            autoComplete="current-password"
+                            isDark={isDark}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleVerify}
+                          disabled={verifyMutation.isPending || !pw.cur}
+                          className={`shrink-0 gap-1.5 text-white disabled:opacity-40 disabled:cursor-not-allowed ${
+                            isDark ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-600 hover:bg-blue-700'
+                          }`}
+                        >
+                          {verifyMutation.isPending
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <><ShieldOk className="w-4 h-4" /> Verify</>
+                          }
+                        </Button>
+                      </div>
+                      {verifyMsg && (
+                        <p className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {verifyMsg}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className={`flex items-center gap-2 h-10 rounded-md border px-3 text-sm ${
+                      isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    }`}>
+                      <CheckCircle className="w-4 h-4 shrink-0" />
+                      Current password confirmed
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider — only show when verified */}
+                {curVerified && (
+                  <div className="flex items-center gap-3">
+                    <div className={`flex-1 border-t border-dashed ${isDark ? 'border-white/[0.08]' : 'border-slate-200'}`} />
+                    <span className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>New credentials</span>
+                    <div className={`flex-1 border-t border-dashed ${isDark ? 'border-white/[0.08]' : 'border-slate-200'}`} />
+                  </div>
+                )}
+
+                {/* Step 2: New password — gated */}
+                {curVerified && (
+                  <div className="space-y-2">
+                    <Label htmlFor="new-pw" className={`flex items-center gap-2 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      <span className={`inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-bold ${
+                        isDark ? 'bg-white/[0.08] text-slate-400' : 'bg-slate-100 text-slate-500'
+                      }`}>2</span>
+                      New Password
+                    </Label>
+                    <PasswordField
+                      id="new-pw"
+                      value={pw.next}
+                      visible={vis.next}
+                      onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))}
+                      onToggle={() => setVis((v) => ({ ...v, next: !v.next }))}
+                      placeholder="Create a strong password"
+                      isDark={isDark}
+                    />
+                    {pw.next.length > 0 && pw.next === pw.cur && (
+                      <p className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        New password must differ from your current password.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 3: Confirm password — gated */}
+                {curVerified && (
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-pw" className={`flex items-center gap-2 text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      <span className={`inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-bold ${
+                        isDark ? 'bg-white/[0.08] text-slate-400' : 'bg-slate-100 text-slate-500'
+                      }`}>3</span>
+                      Confirm New Password
+                    </Label>
+                    <PasswordField
+                      id="confirm-pw"
+                      value={pw.confirm}
+                      visible={vis.confirm}
+                      onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))}
+                      onToggle={() => setVis((v) => ({ ...v, confirm: !v.confirm }))}
+                      placeholder="Re-enter your new password"
+                      disabled={pw.next.length === 0 || pw.next === pw.cur}
+                      isDark={isDark}
+                    />
+                    {pw.confirm.length > 0 && (
+                      <p className={`text-[11px] font-medium flex items-center gap-1 ${
+                        pw.next === pw.confirm
+                          ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+                          : isDark ? 'text-red-400' : 'text-red-500'
+                      }`}>
+                        {pw.next === pw.confirm ? '✓ Passwords match' : '✕ Passwords do not match'}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {curVerified && (
+                  <Button
+                    type="submit"
+                    disabled={pwMutation.isPending || pw.next === pw.cur || pw.next.length === 0}
+                    className={`w-full gap-2 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      isDark ? 'bg-slate-600 hover:bg-slate-500' : 'bg-slate-700 hover:bg-slate-800'
+                    }`}
+                  >
+                    {pwMutation.isPending
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating…</>
+                      : <><Lock className="w-4 h-4" /> Update Password</>
+                    }
+                  </Button>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Requirements side card */}
+          <div className="pf-fade-up pf-fade-up-4 space-y-4">
+            <Card
+              style={{ background: isDark ? '#0d0d14' : '#ffffff' }}
+              className={`shadow-none overflow-hidden ${
+                isDark ? 'border-white/[0.08]' : 'border-slate-200'
+              }`}
+            >
+              <div className={`flex items-center gap-3 border-b px-5 py-4 ${
+                isDark ? 'border-white/[0.08]' : 'border-slate-100'
+              }`}>
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                  isDark ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-emerald-50 border-emerald-100'
+                }`}>
+                  <CheckCircle className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                </div>
+                <div>
+                  <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Requirements</p>
+                  <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Must meet all 4</p>
+                </div>
+              </div>
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  {PWD_CHECKS.map(({ label, fn }) => {
+                    const ok = fn(pw.next);
+                    return (
+                      <div
+                        key={label}
+                        className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 transition-all duration-200 ${
+                          ok
+                            ? isDark ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
+                            : isDark ? 'border-white/[0.06] bg-white/[0.02]' : 'border-slate-100 bg-slate-50/60'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                          ok ? 'bg-emerald-500 shadow-sm shadow-emerald-300' : isDark ? 'bg-white/[0.1]' : 'bg-slate-200'
+                        }`}>
+                          <CheckCircle className={`w-3 h-3 ${ok ? 'text-white' : isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                        </div>
+                        <span className={`text-xs font-medium leading-tight ${
+                          ok ? isDark ? 'text-emerald-400' : 'text-emerald-700' : isDark ? 'text-slate-400' : 'text-slate-500'
+                        }`}>
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Progress summary */}
+            <div className={`rounded-xl border px-4 py-4 ${
+              isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Strength Progress</p>
+              <div className="flex gap-1 mb-1.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                    i < pwScore ? strengthColor : isDark ? 'bg-white/[0.08]' : 'bg-slate-200'
+                  }`} />
+                ))}
+              </div>
+              <p className={`text-xs font-semibold ${
+                pwScore === 0 ? isDark ? 'text-slate-600' : 'text-slate-400' :
+                pwScore === 1 ? 'text-red-500' :
+                pwScore === 2 ? 'text-orange-500' :
+                pwScore === 3 ? 'text-yellow-500' : 'text-emerald-500'
+              }`}>
+                {pwScore === 0 ? 'Enter a password' : `${pwScore}/4 — ${strengthLabel}`}
               </p>
             </div>
           </div>
 
-          {/* ── COL 2: Change Password ── */}
-          <div>
+        </div>{/* end right grid */}
+      </div>{/* end main grid */}
 
-            {/* Change Password */}
-            <div className={`${cardCls} pf-fade-up pf-fade-up-3`}>
-              <div className={cardHeaderCls}>
-                <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-violet-500/20' : 'bg-violet-50'}`}>
-                    <ShieldCheck className={`w-3.5 h-3.5 ${isDark ? 'text-violet-400' : 'text-violet-500'}`} />
-                  </div>
-                  <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Change Password</h2>
-                </div>
-                <p className={`text-xs mt-0.5 ml-9 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Minimum 6 characters. Use a unique password you don't use elsewhere.</p>
-              </div>
-
-              <form onSubmit={handlePasswordUpdate} className="p-5 space-y-3">
-                {/* Current Password */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="currentPassword" className={labelCls}>Current Password</Label>
-                  <div className="relative">
-                    <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <Input
-                      id="currentPassword"
-                      type={showCurrentPassword ? 'text' : 'password'}
-                      value={passwordData.currentPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                      placeholder="Current password"
-                      className={`${inputCls} pl-9 pr-9`}
-                    />
-                    <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* New + Confirm in a row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* New Password */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="newPassword" className={labelCls}>New Password</Label>
-                    <div className="relative">
-                      <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                      <Input
-                        id="newPassword"
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={passwordData.newPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                        placeholder="New password"
-                        className={`${inputCls} pl-9 pr-9`}
-                      />
-                      <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {passwordData.newPassword && (
-                      <div className="flex gap-1 pt-0.5">
-                        {[1,2,3,4].map((s) => {
-                          const len = passwordData.newPassword.length;
-                          const score = len >= 10 ? 4 : len >= 8 ? 3 : len >= 6 ? 2 : 1;
-                          return (
-                            <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${
-                              s <= score
-                                ? score >= 4 ? 'bg-emerald-500' : score >= 3 ? 'bg-blue-500' : score >= 2 ? 'bg-amber-500' : 'bg-red-500'
-                                : isDark ? 'bg-slate-700' : 'bg-slate-200'
-                            }`} />
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Confirm Password */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirmPassword" className={labelCls}>Confirm Password</Label>
-                    <div className="relative">
-                      <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={passwordData.confirmPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                        placeholder="Confirm password"
-                        className={`${inputCls} pl-9 pr-9`}
-                      />
-                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {passwordData.confirmPassword && (
-                      <p className={`text-[11px] mt-0.5 ${
-                        passwordData.newPassword === passwordData.confirmPassword
-                          ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-                          : (isDark ? 'text-red-400' : 'text-red-500')
-                      }`}>
-                        {passwordData.newPassword === passwordData.confirmPassword ? '✓ Passwords match' : '✗ Do not match'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {passwordError && (
-                  <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm ${
-                    isDark ? 'bg-red-900/30 text-red-300 border border-red-700/40' : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}>
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    {passwordError}
-                  </div>
-                )}
-
-                {passwordSuccess && (
-                  <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm ${
-                    isDark ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-700/40' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}>
-                    <CheckCircle className="w-4 h-4 shrink-0" />
-                    Password changed successfully.
-                  </div>
-                )}
-
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    disabled={updatePasswordMutation.isPending}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white transition-colors disabled:opacity-60"
-                  >
-                    {updatePasswordMutation.isPending
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating…</>
-                      : <><ShieldCheck className="w-4 h-4" /> Update Password</>
-                    }
-                  </button>
-                </div>
-              </form>
-            </div>
-
-          </div>{/* ── end COL 2 ── */}
-
-        </div>{/* ── end 3-col grid ── */}
-
-        {/* Footer */}
-        <p className={`pf-fade-up pf-fade-up-4 text-center text-xs pb-2 mt-5 ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
-          Equimon Laboratory Management System · v1.0.0
-        </p>
-      </div>
+      {/* Footer */}
+      <p className="pf-fade-up pf-fade-up-5 text-center text-xs text-slate-400 pb-2">
+        Equimon Laboratory Management System · v1.0.0
+      </p>
     </div>
   );
 }
