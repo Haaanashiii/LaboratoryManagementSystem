@@ -6,9 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Search, FileText, Clock3, CheckCircle2, RotateCcw, XCircle, Layers, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { Search, FileText, Clock3, CheckCircle2, RotateCcw, XCircle, Layers, ChevronLeft, ChevronRight, BarChart3, Printer } from 'lucide-react';
 import { AllRequestsSkeleton } from '@/skeleton-framework/admin';
 import { format } from 'date-fns';
+import BorrowRequestReportModal from '@/components/BorrowRequestReportModal';
 
 const STATUS_TABS = [
   { key: 'all',      label: 'All',      statuses: null,                                            icon: Layers,       color: 'bg-slate-100 text-slate-700 border-slate-300',        dot: '#475569' },
@@ -24,6 +25,7 @@ export default function AllRequests() {
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [reportRequestId, setReportRequestId] = useState(null);
 
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['allRequests'],
@@ -67,6 +69,7 @@ export default function AllRequests() {
   if (isLoading) return <AllRequestsSkeleton />;
 
   return (
+    <>
     <div className="w-full space-y-4 px-2 py-2">
 
       {/* ── Hero Banner ── */}
@@ -174,6 +177,7 @@ export default function AllRequests() {
                     <TableHead className="text-xs font-medium text-slate-500">Return Date</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Created</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Report</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -197,7 +201,7 @@ export default function AllRequests() {
                         </TableCell>
                         <TableCell>
                           <p className="text-sm font-medium text-slate-900">{request.borrower_name}</p>
-                          <p className="text-xs text-slate-400">{request.borrower_email}</p>
+                          <p className="text-xs text-slate-400">{request.student_email || request.borrower_email}</p>
                         </TableCell>
                         <TableCell className="text-xs text-slate-500">
                           {request.borrow_date && format(new Date(request.borrow_date), 'MMM d, yyyy')}
@@ -210,6 +214,17 @@ export default function AllRequests() {
                         </TableCell>
                         <TableCell className="text-xs text-slate-400">
                           {request.created_date && format(new Date(request.created_date), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+                            title="Print borrow report"
+                            onClick={() => setReportRequestId(request.id)}
+                          >
+                            <Printer className="h-3.5 w-3.5 text-slate-500" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -260,5 +275,13 @@ export default function AllRequests() {
         </CardContent>
       </Card>
     </div>
+
+    {reportRequestId && (
+      <BorrowRequestReportModal
+        requestId={reportRequestId}
+        onClose={() => setReportRequestId(null)}
+      />
+    )}
+    </>
   );
 }

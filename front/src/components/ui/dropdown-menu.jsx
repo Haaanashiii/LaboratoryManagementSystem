@@ -93,10 +93,14 @@ export function DropdownMenuItem({ children, className = '', onClick, ...props }
     onClick?.(e);
     setOpen(false);
   };
+
+  // Only apply default light-mode hover when the caller hasn't supplied custom hover/focus bg classes.
+  const hasCustomHover = className.includes('hover:bg') || className.includes('focus:bg');
+  const defaultHover = hasCustomHover ? '' : 'hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900';
   
   return (
     <div
-      className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 ${className}`}
+      className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors ${defaultHover} ${className}`}
       onClick={handleClick}
       {...props}
     >

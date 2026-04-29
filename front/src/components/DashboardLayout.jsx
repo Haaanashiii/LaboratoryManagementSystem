@@ -260,10 +260,14 @@ export default function DashboardLayout() {
   const notificationsBell = (
     <DropdownMenu open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className={`w-5 h-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} />
+        <button
+          className={`relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+            isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-white/60'
+          }`}
+        >
+          <Bell className="w-5 h-5" />
           {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
@@ -609,28 +613,52 @@ export default function DashboardLayout() {
                   }`} />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-slate-50">
+              <DropdownMenuContent
+                align="end"
+                className={`w-64 border shadow-xl ${
+                  isDark
+                    ? 'bg-[#0f172a] border-white/10 text-slate-200'
+                    : 'bg-white border-slate-200 text-slate-900'
+                }`}
+              >
+                <DropdownMenuItem
+                  onClick={() => navigate('/profile')}
+                  className={`cursor-pointer ${
+                    isDark ? 'hover:bg-white/[0.07] focus:bg-white/[0.07]' : 'hover:bg-slate-50 focus:bg-slate-50'
+                  }`}
+                >
                   <div className="flex items-center gap-3 py-2 w-full">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
                       {user?.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'User'}</p>
-                      <p className="text-xs text-slate-500 truncate">{user?.email || 'user@its.ac.id'}</p>
-                      <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${roleColors[user?.role] || 'bg-slate-100 text-slate-800'}`}>
+                      <p className={`text-sm font-semibold truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{user?.name || 'User'}</p>
+                      <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user?.email || 'user@its.ac.id'}</p>
+                      <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${
+                        isDark ? 'bg-blue-500/20 text-blue-300' : (roleColors[user?.role] || 'bg-slate-100 text-slate-800')
+                      }`}>
                         {t(user?.role || 'student')}
                       </span>
                     </div>
                   </div>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <DropdownMenuSeparator className={isDark ? 'bg-white/10' : 'bg-slate-200'} />
+                <DropdownMenuItem
+                  onClick={() => navigate('/settings')}
+                  className={`cursor-pointer ${
+                    isDark ? 'text-slate-300 hover:bg-white/[0.07] focus:bg-white/[0.07] hover:text-slate-100 focus:text-slate-100' : 'hover:bg-slate-50 focus:bg-slate-50'
+                  }`}
+                >
                   <Settings className="w-4 h-4 mr-2" />
                   {t('settings')}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                <DropdownMenuSeparator className={isDark ? 'bg-white/10' : 'bg-slate-200'} />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className={`cursor-pointer text-red-500 ${
+                    isDark ? 'hover:bg-red-500/[0.12] focus:bg-red-500/[0.12] hover:text-red-400 focus:text-red-400' : 'hover:bg-red-50 focus:bg-red-50 hover:text-red-600 focus:text-red-600'
+                  }`}
+                >
                   <LogOut className="w-4 h-4 mr-2" />
                   {t('logout')}
                 </DropdownMenuItem>

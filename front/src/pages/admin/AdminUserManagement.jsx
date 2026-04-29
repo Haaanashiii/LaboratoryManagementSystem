@@ -409,6 +409,7 @@ export default function Users() {
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
                     <TableHead className="text-xs font-medium text-slate-500">User</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Email</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Department</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Role</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
                     <TableHead className="text-right text-xs font-medium text-slate-500">Actions</TableHead>

@@ -346,7 +346,7 @@ export default function StudentCatalog() {
             style={{
               width: '90vw',
               maxWidth: 440,
-              maxHeight: 'min(90dvh, 620px)',
+              maxHeight: 'min(92dvh, 680px)',
               padding: 0,
               boxShadow: isDark ? '0 32px 80px rgba(0,0,0,0.85)' : '0 24px 64px rgba(0,0,0,0.16)',
             }}
@@ -532,7 +532,7 @@ export default function StudentCatalog() {
                 </div>
 
                 {/* Form fields */}
-                <div className="px-5 py-3 space-y-2.5">
+                <div className="px-5 py-3 space-y-2.5 overflow-y-auto flex-1 min-h-0">
 
                   {/* Qty row */}
                   <div className="space-y-1.5">
@@ -647,8 +647,8 @@ export default function StudentCatalog() {
                         setBorrowForm({ ...borrowForm, lecturer_id: e.target.value });
                       }}
                       disabled={lecturersLoading || !hasLecturers}
-                      className={`h-8 w-full rounded-lg border text-xs font-semibold ${isDark ? 'bg-white/5 border-white/10 text-slate-200 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'} ${lecturersLoading || !hasLecturers ? 'opacity-60 cursor-not-allowed' : ''}`}
-                      style={isDark ? { color: '#e2e8f0' } : undefined}
+                      className={`h-8 w-full rounded-lg border px-2 text-xs font-semibold outline-none focus:ring-1 transition-colors ${isDark ? 'bg-[#1a1a28] border-white/10 text-slate-200 focus:border-blue-500 focus:ring-blue-500/30' : 'bg-white border-slate-200 text-slate-900 focus:border-blue-400 focus:ring-blue-400/20'} ${lecturersLoading || !hasLecturers ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      style={isDark ? { colorScheme: 'dark' } : { colorScheme: 'light' }}
                     >
                       <option value="" disabled>
                         {lecturersLoading ? 'Loading lecturers...' : 'Select a lecturer'}
@@ -705,31 +705,25 @@ export default function StudentCatalog() {
                 {/* Footer buttons */}
                 <div
                   className="flex gap-2 px-5 py-3 flex-shrink-0"
-                  style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #f1f5f9' }}
+                  style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0' }}
                 >
-                  {isDark ? (
-                    <button onClick={closeBorrowDialog} className="borrow-cancel">
-                      Cancel
-                    </button>
-                  ) : (
-                    <Button
-                      onClick={closeBorrowDialog}
-                      className="flex-1 h-8 rounded-lg text-xs font-semibold border bg-slate-50 border-slate-200 !text-slate-600 hover:bg-slate-100"
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                  <Button
+                  <button
+                    onClick={closeBorrowDialog}
+                    className={`flex-1 h-9 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${isDark ? 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200' : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    Cancel
+                  </button>
+                  <button
                     onClick={handleBorrowSubmit}
                     disabled={createRequestMutation.isPending || lecturersLoading || lecturersError || !borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded || isBorrowDateInvalid || isLecturerInvalid}
-                    className={`flex-[2] h-8 rounded-lg text-white text-xs font-semibold transition-all disabled:opacity-35 ${isDark ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.35)]' : 'bg-slate-900 hover:bg-blue-600 shadow-[0_4px_16px_rgba(0,0,0,0.18)]'}`}
+                    className={`flex-[2] h-9 rounded-lg text-white text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5 ${isDark ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.35)]' : 'bg-blue-600 hover:bg-blue-700 shadow-[0_4px_16px_rgba(37,99,235,0.35)]'}`}
                   >
                     {createRequestMutation.isPending ? (
-                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Submitting...</>
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" />Submitting...</>
                     ) : (
                       'Submit Request'
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
 

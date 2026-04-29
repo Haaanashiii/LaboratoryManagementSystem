@@ -45,6 +45,7 @@ import HeadLabSettings from './pages/settings/HeadLabSettings'
 import AssistantSettings from './pages/settings/AssistantSettings'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import Reports from './pages/admin/Reports'
+import BorrowReports from './pages/admin/BorrowReports'
 import Maintenance from './pages/Maintenance'
 
 import { Toaster } from 'sonner'
@@ -152,6 +153,7 @@ function App() {
             <Route element={<AdminRoute />}>
               <Route path="admin-settings" element={<AdminSettings />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="borrow-reports" element={<BorrowReports />} />
             </Route>
             <Route element={<RoleRoute allowedRoles={['lecturer']} />}>
               <Route path="lecturer-settings" element={<LecturerSettings />} />

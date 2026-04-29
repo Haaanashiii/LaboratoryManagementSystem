@@ -705,6 +705,10 @@ export const api = {
         });
         return data.data;
       },
+      getById: async (id) => {
+        const data = await request(`/borrow-requests/${id}`);
+        return { ...data.data, id: data.data._id || data.data.id };
+      },
       verifyDamage: async (id, action, remarks = '') => {
         const data = await request(`/borrow-requests/${id}/damage-verify`, {
           method: 'PUT',

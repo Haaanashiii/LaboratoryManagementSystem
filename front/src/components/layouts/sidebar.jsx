@@ -15,6 +15,7 @@ import {
   Plus,
   Pencil,
   ChevronDown,
+  Printer,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import equimonLogo from '@/assets/images/Equimon Logo.png';
@@ -39,6 +40,7 @@ const menuConfig = {
             { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },            { label: 'editEquipment', icon: Pencil, href: '/inventory' },          ],
         },
         { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
+        { label: 'borrowReports', icon: Printer, href: '/borrow-reports' },
         { label: 'reports', icon: ClipboardList, href: '/reports' },
       ],
     },
