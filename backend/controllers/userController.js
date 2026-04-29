@@ -8,6 +8,7 @@ const {
 } = require('../utils/emailPolicy');
 
 const DEFAULT_ADMIN_CREATED_PASSWORD = 'Default123';
+const ALLOW_PASSWORD_REUSE = String(process.env.ALLOW_PASSWORD_REUSE || '').toLowerCase() === 'true';
 
 const isPasswordUsedByOtherUsers = async (password, excludeUserId = null) => {
   const usersCursor = User.find({}, 'password').select('+password').cursor();
@@ -128,12 +129,14 @@ exports.createUser = async (req, res, next) => {
       });
     }
 
-    const isPasswordReused = await isPasswordUsedByOtherUsers(resolvedPassword);
-    if (isPasswordReused) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password is already used by another account. Please choose a more unique password.'
-      });
+    if (!ALLOW_PASSWORD_REUSE) {
+      const isPasswordReused = await isPasswordUsedByOtherUsers(resolvedPassword);
+      if (isPasswordReused) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password is already used by another account. Please choose a more unique password.'
+        });
+      }
     }
 
     // Create user
@@ -164,7 +167,9 @@ exports.updateUser = async (req, res, next) => {
     const { name, role, department, studentId, phone, status, password } = req.body;
 
     // Check if user can update this record
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+    // Users can only update their own profile, or admins can update anyone
+    const isOwnProfile = req.user._id.toString() === String(req.params.id);
+    if (req.user.role !== 'admin' && !isOwnProfile) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this user'
@@ -194,12 +199,14 @@ exports.updateUser = async (req, res, next) => {
           });
         }
 
-        const isPasswordReused = await isPasswordUsedByOtherUsers(password, user._id);
-        if (isPasswordReused) {
-          return res.status(400).json({
-            success: false,
-            message: 'Password is already used by another account. Please choose a more unique password.'
-          });
+        if (!ALLOW_PASSWORD_REUSE) {
+          const isPasswordReused = await isPasswordUsedByOtherUsers(password, user._id);
+          if (isPasswordReused) {
+            return res.status(400).json({
+              success: false,
+              message: 'Password is already used by another account. Please choose a more unique password.'
+            });
+          }
         }
 
         user.password = password;
@@ -222,15 +229,19 @@ exports.updateUser = async (req, res, next) => {
     if (req.user.role === 'admin') {
       if (role) user.role = role;
       if (status) user.status = status;
-      if (password) {
-        const policy = validatePasswordPolicy(password);
-        if (!policy.isValid) {
-          return res.status(400).json({
-            success: false,
-            message: policy.errors[0]
-          });
-        }
+    }
 
+    // Handle password update (both admins and users updating their own profile)
+    if (password) {
+      const policy = validatePasswordPolicy(password);
+      if (!policy.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: policy.errors[0]
+        });
+      }
+
+      if (!ALLOW_PASSWORD_REUSE) {
         const isPasswordReused = await isPasswordUsedByOtherUsers(password, user._id);
         if (isPasswordReused) {
           return res.status(400).json({
@@ -238,9 +249,9 @@ exports.updateUser = async (req, res, next) => {
             message: 'Password is already used by another account. Please choose a more unique password.'
           });
         }
-
-        user.password = password;
       }
+
+      user.password = password;
     }
 
     await user.save();
@@ -269,7 +280,7 @@ exports.deleteUser = async (req, res, next) => {
     }
 
     // Prevent deleting own account
-    if (user._id.toString() === req.user.id) {
+    if (user._id.toString() === req.user._id.toString()) {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete your own account'
@@ -292,6 +303,13 @@ exports.deleteUser = async (req, res, next) => {
 // @access  Private
 exports.getUsersByRole = async (req, res, next) => {
   try {
+    if (req.user?.role === 'student' && req.params.role !== 'lecturer') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to view this role list'
+      });
+    }
+
     const users = await User.find({ role: req.params.role, status: 'active' })
       .select('name email role department')
       .sort('name');

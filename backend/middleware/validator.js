@@ -82,5 +82,6 @@ exports.borrowRequestValidation = [
   }),
   body('agree_policy').isBoolean().withMessage('Agreement confirmation is required'),
   body('agree_policy').custom((value) => value === true).withMessage('You must agree to the replacement policy before submitting'),
+  body('lecturer_id').isMongoId().withMessage('Lecturer selection is required'),
   body('lecturer_email').optional().isEmail().withMessage('Valid lecturer email is required')
 ];

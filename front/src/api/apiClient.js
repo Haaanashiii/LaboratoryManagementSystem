@@ -456,6 +456,14 @@ export const api = {
           created_date: user.createdAt || user.created_date
         }));
       },
+      byRole: async (role) => {
+        const data = await request(`/users/role/${role}`);
+        return data.data.map(user => ({
+          ...user,
+          id: user._id || user.id,
+          created_date: user.createdAt || user.created_date
+        }));
+      },
       filter: async (filters) => {
         const params = new URLSearchParams(filters).toString();
         const data = await request(`/users?${params}`);

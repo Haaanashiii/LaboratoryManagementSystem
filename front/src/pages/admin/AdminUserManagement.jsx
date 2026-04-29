@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Search, UserPlus, Pencil, Loader2, Trash2, Users as UsersIcon, ShieldCheck, Cpu, GraduationCap, UserCog, AlertTriangle, ChevronLeft, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { AdminUserManagementSkeleton } from '@/skeleton-framework/admin';
 import { useLang } from '@/components/i18n/LangContext';
@@ -106,10 +107,18 @@ export default function Users() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => api.entities.User.update(id, data),
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      if (variables?.data?.password) {
+        toast.success('Password changed successfully.');
+      } else {
+        toast.success('User updated successfully.');
+      }
       setEditingUser(null);
-    }
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Unable to update user. Please try again.');
+    },
   });
 
   const deleteMutation = useMutation({
@@ -175,7 +184,8 @@ export default function Users() {
 
   const openEditDialog = (user) => {
     setEditingUser(user);
-    setShowEditPassword(false);
+    // Show password text during development for easier verification.
+    setShowEditPassword(true);
     setEditForm({
       name: user.name || '',
       role: user.role || 'student',
@@ -367,7 +377,10 @@ export default function Users() {
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
+              type="search"
               placeholder={t('searchUsers')}
+              name="user-search"
+              autoComplete="off"
               value={search}
               onChange={(e) => {
                 setCurrentPage(1);
@@ -652,6 +665,7 @@ export default function Users() {
                   value={addForm.password}
                   onChange={(e) => setAddForm((prev) => ({ ...prev, password: e.target.value }))}
                   placeholder="Set a custom password…"
+                  autoComplete="new-password"
                   className="h-9 pr-9 text-sm"
                 />
                 <button
@@ -899,6 +913,7 @@ export default function Users() {
                     value={editForm.password}
                     onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     className="h-9 text-sm pr-9"
                   />
                   <button

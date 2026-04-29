@@ -103,6 +103,7 @@ const getDefaultBorrowAgainForm = (request) => ({
   purpose: '',
   borrow_date: format(new Date(), 'yyyy-MM-dd'),
   return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+  lecturer_id: request?.lecturer?._id || request?.lecturer?.id || '',
   agree_policy: false,
 });
 
@@ -141,6 +142,7 @@ export default function ApprovalHistory() {
   const [confirmBorrowAgainRequest, setConfirmBorrowAgainRequest] = useState(null);
   const [borrowAgainForm, setBorrowAgainForm] = useState(getDefaultBorrowAgainForm(null));
   const [borrowAgainQuantityNotice, setBorrowAgainQuantityNotice] = useState('');
+  const [borrowAgainLecturerNotice, setBorrowAgainLecturerNotice] = useState('');
   const { isDark } = useTheme();
   const queryClient = useQueryClient();
 
@@ -161,11 +163,23 @@ export default function ApprovalHistory() {
     enabled: !!user && user.role === 'student',
   });
 
+  const {
+    data: lecturers = [],
+    isLoading: lecturersLoading,
+    isError: lecturersError,
+  } = useQuery({
+    queryKey: ['lecturerList'],
+    queryFn: () => api.entities.User.byRole('lecturer'),
+    enabled: !!user && user.role === 'student',
+  });
+
   const equipmentById = new Map(
     equipmentList
       .filter((item) => item?.id)
       .map((item) => [String(item.id), item])
   );
+
+  const hasLecturers = lecturers.length > 0;
 
   const activeRequestByEquipment = requests.reduce((acc, request) => {
     if (!ACTIVE_BLOCKING_STATUSES.includes(request.status)) {
@@ -206,6 +220,10 @@ export default function ApprovalHistory() {
         throw new Error('Purpose is required.');
       }
 
+      if (!formData.lecturer_id) {
+        throw new Error('Please select a lecturer for approval.');
+      }
+
       if (!formData.agree_policy) {
         throw new Error('You must agree to the replacement policy before submitting.');
       }
@@ -217,6 +235,7 @@ export default function ApprovalHistory() {
         borrow_date: formData.borrow_date,
         return_date: formData.return_date,
         agree_policy: formData.agree_policy,
+        lecturer_id: formData.lecturer_id,
       });
     },
     onSuccess: () => {
@@ -516,6 +535,7 @@ export default function ApprovalHistory() {
                               setConfirmBorrowAgainRequest(request);
                               setBorrowAgainForm(getDefaultBorrowAgainForm(request));
                               setBorrowAgainQuantityNotice('');
+                              setBorrowAgainLecturerNotice('');
                             }}
                             disabled={borrowAgainMutation.isPending || hasBlockingActiveRequest}
                             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
@@ -593,6 +613,7 @@ export default function ApprovalHistory() {
             setConfirmBorrowAgainRequest(null);
             setBorrowAgainForm(getDefaultBorrowAgainForm(null));
             setBorrowAgainQuantityNotice('');
+            setBorrowAgainLecturerNotice('');
           }
         }}
       >
@@ -689,6 +710,39 @@ export default function ApprovalHistory() {
               />
             </div>
 
+            <div className="space-y-1.5">
+              <Label className={`text-[11px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                Approving Lecturer
+              </Label>
+              <select
+                value={borrowAgainForm.lecturer_id}
+                onChange={(e) => {
+                  setBorrowAgainLecturerNotice('');
+                  setBorrowAgainForm((prev) => ({ ...prev, lecturer_id: e.target.value }));
+                }}
+                disabled={lecturersLoading || !hasLecturers}
+                className={`h-9 w-full rounded-md border text-sm ${isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-white border-slate-200 text-slate-800'} ${lecturersLoading || !hasLecturers ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                <option value="" disabled>
+                  {lecturersLoading ? 'Loading lecturers...' : 'Select a lecturer'}
+                </option>
+                {lecturers.map((lecturer) => (
+                  <option key={lecturer.id} value={lecturer.id}>
+                    {lecturer.name} ({lecturer.email})
+                  </option>
+                ))}
+              </select>
+              {lecturersError && (
+                <p className="text-[11px] text-red-500">Unable to load lecturers. Please refresh and try again.</p>
+              )}
+              {!lecturersError && !lecturersLoading && !hasLecturers && (
+                <p className="text-[11px] text-red-500">No lecturers are available for approval.</p>
+              )}
+              {borrowAgainLecturerNotice && (
+                <p className="text-[11px] text-red-500">{borrowAgainLecturerNotice}</p>
+              )}
+            </div>
+
             <label className={`flex items-start gap-2 rounded-md border px-3 py-2 text-xs ${
               isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'
             }`}>
@@ -709,6 +763,7 @@ export default function ApprovalHistory() {
                 setConfirmBorrowAgainRequest(null);
                 setBorrowAgainForm(getDefaultBorrowAgainForm(null));
                 setBorrowAgainQuantityNotice('');
+                setBorrowAgainLecturerNotice('');
               }}
               className={isDark ? 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10' : ''}
             >
@@ -731,6 +786,11 @@ export default function ApprovalHistory() {
                   return;
                 }
 
+                if (!borrowAgainForm.lecturer_id) {
+                  setBorrowAgainLecturerNotice('Please select a lecturer for approval.');
+                  return;
+                }
+
                 if (!borrowAgainForm.agree_policy) {
                   setBorrowAgainMessage({ type: 'error', text: 'Please agree to the replacement policy before submitting.' });
                   return;
@@ -745,9 +805,10 @@ export default function ApprovalHistory() {
                 setBorrowAgainMessage(null);
                 setBorrowAgainForm(getDefaultBorrowAgainForm(null));
                 setBorrowAgainQuantityNotice('');
+                setBorrowAgainLecturerNotice('');
                 borrowAgainMutation.mutate({ request: requestToSubmit, formData: borrowAgainForm });
               }}
-              disabled={borrowAgainMutation.isPending || !borrowAgainForm.purpose.trim() || !borrowAgainForm.agree_policy}
+              disabled={borrowAgainMutation.isPending || lecturersLoading || lecturersError || !borrowAgainForm.purpose.trim() || !borrowAgainForm.agree_policy || !borrowAgainForm.lecturer_id || !hasLecturers}
               className="inline-flex items-center gap-1.5"
             >
               {borrowAgainMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}

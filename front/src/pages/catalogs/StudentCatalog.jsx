@@ -22,6 +22,7 @@ const getDefaultBorrowForm = () => ({
   purpose: '',
   borrow_date: format(new Date(), 'yyyy-MM-dd'),
   return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+  lecturer_id: '',
   agree_policy: false,
 });
 
@@ -36,6 +37,7 @@ export default function StudentCatalog() {
   const [borrowImgIdx, setBorrowImgIdx] = useState(0);
   const [borrowQuantityNotice, setBorrowQuantityNotice] = useState('');
   const [borrowDateNotice, setBorrowDateNotice] = useState('');
+  const [borrowLecturerNotice, setBorrowLecturerNotice] = useState('');
 
   const {
     search,
@@ -56,6 +58,16 @@ export default function StudentCatalog() {
   const { data: myRequests = [] } = useQuery({
     queryKey: ['borrowRequests'],
     queryFn: () => api.entities.BorrowRequest.myRequests(),
+    enabled: user?.role === 'student',
+  });
+
+  const {
+    data: lecturers = [],
+    isLoading: lecturersLoading,
+    isError: lecturersError,
+  } = useQuery({
+    queryKey: ['lecturerList'],
+    queryFn: () => api.entities.User.byRole('lecturer'),
     enabled: user?.role === 'student',
   });
 
@@ -132,12 +144,19 @@ export default function StudentCatalog() {
       return;
     }
 
+    if (!borrowForm.lecturer_id) {
+      setBorrowLecturerNotice('Please select a lecturer for approval.');
+      return;
+    }
+
     setBorrowDateNotice('');
+    setBorrowLecturerNotice('');
 
     createRequestMutation.mutate({
       equipment: selectedEquipment.id,
       ...borrowForm,
       quantity: parsedQuantity,
+      lecturer_id: borrowForm.lecturer_id,
     });
   };
 
@@ -147,6 +166,7 @@ export default function StudentCatalog() {
     setBorrowForm(getDefaultBorrowForm());
     setBorrowQuantityNotice('');
     setBorrowDateNotice('');
+    setBorrowLecturerNotice('');
   };
 
   const handleViewEquipmentBorrow = (equipment) => {
@@ -157,6 +177,7 @@ export default function StudentCatalog() {
     setBorrowForm(getDefaultBorrowForm());
     setBorrowQuantityNotice('');
     setBorrowDateNotice('');
+    setBorrowLecturerNotice('');
   };
 
   const selectedAvailableQty = Number(selectedEquipment?.available_quantity ?? 0);
@@ -177,6 +198,8 @@ export default function StudentCatalog() {
     return borrowDate < today || returnDate <= borrowDate;
   })();
   const todayIso = format(new Date(), 'yyyy-MM-dd');
+  const hasLecturers = lecturers.length > 0;
+  const isLecturerInvalid = !borrowForm.lecturer_id || !hasLecturers;
 
   // Auto-advance image carousel in borrow dialog
   useEffect(() => {
@@ -612,6 +635,47 @@ export default function StudentCatalog() {
                     />
                   </div>
 
+                  {/* Lecturer */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                      Approving Lecturer
+                    </Label>
+                    <select
+                      value={borrowForm.lecturer_id}
+                      onChange={(e) => {
+                        setBorrowLecturerNotice('');
+                        setBorrowForm({ ...borrowForm, lecturer_id: e.target.value });
+                      }}
+                      disabled={lecturersLoading || !hasLecturers}
+                      className={`h-8 w-full rounded-lg border text-xs font-semibold ${isDark ? 'bg-white/5 border-white/10 text-slate-200 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'} ${lecturersLoading || !hasLecturers ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      style={isDark ? { color: '#e2e8f0' } : undefined}
+                    >
+                      <option value="" disabled>
+                        {lecturersLoading ? 'Loading lecturers...' : 'Select a lecturer'}
+                      </option>
+                      {lecturers.map((lecturer) => (
+                        <option key={lecturer.id} value={lecturer.id}>
+                          {lecturer.name} ({lecturer.email})
+                        </option>
+                      ))}
+                    </select>
+                    {lecturersError && (
+                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
+                        Unable to load lecturers. Please refresh and try again.
+                      </p>
+                    )}
+                    {!lecturersError && !lecturersLoading && !hasLecturers && (
+                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
+                        No lecturers are available for approval.
+                      </p>
+                    )}
+                    {borrowLecturerNotice && (
+                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
+                        {borrowLecturerNotice}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Policy (compact) */}
                   <div
                     className="rounded-xl px-3 py-2"
@@ -657,7 +721,7 @@ export default function StudentCatalog() {
                   )}
                   <Button
                     onClick={handleBorrowSubmit}
-                    disabled={createRequestMutation.isPending || !borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded || isBorrowDateInvalid}
+                    disabled={createRequestMutation.isPending || lecturersLoading || lecturersError || !borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded || isBorrowDateInvalid || isLecturerInvalid}
                     className={`flex-[2] h-8 rounded-lg text-white text-xs font-semibold transition-all disabled:opacity-35 ${isDark ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.35)]' : 'bg-slate-900 hover:bg-blue-600 shadow-[0_4px_16px_rgba(0,0,0,0.18)]'}`}
                   >
                     {createRequestMutation.isPending ? (

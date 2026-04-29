@@ -11,6 +11,7 @@ const { validatePasswordPolicy } = require('../utils/passwordPolicy');
 
 const ADMIN_PORTAL_ROLES = ['admin', 'lecturer', 'lab_assistant', 'head', 'head_of_lab'];
 const STUDENT_PORTAL_DOMAIN = 'student.its.ac.id';
+const ALLOW_PASSWORD_REUSE = String(process.env.ALLOW_PASSWORD_REUSE || '').toLowerCase() === 'true';
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -44,14 +45,16 @@ exports.register = async (req, res, next) => {
     }
 
     // Enforce signup password uniqueness against existing accounts.
-    const existingUsersCursor = User.find({}, 'password').select('+password').cursor();
-    for await (const existingUser of existingUsersCursor) {
-      const isReusedPassword = await existingUser.comparePassword(password);
-      if (isReusedPassword) {
-        return res.status(400).json({
-          success: false,
-          message: 'Password is already used by another account. Please choose a more unique password.'
-        });
+    if (!ALLOW_PASSWORD_REUSE) {
+      const existingUsersCursor = User.find({}, 'password').select('+password').cursor();
+      for await (const existingUser of existingUsersCursor) {
+        const isReusedPassword = await existingUser.comparePassword(password);
+        if (isReusedPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Password is already used by another account. Please choose a more unique password.'
+          });
+        }
       }
     }
 

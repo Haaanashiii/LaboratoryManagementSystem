@@ -121,16 +121,8 @@ exports.getBorrowRequests = async (req, res, next) => {
     if (req.user.role === 'student') {
       query.student = req.user.id;
     } else if (req.user.role === 'lecturer') {
-      // If no status or pending_lecturer status, show all pending_lecturer requests
-      if (!status || status === 'pending_lecturer') {
-        query.status = 'pending_lecturer';
-      } else {
-        // For other statuses, show requests assigned to this lecturer
-        query.lecturer = req.user.id;
-        if (status) {
-          query.status = status;
-        }
-      }
+      query.lecturer = req.user.id;
+      query.status = status || 'pending_lecturer';
     }
     
     // Additional filters
@@ -202,7 +194,16 @@ exports.getBorrowRequest = async (req, res, next) => {
 // @access  Private (Student)
 exports.createBorrowRequest = async (req, res, next) => {
   try {
-    const { equipment, quantity, purpose, borrow_date, return_date, lecturer_email, agree_policy } = req.body;
+    const {
+      equipment,
+      quantity,
+      purpose,
+      borrow_date,
+      return_date,
+      lecturer_id,
+      lecturer_email,
+      agree_policy
+    } = req.body;
 
     const borrowDate = new Date(borrow_date);
     const returnDate = new Date(return_date);
@@ -272,10 +273,26 @@ exports.createBorrowRequest = async (req, res, next) => {
       });
     }
 
-    // Find lecturer if email provided (optional)
+    if (!lecturer_id && !lecturer_email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a lecturer for approval'
+      });
+    }
+
+    // Find lecturer by id (preferred) or email
     let lecturer = null;
-    if (lecturer_email) {
-      lecturer = await User.findOne({ email: lecturer_email, role: 'lecturer' });
+    if (lecturer_id) {
+      lecturer = await User.findOne({ _id: lecturer_id, role: 'lecturer', status: 'active' });
+    } else if (lecturer_email) {
+      lecturer = await User.findOne({ email: lecturer_email, role: 'lecturer', status: 'active' });
+    }
+
+    if (!lecturer) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected lecturer could not be found'
+      });
     }
 
     // Create request
@@ -291,8 +308,8 @@ exports.createBorrowRequest = async (req, res, next) => {
       return_date,
       agreed_replacement_policy: true,
       agreed_replacement_policy_at: Date.now(),
-      lecturer: lecturer?._id,
-      lecturer_email: lecturer?.email,
+      lecturer: lecturer._id,
+      lecturer_email: lecturer.email,
       status: 'pending_lecturer'
     });
 
@@ -349,6 +366,13 @@ exports.lecturerAction = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Request is not pending lecturer approval'
+      });
+    }
+
+    if (request.lecturer && request.lecturer.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the assigned lecturer can approve or reject this request'
       });
     }
 

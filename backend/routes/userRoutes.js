@@ -10,20 +10,20 @@ const {
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth');
 
-// All routes are protected and require admin or head_of_lab role
+// All routes require authentication
 router.use(protect);
-router.use(authorize('admin', 'head_of_lab'));
 
-router.route('/')
-  .get(getUsers)
-  .post(createUser);
+// Admin/Head of Lab only routes
+router.get('/', authorize('admin', 'head_of_lab'), getUsers);
+router.post('/', authorize('admin', 'head_of_lab'), createUser);
 
-router.route('/role/:role')
-  .get(getUsersByRole);
+// Get users by role (all authenticated users; controller limits student access)
+router.get('/role/:role', getUsersByRole);
 
+// User profile routes - users can update own profile or admins can update any
 router.route('/:id')
-  .get(getUser)
-  .put(updateUser)
-  .delete(deleteUser);
+  .get(authorize('admin', 'head_of_lab'), getUser)
+  .put(updateUser)  // Controller checks own profile or admin
+  .delete(authorize('admin', 'head_of_lab'), deleteUser);
 
 module.exports = router;
