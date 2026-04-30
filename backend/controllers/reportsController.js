@@ -99,3 +99,145 @@ exports.getBorrowingReport = async (req, res, next) => {
     return next(error);
   }
 };
+
+// @desc    Get equipment release report grouped by lecturer
+// @route   GET /api/reports/lecturer-releases
+// @access  Private (Admin)
+exports.getLecturerReleasesReport = async (req, res, next) => {
+  try {
+    const type = req.query.type === 'weekly' ? 'weekly' : 'monthly';
+    const defaults = buildDefaultDateRange(type);
+
+    const startDate = req.query.startDate ? new Date(req.query.startDate) : defaults.startDate;
+    const endDate   = req.query.endDate   ? new Date(req.query.endDate)   : defaults.endDate;
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use ISO date values for startDate and endDate.'
+      });
+    }
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    if (startDate > endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'startDate cannot be after endDate.'
+      });
+    }
+
+    // Build base query – only requests that have been lecturer-approved (released)
+    const baseQuery = {
+      lecturer_approved_at: { $gte: startDate, $lte: endDate },
+      status: { $in: ['head_approved', 'ready_pickup', 'borrowed', 'returned'] }
+    };
+
+    // Optional lecturer filter
+    if (req.query.lecturerId) {
+      baseQuery.lecturer = req.query.lecturerId;
+    }
+
+    const releases = await BorrowRequest.find(baseQuery)
+      .populate('student',   'name studentId email')
+      .populate('lecturer',  'name email')
+      .populate('equipment', 'name category')
+      .sort({ lecturer_approved_at: -1 })
+      .lean();
+
+    // Build per-record list
+    const records = releases.map((r) => ({
+      lecturerId:   r.lecturer?._id ? String(r.lecturer._id) : null,
+      lecturerName: r.lecturer?.name  || r.lecturer_email || 'Unknown Lecturer',
+      lecturerEmail: r.lecturer?.email || r.lecturer_email || '',
+      studentName:  r.student?.name   || r.borrower_name  || 'Unknown Student',
+      studentId:    r.student?.studentId || '',
+      studentEmail: r.student?.email  || r.student_email  || '',
+      equipmentName: r.equipment?.name  || r.equipment_name || 'Unknown Equipment',
+      equipmentId:  r.equipment?._id   ? String(r.equipment._id) : '',
+      equipmentCategory: r.equipment?.category || '',
+      quantity:     r.quantity || 1,
+      borrowDate:   r.borrow_date,
+      returnDate:   r.return_date,
+      releasedAt:   r.lecturer_approved_at,
+      status:       r.status,
+      purpose:      r.purpose || '',
+    }));
+
+    // Group by lecturer for summary
+    const lecturerMap = {};
+    records.forEach((rec) => {
+      const key = rec.lecturerId || rec.lecturerName;
+      if (!lecturerMap[key]) {
+        lecturerMap[key] = {
+          lecturerId:    rec.lecturerId,
+          lecturerName:  rec.lecturerName,
+          lecturerEmail: rec.lecturerEmail,
+          totalReleased: 0,
+          totalQuantity: 0,
+          releases:      [],
+        };
+      }
+      lecturerMap[key].totalReleased += 1;
+      lecturerMap[key].totalQuantity += rec.quantity;
+      lecturerMap[key].releases.push(rec);
+    });
+
+    // Weekly breakdown – group records by ISO week (Mon–Sun)
+    const getWeekKey = (date) => {
+      if (!date) return 'Unknown Week';
+      const d = new Date(date);
+      // Align to Monday
+      const day = d.getDay();
+      const diff = (day === 0 ? -6 : 1) - day;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() + diff);
+      monday.setHours(0, 0, 0, 0);
+      return monday.toISOString().slice(0, 10); // e.g. "2026-04-27"
+    };
+
+    const weeklyMap = {};
+    records.forEach((rec) => {
+      const wk = getWeekKey(rec.releasedAt);
+      if (!weeklyMap[wk]) {
+        weeklyMap[wk] = { weekStart: wk, totalReleased: 0, totalQuantity: 0, byLecturer: {} };
+      }
+      weeklyMap[wk].totalReleased += 1;
+      weeklyMap[wk].totalQuantity += rec.quantity;
+
+      const lKey = rec.lecturerId || rec.lecturerName;
+      if (!weeklyMap[wk].byLecturer[lKey]) {
+        weeklyMap[wk].byLecturer[lKey] = {
+          lecturerName:  rec.lecturerName,
+          totalReleased: 0,
+          totalQuantity: 0,
+        };
+      }
+      weeklyMap[wk].byLecturer[lKey].totalReleased += 1;
+      weeklyMap[wk].byLecturer[lKey].totalQuantity += rec.quantity;
+    });
+
+    const weeklySummary = Object.values(weeklyMap).sort((a, b) =>
+      new Date(b.weekStart) - new Date(a.weekStart)
+    );
+
+    const overallSummary = {
+      totalReleases:  records.length,
+      totalQuantity:  records.reduce((s, r) => s + r.quantity, 0),
+      totalLecturers: Object.keys(lecturerMap).length,
+    };
+
+    return res.json({
+      success: true,
+      summary: overallSummary,
+      lecturerGroups: Object.values(lecturerMap).sort((a, b) =>
+        b.totalReleased - a.totalReleased
+      ),
+      weeklySummary,
+      records,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};

@@ -796,7 +796,18 @@ export const api = {
           summary: data.summary || { totalBorrowed: 0, good: 0, damaged: 0, lost: 0 },
           records: Array.isArray(data.records) ? data.records : []
         };
-      }
+      },
+      lecturerReleases: async (filters = {}) => {
+        const params = new URLSearchParams(filters).toString();
+        const data = await request(`/reports/lecturer-releases${params ? `?${params}` : ''}`);
+
+        return {
+          summary:        data.summary        || { totalReleases: 0, totalQuantity: 0, totalLecturers: 0 },
+          lecturerGroups: Array.isArray(data.lecturerGroups) ? data.lecturerGroups : [],
+          weeklySummary:  Array.isArray(data.weeklySummary)  ? data.weeklySummary  : [],
+          records:        Array.isArray(data.records)        ? data.records        : [],
+        };
+      },
     },
     AdminMaintenance: {
       status: async () => {

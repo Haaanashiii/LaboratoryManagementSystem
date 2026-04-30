@@ -3,42 +3,45 @@ import { ReportsSkeleton } from '@/skeleton-framework/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import {
   FileSpreadsheet, FileText, BarChart3, RefreshCw,
-  ChevronLeft, ChevronRight, PackageCheck, AlertTriangle, XCircle, Search,
+  ChevronLeft, ChevronRight, Search, Users, Package,
+  ChevronDown, ChevronUp, CalendarDays, Layers,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, parseISO } from 'date-fns';
 import { api } from '@/api/apiClient';
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const REPORT_TYPES = [
-  { label: 'Weekly', value: 'weekly' },
+  { label: 'Weekly',  value: 'weekly'  },
   { label: 'Monthly', value: 'monthly' },
 ];
 
-const CONDITION_CONFIG = [
-  { value: 'all',     label: 'All Records',     color: 'bg-slate-50 text-slate-700 border-slate-200',       dot: '#64748b', icon: BarChart3 },
-  { value: 'good',    label: 'Good Condition',  color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: PackageCheck },
-  { value: 'damaged', label: 'Damaged',         color: 'bg-red-50 text-red-700 border-red-200',             dot: '#ef4444', icon: AlertTriangle },
-  { value: 'lost',    label: 'Lost',            color: 'bg-amber-50 text-amber-700 border-amber-200',       dot: '#f59e0b', icon: XCircle },
-];
+const PAGE_SIZE = 12;
+const GROUP_PAGE_SIZE = 5;
 
-const PAGE_SIZE = 15;
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 const formatDate = (value) => {
-  if (!value) return '-';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return '-';
-  return parsed.toLocaleDateString();
+  if (!value) return '—';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
 };
 
-const getConditionBadgeClass = (condition) => {
-  const normalized = String(condition || '').toLowerCase();
-  if (normalized === 'damaged') return 'bg-red-50 text-red-700 border-red-200';
-  if (normalized === 'lost') return 'bg-amber-50 text-amber-700 border-amber-200';
-  return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 };
 
 const toCsvCell = (value) => {
@@ -58,41 +61,265 @@ const triggerDownload = (blob, filename) => {
   URL.revokeObjectURL(url);
 };
 
-export default function Reports() {
-  const [type, setType] = useState('monthly');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [search, setSearch] = useState('');
-  const [activeCondition, setActiveCondition] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
+const dateTag = () => new Date().toISOString().slice(0, 10);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [summary, setSummary] = useState({ totalBorrowed: 0, good: 0, damaged: 0, lost: 0 });
-  const [records, setRecords] = useState([]);
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatCard({ icon: Icon, label, value, accent }) {
+  return (
+    <div
+      className="flex items-center gap-3 rounded-xl border p-3"
+      style={{ borderColor: accent + '33', backgroundColor: accent + '0d' }}
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: accent + '1a' }}>
+        <Icon className="h-4 w-4" style={{ color: accent }} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className="text-xl font-bold leading-tight tabular-nums text-slate-900">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function LecturerGroupRow({ group, isExpanded, onToggle }) {
+  return (
+    <>
+      <TableRow
+        className="cursor-pointer border-slate-100 bg-slate-50/80 hover:bg-slate-100/60"
+        onClick={onToggle}
+      >
+        <TableCell colSpan={2} className="py-2.5 pl-4">
+          <div className="flex items-center gap-2">
+            {isExpanded
+              ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
+              : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+            <span className="text-sm font-semibold text-slate-800">{group.lecturerName}</span>
+            {group.lecturerEmail && (
+              <span className="hidden text-xs text-slate-400 sm:inline">({group.lecturerEmail})</span>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="text-xs text-slate-500">{group.lecturerEmail || '—'}</TableCell>
+        <TableCell />
+        <TableCell className="text-center text-sm font-semibold text-blue-700">
+          {group.totalReleased}
+        </TableCell>
+        <TableCell className="text-center text-sm font-semibold text-emerald-700">
+          {group.totalQuantity}
+        </TableCell>
+        <TableCell />
+        <TableCell />
+      </TableRow>
+      {isExpanded && group.releases.map((rec, idx) => (
+        <TableRow key={idx} className="border-slate-50 bg-white hover:bg-slate-50/50">
+          <TableCell className="pl-10 text-xs text-slate-400">#{idx + 1}</TableCell>
+          <TableCell className="text-sm font-medium text-slate-900">
+            {rec.studentName}
+            {rec.studentId && <span className="ml-1.5 text-xs text-slate-400">({rec.studentId})</span>}
+          </TableCell>
+          <TableCell className="text-xs text-slate-500">{rec.studentEmail || '—'}</TableCell>
+          <TableCell className="text-sm text-slate-800">{rec.equipmentName}</TableCell>
+          <TableCell className="text-center text-sm text-slate-700">{rec.quantity}</TableCell>
+          <TableCell />
+          <TableCell className="whitespace-nowrap text-xs text-slate-500">{formatDateTime(rec.releasedAt)}</TableCell>
+          <TableCell>
+            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusBadge(rec.status)}`}>
+              {rec.status?.replace(/_/g, ' ') || '—'}
+            </span>
+          </TableCell>
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
+function statusBadge(status) {
+  switch (status) {
+    case 'borrowed':     return 'border-blue-200 bg-blue-50 text-blue-700';
+    case 'returned':     return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    case 'ready_pickup': return 'border-amber-200 bg-amber-50 text-amber-700';
+    case 'head_approved':return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+    default:             return 'border-slate-200 bg-slate-50 text-slate-600';
+  }
+}
+
+// ─── Export helpers ───────────────────────────────────────────────────────────
+
+function exportCsvAll(records, startDate, endDate) {
+  const headers = [
+    'Lecturer Name', 'Lecturer Email',
+    'Student Name', 'Student ID', 'Student Email',
+    'Equipment Name', 'Category', 'Quantity',
+    'Borrow Date', 'Return Date', 'Released At', 'Status',
+  ];
+  const rows = records.map((r) => [
+    r.lecturerName, r.lecturerEmail,
+    r.studentName, r.studentId, r.studentEmail,
+    r.equipmentName, r.equipmentCategory, r.quantity,
+    formatDate(r.borrowDate), formatDate(r.returnDate),
+    formatDateTime(r.releasedAt), r.status,
+  ]);
+  const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
+  triggerDownload(
+    new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
+    `lecturer-releases-${dateTag()}.csv`
+  );
+}
+
+function exportCsvWeekly(weeklySummary) {
+  const headers = ['Week Start', 'Total Releases', 'Total Quantity', 'Lecturer', 'Lecturer Releases', 'Lecturer Quantity'];
+  const rows = [];
+  weeklySummary.forEach((wk) => {
+    const lecturers = Object.values(wk.byLecturer);
+    if (lecturers.length === 0) {
+      rows.push([wk.weekStart, wk.totalReleased, wk.totalQuantity, '', '', '']);
+    } else {
+      lecturers.forEach((l, i) => {
+        rows.push([
+          i === 0 ? wk.weekStart      : '',
+          i === 0 ? wk.totalReleased  : '',
+          i === 0 ? wk.totalQuantity  : '',
+          l.lecturerName, l.totalReleased, l.totalQuantity,
+        ]);
+      });
+    }
+  });
+  const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
+  triggerDownload(
+    new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
+    `weekly-lecturer-summary-${dateTag()}.csv`
+  );
+}
+
+function exportPdfAll(records, summary, startDate, endDate) {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
+
+  doc.setFontSize(16);
+  doc.text('Equipment Release Report – By Lecturer', 14, 16);
+  doc.setFontSize(10);
+  doc.text(`Date Range: ${range}`, 14, 24);
+  doc.text(`Total Releases: ${summary.totalReleases}   Total Quantity: ${summary.totalQuantity}   Lecturers: ${summary.totalLecturers}`, 14, 31);
+
+  autoTable(doc, {
+    startY: 36,
+    head: [[
+      'Lecturer', 'Student', 'Student ID',
+      'Equipment', 'Qty', 'Released At', 'Status',
+    ]],
+    body: records.map((r) => [
+      r.lecturerName,
+      r.studentName,
+      r.studentId || '—',
+      r.equipmentName,
+      r.quantity,
+      formatDateTime(r.releasedAt),
+      r.status?.replace(/_/g, ' ') || '—',
+    ]),
+    styles:     { fontSize: 8 },
+    headStyles: { fillColor: [37, 99, 235] },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+  });
+
+  doc.save(`lecturer-releases-${dateTag()}.pdf`);
+}
+
+function exportPdfWeekly(weeklySummary, summary, startDate, endDate) {
+  const doc = new jsPDF({ orientation: 'portrait' });
+  const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
+
+  doc.setFontSize(16);
+  doc.text('Weekly Equipment Release Summary – By Lecturer', 14, 16);
+  doc.setFontSize(10);
+  doc.text(`Date Range: ${range}`, 14, 24);
+
+  const body = [];
+  weeklySummary.forEach((wk) => {
+    const lecturers = Object.values(wk.byLecturer);
+    if (lecturers.length === 0) {
+      body.push([wk.weekStart, '—', wk.totalReleased, wk.totalQuantity]);
+    } else {
+      lecturers.forEach((l, i) => {
+        body.push([
+          i === 0 ? wk.weekStart : '',
+          l.lecturerName,
+          l.totalReleased,
+          l.totalQuantity,
+        ]);
+      });
+      body.push(['', 'Week Total', wk.totalReleased, wk.totalQuantity]);
+    }
+  });
+
+  autoTable(doc, {
+    startY: 30,
+    head:   [['Week Start', 'Lecturer', 'Releases', 'Total Qty']],
+    body,
+    styles:     { fontSize: 9 },
+    headStyles: { fillColor: [5, 150, 105] },
+    didParseCell: (data) => {
+      // Bold "Week Total" rows
+      if (data.row.raw[1] === 'Week Total') {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [241, 245, 249];
+      }
+    },
+  });
+
+  doc.save(`weekly-lecturer-summary-${dateTag()}.pdf`);
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function Reports() {
+  const [activeTab, setActiveTab]       = useState('lecturer'); // 'lecturer' | 'weekly'
+  const [type, setType]                 = useState('monthly');
+  const [startDate, setStartDate]       = useState('');
+  const [endDate, setEndDate]           = useState('');
+  const [lecturerFilter, setLecturerFilter] = useState('');
+  const [search, setSearch]             = useState('');
+  const [currentPage, setCurrentPage]   = useState(1);
+  const [weekPage, setWeekPage]           = useState(1);
+  const [expandedLecturers, setExpandedLecturers] = useState({});
+
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
+  const [summary, setSummary]           = useState({ totalReleases: 0, totalQuantity: 0, totalLecturers: 0 });
+  const [lecturerGroups, setLecturerGroups] = useState([]);
+  const [weeklySummary, setWeeklySummary]   = useState([]);
+  const [allRecords, setAllRecords]         = useState([]);
 
   const loadReports = async () => {
     setLoading(true);
     setError('');
-
     try {
       const filters = { type };
       if (startDate) filters.startDate = startDate;
-      if (endDate) filters.endDate = endDate;
+      if (endDate)   filters.endDate   = endDate;
+      if (lecturerFilter) filters.lecturerId = lecturerFilter;
 
-      const reportApi = api?.entities?.Reports || api?.service?.Reports;
-      if (!reportApi?.borrowing) {
-        throw new Error('Reports API is not available in apiClient.');
-      }
+      const reportsApi = api?.entities?.Reports;
+      if (!reportsApi?.lecturerReleases) throw new Error('Reports API is not available.');
 
-      const response = await reportApi.borrowing(filters);
-
-      setSummary(response.summary || { totalBorrowed: 0, good: 0, damaged: 0, lost: 0 });
-      setRecords(Array.isArray(response.records) ? response.records : []);
+      const response = await reportsApi.lecturerReleases(filters);
+      setSummary(response.summary);
+      setLecturerGroups(response.lecturerGroups);
+      setWeeklySummary(response.weeklySummary);
+      setAllRecords(response.records);
+      setCurrentPage(1);
+      // Auto-expand all lecturer groups when data loads
+      const expanded = {};
+      response.lecturerGroups.forEach((g) => {
+        expanded[g.lecturerId || g.lecturerName] = false;
+      });
+      setExpandedLecturers(expanded);
     } catch (err) {
-      setSummary({ totalBorrowed: 0, good: 0, damaged: 0, lost: 0 });
-      setRecords([]);
-      setError(err.message || 'Failed to fetch report records.');
+      setSummary({ totalReleases: 0, totalQuantity: 0, totalLecturers: 0 });
+      setLecturerGroups([]);
+      setWeeklySummary([]);
+      setAllRecords([]);
+      setError(err.message || 'Failed to fetch report data.');
     } finally {
       setLoading(false);
     }
@@ -101,185 +328,62 @@ export default function Reports() {
   useEffect(() => {
     loadReports();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, startDate, endDate]);
+  }, [type, startDate, endDate, lecturerFilter]);
 
-  const sortedRecords = useMemo(() => {
-    return [...records].sort((a, b) => new Date(b.returnDate).getTime() - new Date(a.returnDate).getTime());
-  }, [records]);
+  // All unique lecturers for filter dropdown
+  const lecturerOptions = useMemo(() => {
+    const seen = new Set();
+    return lecturerGroups
+      .filter((g) => { const k = g.lecturerId || g.lecturerName; if (seen.has(k)) return false; seen.add(k); return true; })
+      .map((g) => ({ id: g.lecturerId, name: g.lecturerName }));
+  }, [lecturerGroups]);
 
-  const conditionRecords = useMemo(() => {
-    return sortedRecords.filter((record) => {
-      const condition = String(record.condition || '').toLowerCase();
-      return condition === 'good' || condition === 'damaged' || condition === 'lost';
-    });
-  }, [sortedRecords]);
-
-  const recordsByCondition = useMemo(() =>
-    CONDITION_CONFIG.reduce((acc, cfg) => {
-      acc[cfg.value] = cfg.value === 'all'
-        ? sortedRecords
-        : sortedRecords.filter((r) => String(r.condition || '').toLowerCase() === cfg.value);
-      return acc;
-    }, {}),
-  [sortedRecords]);
-
+  // Filtered flat records for search / pagination (used in flat-table mode)
   const filteredRecords = useMemo(() => {
-    const base = recordsByCondition[activeCondition] || sortedRecords;
-    if (!search.trim()) return base;
+    if (!search.trim()) return allRecords;
     const q = search.trim().toLowerCase();
-    return base.filter((r) =>
-      (r.studentName || '').toLowerCase().includes(q) ||
-      (r.studentId || '').toLowerCase().includes(q) ||
-      (r.itemName || '').toLowerCase().includes(q) ||
-      (r.itemId || '').toLowerCase().includes(q)
+    return allRecords.filter((r) =>
+      (r.lecturerName   || '').toLowerCase().includes(q) ||
+      (r.studentName    || '').toLowerCase().includes(q) ||
+      (r.studentId      || '').toLowerCase().includes(q) ||
+      (r.equipmentName  || '').toLowerCase().includes(q)
     );
-  }, [recordsByCondition, activeCondition, sortedRecords, search]);
+  }, [allRecords, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
-  const paginatedRecords = filteredRecords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  // Filtered lecturer groups for grouped view
+  const filteredGroups = useMemo(() => {
+    if (!search.trim()) return lecturerGroups;
+    const q = search.trim().toLowerCase();
+    return lecturerGroups
+      .map((g) => ({
+        ...g,
+        releases: g.releases.filter((r) =>
+          (r.lecturerName  || '').toLowerCase().includes(q) ||
+          (r.studentName   || '').toLowerCase().includes(q) ||
+          (r.studentId     || '').toLowerCase().includes(q) ||
+          (r.equipmentName || '').toLowerCase().includes(q)
+        ),
+      }))
+      .filter((g) =>
+        g.releases.length > 0 ||
+        (g.lecturerName || '').toLowerCase().includes(q)
+      );
+  }, [lecturerGroups, search]);
 
-  const handleConditionChange = (value) => {
-    setActiveCondition(value);
-    setCurrentPage(1);
-  };
+  const toggleLecturerExpand = (key) =>
+    setExpandedLecturers((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const exportCsv = (mode) => {
-    const dateTag = new Date().toISOString().slice(0, 10);
+  const totalGroupPages = Math.max(1, Math.ceil(filteredGroups.length / GROUP_PAGE_SIZE));
+  const paginatedGroups = filteredGroups.slice((currentPage - 1) * GROUP_PAGE_SIZE, currentPage * GROUP_PAGE_SIZE);
 
-    if (mode === 'overall') {
-      const rows = [
-        ['Metric', 'Value'],
-        ['Total Returned Borrowings', summary.totalBorrowed],
-        ['Good Condition', summary.good],
-        ['Damaged', summary.damaged],
-        ['Lost', summary.lost],
-        [],
-        ['Student Name', 'Student ID', 'Item Name', 'Item ID', 'Borrow Date', 'Return Date', 'Condition'],
-        ...sortedRecords.map((record) => [
-          record.studentName || '',
-          record.studentId || '',
-          record.itemName || '',
-          record.itemId || '',
-          formatDate(record.borrowDate),
-          formatDate(record.returnDate),
-          record.condition || 'Good',
-        ]),
-      ];
-      const csvText = rows.map((row) => row.map(toCsvCell).join(',')).join('\n');
-      triggerDownload(new Blob([csvText], { type: 'text/csv;charset=utf-8;' }), `overall-student-borrowing-report-${dateTag}.csv`);
-      return;
-    }
-
-    if (mode === 'condition') {
-      const headers = ['Student Name', 'Student ID', 'Item Name', 'Item ID', 'Return Date', 'Condition'];
-      const rows = conditionRecords.map((record) => [
-        record.studentName || '',
-        record.studentId || '',
-        record.itemName || '',
-        record.itemId || '',
-        formatDate(record.returnDate),
-        record.condition || 'Good',
-      ]);
-      const csvText = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
-      triggerDownload(new Blob([csvText], { type: 'text/csv;charset=utf-8;' }), `return-condition-report-${dateTag}.csv`);
-      return;
-    }
-
-    const headers = ['Student Name', 'Student ID', 'Item Name', 'Item ID', 'Borrow Date', 'Return Date', 'Condition'];
-    const rows = sortedRecords.map((record) => [
-      record.studentName || '',
-      record.studentId || '',
-      record.itemName || '',
-      record.itemId || '',
-      formatDate(record.borrowDate),
-      formatDate(record.returnDate),
-      record.condition || 'Good',
-    ]);
-    const csvText = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
-    triggerDownload(new Blob([csvText], { type: 'text/csv;charset=utf-8;' }), `borrowing-history-report-${dateTag}.csv`);
-  };
-
-  const exportPdf = (mode) => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    const rangeLabel = `Date Range: ${startDate || 'Default Start'} – ${endDate || 'Today'}`;
-    const dateTag = new Date().toISOString().slice(0, 10);
-
-    if (mode === 'overall') {
-      doc.setFontSize(16);
-      doc.text('Overall Student Borrowing Report', 14, 16);
-      doc.setFontSize(10);
-      doc.text(rangeLabel, 14, 24);
-      autoTable(doc, {
-        startY: 30,
-        head: [['Metric', 'Value']],
-        body: [
-          ['Total Returned Borrowings', summary.totalBorrowed],
-          ['Good Condition', summary.good],
-          ['Damaged', summary.damaged],
-          ['Lost', summary.lost],
-        ],
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [15, 118, 110] },
-      });
-      autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 8,
-        head: [['Student Name', 'Student ID', 'Item Name', 'Item ID', 'Borrow Date', 'Return Date', 'Condition']],
-        body: sortedRecords.map((r) => [r.studentName || '-', r.studentId || '-', r.itemName || '-', r.itemId || '-', formatDate(r.borrowDate), formatDate(r.returnDate), r.condition || 'Good']),
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [37, 99, 235] },
-      });
-      doc.save(`overall-student-borrowing-report-${dateTag}.pdf`);
-      return;
-    }
-
-    if (mode === 'condition') {
-      doc.setFontSize(16);
-      doc.text('Returned Condition Report', 14, 16);
-      doc.setFontSize(10);
-      doc.text(rangeLabel, 14, 24);
-      autoTable(doc, {
-        startY: 30,
-        head: [['Condition', 'Count']],
-        body: [['Good', summary.good], ['Damaged', summary.damaged], ['Lost', summary.lost]],
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [180, 83, 9] },
-      });
-      autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 8,
-        head: [['Student Name', 'Student ID', 'Item Name', 'Item ID', 'Return Date', 'Condition']],
-        body: conditionRecords.map((r) => [r.studentName || '-', r.studentId || '-', r.itemName || '-', r.itemId || '-', formatDate(r.returnDate), r.condition || 'Good']),
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [217, 119, 6] },
-      });
-      doc.save(`return-condition-report-${dateTag}.pdf`);
-      return;
-    }
-
-    doc.setFontSize(16);
-    doc.text('Borrowing History Report', 14, 16);
-    doc.setFontSize(10);
-    doc.text(rangeLabel, 14, 24);
-    doc.text(`Total Borrowed: ${summary.totalBorrowed}`, 14, 32);
-    doc.text(`Good: ${summary.good}`, 70, 32);
-    doc.text(`Damaged: ${summary.damaged}`, 110, 32);
-    doc.text(`Lost: ${summary.lost}`, 160, 32);
-    autoTable(doc, {
-      startY: 38,
-      head: [['Student Name', 'Student ID', 'Item Name', 'Item ID', 'Borrow Date', 'Return Date', 'Condition']],
-      body: sortedRecords.map((r) => [r.studentName || '-', r.studentId || '-', r.itemName || '-', r.itemId || '-', formatDate(r.borrowDate), formatDate(r.returnDate), r.condition || 'Good']),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [37, 99, 235] },
-    });
-    doc.save(`borrowing-history-report-${dateTag}.pdf`);
-  };
+  const totalWeekPages = Math.max(1, Math.ceil(weeklySummary.length / PAGE_SIZE));
+  const paginatedWeeks = weeklySummary.slice((weekPage - 1) * PAGE_SIZE, weekPage * PAGE_SIZE);
 
   const h = new Date().getHours();
   const gc =
     h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
     h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
              { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
-
-  const activeConditionConfig = CONDITION_CONFIG.find((c) => c.value === activeCondition) || CONDITION_CONFIG[0];
 
   if (loading) return <ReportsSkeleton />;
 
@@ -299,36 +403,33 @@ export default function Reports() {
             <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
               {format(new Date(), 'EEEE, MMMM d, yyyy')}
             </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Reports</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Equipment Release Reports</h1>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-              <BarChart3 className="h-3.5 w-3.5 text-slate-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-base font-bold leading-none tabular-nums text-slate-700">{summary.totalBorrowed}</p>
-              <p className="mt-0.5 text-[10px] font-medium text-slate-500">returned borrowing{summary.totalBorrowed !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={loadReports}
-            disabled={loading}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 text-xs"
+          onClick={loadReports}
+          disabled={loading}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Refresh
+        </Button>
+      </div>
+
+      {/* ── Summary stat cards ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard icon={Package}      label="Total Releases"   value={summary.totalReleases}   accent="#3b82f6" />
+        <StatCard icon={Layers}       label="Total Qty Released" value={summary.totalQuantity} accent="#10b981" />
+        <StatCard icon={Users}        label="Lecturers Involved" value={summary.totalLecturers} accent="#8b5cf6" />
       </div>
 
       {/* ── Filters ── */}
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        {/* Report type */}
         <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Report Type</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Report Period</p>
           <div className="flex gap-2">
             {REPORT_TYPES.map((opt) => (
               <button
@@ -346,6 +447,8 @@ export default function Reports() {
             ))}
           </div>
         </div>
+
+        {/* Date range */}
         <div className="flex flex-col gap-1">
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Start Date</p>
           <Input
@@ -364,67 +467,55 @@ export default function Reports() {
             className="h-8 w-36 text-xs"
           />
         </div>
-        {(startDate || endDate) && (
+
+        {/* Lecturer filter */}
+        <div className="flex flex-col gap-1">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Lecturer</p>
+          <select
+            value={lecturerFilter}
+            onChange={(e) => { setLecturerFilter(e.target.value); setCurrentPage(1); }}
+            className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          >
+            <option value="">All Lecturers</option>
+            {lecturerOptions.map((l) => (
+              <option key={l.id || l.name} value={l.id || ''}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(startDate || endDate || lecturerFilter) && (
           <button
             type="button"
-            onClick={() => { setStartDate(''); setEndDate(''); setCurrentPage(1); }}
-            className="mb-0.5 self-end text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
+            onClick={() => { setStartDate(''); setEndDate(''); setLecturerFilter(''); setCurrentPage(1); }}
+            className="self-end text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
           >
-            Clear dates
+            Clear filters
           </button>
         )}
-      </div>
-
-      {/* ── Condition stat cards ── */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {CONDITION_CONFIG.map((cfg) => {
-          const count = cfg.value === 'all' ? summary.totalBorrowed : (summary[cfg.value] ?? 0);
-          const isActive = activeCondition === cfg.value;
-          const CfgIcon = cfg.icon;
-          return (
-            <button
-              key={cfg.value}
-              type="button"
-              onClick={() => handleConditionChange(cfg.value)}
-              className={`flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all ${
-                isActive
-                  ? `${cfg.color} shadow-sm`
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
-                <CfgIcon className="h-4 w-4" style={isActive ? { color: cfg.dot } : { color: '#64748b' }} />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{cfg.label}</p>
-                <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
-              </div>
-            </button>
-          );
-        })}
       </div>
 
       {/* ── Export Section ── */}
       <Card className="border-slate-200 shadow-none">
         <div className="border-b border-slate-100 bg-white px-4 py-3">
           <p className="text-sm font-medium text-slate-800">Export Reports</p>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Download borrowing history, condition breakdown, or an all-in-one report.
-          </p>
+          <p className="mt-0.5 text-xs text-slate-500">Download the lecturer release report or the weekly summary.</p>
         </div>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {/* Full release report */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <p className="text-sm font-semibold text-slate-800">Borrowing History</p>
+              <p className="text-sm font-semibold text-slate-800">Full Release Report</p>
               <p className="mt-1 text-xs text-slate-500">
-                Full returned borrowing history with student, item, dates and condition.
+                All equipment releases with lecturer, student, equipment, quantity and timestamp.
               </p>
               <div className="mt-3 flex gap-2">
                 <Button
                   size="sm"
                   className="h-7 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
-                  onClick={() => exportPdf('history')}
-                  disabled={loading || sortedRecords.length === 0}
+                  onClick={() => exportPdfAll(allRecords, summary, startDate, endDate)}
+                  disabled={loading || allRecords.length === 0}
                 >
                   <FileText className="h-3.5 w-3.5" /> PDF
                 </Button>
@@ -432,25 +523,26 @@ export default function Reports() {
                   variant="outline"
                   size="sm"
                   className="h-7 gap-1.5 text-xs"
-                  onClick={() => exportCsv('history')}
-                  disabled={loading || sortedRecords.length === 0}
+                  onClick={() => exportCsvAll(allRecords, startDate, endDate)}
+                  disabled={loading || allRecords.length === 0}
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> Excel / CSV
                 </Button>
               </div>
             </div>
 
+            {/* Weekly summary */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <p className="text-sm font-semibold text-slate-800">Returned Condition</p>
+              <p className="text-sm font-semibold text-slate-800">Weekly Summary</p>
               <p className="mt-1 text-xs text-slate-500">
-                Condition-focused with good / damaged / lost breakdown and item details.
+                Week-by-week totals grouped by lecturer — ideal for progress tracking.
               </p>
               <div className="mt-3 flex gap-2">
                 <Button
                   size="sm"
-                  className="h-7 gap-1.5 bg-amber-600 text-xs hover:bg-amber-700"
-                  onClick={() => exportPdf('condition')}
-                  disabled={loading || conditionRecords.length === 0}
+                  className="h-7 gap-1.5 bg-emerald-600 text-xs hover:bg-emerald-700"
+                  onClick={() => exportPdfWeekly(weeklySummary, summary, startDate, endDate)}
+                  disabled={loading || weeklySummary.length === 0}
                 >
                   <FileText className="h-3.5 w-3.5" /> PDF
                 </Button>
@@ -458,36 +550,10 @@ export default function Reports() {
                   variant="outline"
                   size="sm"
                   className="h-7 gap-1.5 text-xs"
-                  onClick={() => exportCsv('condition')}
-                  disabled={loading || conditionRecords.length === 0}
+                  onClick={() => exportCsvWeekly(weeklySummary)}
+                  disabled={loading || weeklySummary.length === 0}
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <p className="text-sm font-semibold text-slate-800">Overall (All-in-One)</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Complete package with summary metrics and full detail table in one file.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  className="h-7 gap-1.5 bg-teal-600 text-xs hover:bg-teal-700"
-                  onClick={() => exportPdf('overall')}
-                  disabled={loading || sortedRecords.length === 0}
-                >
-                  <FileText className="h-3.5 w-3.5" /> PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={() => exportCsv('overall')}
-                  disabled={loading || sortedRecords.length === 0}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> Excel / CSV
                 </Button>
               </div>
             </div>
@@ -495,114 +561,124 @@ export default function Reports() {
         </CardContent>
       </Card>
 
-      {/* ── Detailed Records Table ── */}
-      <Card className="overflow-hidden border-slate-200 shadow-none">
-        {/* Toolbar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            {activeCondition !== 'all' && (
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeConditionConfig.dot }} />
-            )}
-            <p className="text-sm font-medium text-slate-800">{activeConditionConfig.label}</p>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {filteredRecords.length}
-            </span>
-            {activeCondition !== 'all' && (
-              <button
-                onClick={() => handleConditionChange('all')}
-                className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
-              >
-                clear
-              </button>
-            )}
-          </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <Input
-              placeholder="Search student, item..."
-              value={search}
-              onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
-              className="h-8 pl-8 text-xs"
-            />
-          </div>
-        </div>
+      {/* ── Tab switcher ── */}
+      <div className="flex gap-2 rounded-xl border border-slate-200 bg-white p-1 shadow-sm w-fit">
+        <button
+          type="button"
+          onClick={() => { setActiveTab('lecturer'); setCurrentPage(1); }}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            activeTab === 'lecturer'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <Users className="h-3.5 w-3.5" /> Grouped by Lecturer
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('weekly'); setWeekPage(1); }}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            activeTab === 'weekly'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <CalendarDays className="h-3.5 w-3.5" /> Weekly Summary
+        </button>
+      </div>
 
-        <CardContent className="p-0">
-          {error && (
-            <div className="flex flex-col items-center justify-center gap-2 py-16">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
-                <BarChart3 className="h-5 w-5 text-red-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-800">Failed to load records</p>
-              <p className="max-w-xs text-center text-xs text-slate-500">{error}</p>
+      {/* ── Error state ── */}
+      {error && (
+        <Card className="border-red-200 shadow-none">
+          <CardContent className="flex flex-col items-center justify-center gap-2 py-14">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
+              <BarChart3 className="h-5 w-5 text-red-400" />
             </div>
-          )}
+            <p className="text-sm font-medium text-slate-800">Failed to load records</p>
+            <p className="max-w-xs text-center text-xs text-slate-500">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
-          {!error && (
+      {/* ═══════════════ TAB: LECTURER GROUPED ═══════════════ */}
+      {!error && activeTab === 'lecturer' && (
+        <Card className="overflow-hidden border-slate-200 shadow-none">
+          {/* Toolbar */}
+          <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-slate-800">Release Records</p>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {filteredGroups.reduce((s, g) => s + g.releases.length, 0)}
+              </span>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Search lecturer, student, item…"
+                value={search}
+                onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+          </div>
+
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">Student Name</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Student ID</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Item Name</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Item ID</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Return Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Condition</TableHead>
+                    <TableHead className="w-8 text-xs font-medium text-slate-500">#</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Student / Lecturer</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Email</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
+                    <TableHead className="text-center text-xs font-medium text-slate-500">Releases</TableHead>
+                    <TableHead className="text-center text-xs font-medium text-slate-500">Total Qty</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Released At</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRecords.length === 0 ? (
+                  {filteredGroups.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-14 text-center">
+                      <TableCell colSpan={8} className="py-14 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                            <BarChart3 className="h-4 w-4 text-slate-400" />
+                            <Users className="h-4 w-4 text-slate-400" />
                           </div>
-                          <p className="text-sm text-slate-500">No records found for the selected filters.</p>
+                          <p className="text-sm text-slate-500">No release records found for the selected filters.</p>
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedRecords.map((record, index) => (
-                      <TableRow
-                        key={`${record.itemId || 'item'}-${record.studentId || 'student'}-${index}`}
-                        className="border-slate-50 hover:bg-slate-50/50"
-                      >
-                        <TableCell className="text-sm font-medium text-slate-900">{record.studentName || '-'}</TableCell>
-                        <TableCell className="text-xs text-slate-500">{record.studentId || '-'}</TableCell>
-                        <TableCell className="text-sm text-slate-900">{record.itemName || '-'}</TableCell>
-                        <TableCell className="text-xs text-slate-500">{record.itemId || '-'}</TableCell>
-                        <TableCell className="whitespace-nowrap text-xs text-slate-500">{formatDate(record.borrowDate)}</TableCell>
-                        <TableCell className="whitespace-nowrap text-xs text-slate-500">{formatDate(record.returnDate)}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${getConditionBadgeClass(record.condition)}`}>
-                            {record.condition || 'Good'}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    paginatedGroups.map((group) => {
+                      const key = group.lecturerId || group.lecturerName;
+                      return (
+                        <LecturerGroupRow
+                          key={key}
+                          group={group}
+                          isExpanded={!!expandedLecturers[key]}
+                          onToggle={() => toggleLecturerExpand(key)}
+                        />
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
 
-              {totalPages > 1 && (
+              {totalGroupPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
                   <p className="text-xs text-slate-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredRecords.length)} of {filteredRecords.length} records
+                    Showing {(currentPage - 1) * GROUP_PAGE_SIZE + 1}–{Math.min(currentPage * GROUP_PAGE_SIZE, filteredGroups.length)} of {filteredGroups.length} lecturer{filteredGroups.length !== 1 ? 's' : ''}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
+                      variant="outline" size="icon" className="h-7 w-7"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                     >
                       <ChevronLeft className="h-3.5 w-3.5" />
                     </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    {Array.from({ length: totalGroupPages }, (_, i) => i + 1).map((page) => (
                       <Button
                         key={page}
                         variant={currentPage === page ? 'default' : 'outline'}
@@ -614,11 +690,9 @@ export default function Reports() {
                       </Button>
                     ))}
                     <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
+                      variant="outline" size="icon" className="h-7 w-7"
+                      onClick={() => setCurrentPage((p) => Math.min(totalGroupPages, p + 1))}
+                      disabled={currentPage === totalGroupPages}
                     >
                       <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
@@ -626,9 +700,132 @@ export default function Reports() {
                 </div>
               )}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════ TAB: WEEKLY SUMMARY ═══════════════ */}
+      {!error && activeTab === 'weekly' && (
+        <Card className="overflow-hidden border-slate-200 shadow-none">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-emerald-600" />
+              <p className="text-sm font-medium text-slate-800">Weekly Release Summary</p>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {weeklySummary.length} week{weeklySummary.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
+
+          <CardContent className="p-0">
+            {weeklySummary.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-14">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
+                  <CalendarDays className="h-4 w-4 text-slate-400" />
+                </div>
+                <p className="text-sm text-slate-500">No weekly data available for the selected range.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {paginatedWeeks.map((wk) => {
+                  const weekEnd = (() => {
+                    try {
+                      const d = parseISO(wk.weekStart);
+                      return format(endOfWeek(d, { weekStartsOn: 1 }), 'MMM d');
+                    } catch { return ''; }
+                  })();
+                  const weekStartFmt = (() => {
+                    try { return format(parseISO(wk.weekStart), 'MMM d, yyyy'); } catch { return wk.weekStart; }
+                  })();
+
+                  return (
+                    <div key={wk.weekStart} className="px-4 py-4">
+                      {/* Week header */}
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            {weekStartFmt}{weekEnd ? ` – ${weekEnd}` : ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                          <span><span className="font-semibold text-blue-700">{wk.totalReleased}</span> releases</span>
+                          <span><span className="font-semibold text-emerald-700">{wk.totalQuantity}</span> qty</span>
+                        </div>
+                      </div>
+
+                      {/* Per-lecturer breakdown */}
+                      <div className="overflow-x-auto rounded-lg border border-slate-100">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-100 bg-slate-50/60">
+                              <th className="py-2 pl-4 pr-2 text-left font-medium text-slate-500">Lecturer</th>
+                              <th className="px-3 py-2 text-right font-medium text-slate-500">Releases</th>
+                              <th className="py-2 pl-3 pr-4 text-right font-medium text-slate-500">Total Qty</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.values(wk.byLecturer).map((l, i) => (
+                              <tr
+                                key={i}
+                                className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50"
+                              >
+                                <td className="py-2 pl-4 pr-2 text-slate-800">{l.lecturerName}</td>
+                                <td className="px-3 py-2 text-right font-medium text-blue-700">{l.totalReleased}</td>
+                                <td className="py-2 pl-3 pr-4 text-right font-medium text-emerald-700">{l.totalQuantity}</td>
+                              </tr>
+                            ))}
+                            {/* Week total row */}
+                            <tr className="bg-slate-100/60 font-semibold">
+                              <td className="py-2 pl-4 pr-2 text-slate-700">Week Total</td>
+                              <td className="px-3 py-2 text-right text-blue-800">{wk.totalReleased}</td>
+                              <td className="py-2 pl-3 pr-4 text-right text-emerald-800">{wk.totalQuantity}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+                {totalWeekPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                    <p className="text-xs text-slate-500">
+                      Showing {(weekPage - 1) * PAGE_SIZE + 1}–{Math.min(weekPage * PAGE_SIZE, weeklySummary.length)} of {weeklySummary.length} week{weeklySummary.length !== 1 ? 's' : ''}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline" size="icon" className="h-7 w-7"
+                        onClick={() => setWeekPage((p) => Math.max(1, p - 1))}
+                        disabled={weekPage === 1}
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      {Array.from({ length: totalWeekPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={weekPage === page ? 'default' : 'outline'}
+                          size="icon"
+                          className={`h-7 w-7 text-xs ${weekPage === page ? 'bg-emerald-600 text-white hover:bg-emerald-700' : ''}`}
+                          onClick={() => setWeekPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline" size="icon" className="h-7 w-7"
+                        onClick={() => setWeekPage((p) => Math.min(totalWeekPages, p + 1))}
+                        disabled={weekPage === totalWeekPages}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
     </div>
   );
 }
