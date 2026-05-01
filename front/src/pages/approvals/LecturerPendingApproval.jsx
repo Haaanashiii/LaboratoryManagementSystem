@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Package, Calendar, CheckCircle, XCircle, Loader2, Search, ClipboardList, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, User, Clock, FileText, Hash } from 'lucide-react';
+import { Package, Calendar, CheckCircle, XCircle, Loader2, Search, ClipboardList, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, User, Clock, FileText, Hash, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLang } from '@/components/i18n/LangContext';
 import { LecturerPendingApprovalSkeleton } from '@/skeleton-framework/lecturer';
@@ -24,6 +24,7 @@ export default function LecturerApprovals() {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [dateSort, setDateSort] = useState('desc');
+  const [pdfLoadingId, setPdfLoadingId] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -100,8 +101,23 @@ export default function LecturerApprovals() {
     actionMutation.mutate({
       id: selectedRequest.id,
       action: action,
-      remarks: remarks.trim()
+      remarks: remarks.trim(),
     });
+  };
+
+  const handlePreviewPdf = async (request) => {
+    if (!request?.id) return;
+    setPdfLoadingId(request.id);
+    try {
+      const blob = await api.entities.BorrowRequest.getPdfBlob(request.id, true);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      console.error('PDF preview failed:', err);
+    } finally {
+      setPdfLoadingId(null);
+    }
   };
 
   const orderedRequests = [...requests].sort((a, b) => {
@@ -273,6 +289,16 @@ export default function LecturerApprovals() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="h-7 gap-1.5 px-2.5 text-xs font-medium text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg"
+                              disabled={pdfLoadingId === request.id}
+                              onClick={() => handlePreviewPdf(request)}
+                            >
+                              {pdfLoadingId === request.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                              View PDF
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="h-7 gap-1.5 px-2.5 text-xs font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
                               onClick={() => openRejectDialog(request)}
                             >
@@ -340,7 +366,7 @@ export default function LecturerApprovals() {
 
       {/* ── View Request Detail Modal ── */}
       <Dialog open={!!viewingRequest} onOpenChange={() => setViewingRequest(null)}>
-        <DialogContent className="sm:max-w-[420px] rounded-2xl bg-white text-slate-900 overflow-hidden p-0 gap-0">
+        <DialogContent className="sm:max-w-[660px] rounded-2xl bg-white text-slate-900 overflow-hidden p-0 gap-0">
 
           {/* ── Hero ── */}
           {(() => {
@@ -391,68 +417,111 @@ export default function LecturerApprovals() {
           <DialogTitle className="sr-only">Borrow Request — {viewingRequest?.equipment_name}</DialogTitle>
 
           {/* ── Body ── */}
-          <div className="px-6 pt-5 pb-6 space-y-3">
+          <div className="px-6 pt-5 pb-6">
+            <div className="grid grid-cols-2 gap-4">
 
-            {/* Borrower + Date row */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
-                <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Borrower</p>
-                <div className="flex items-center gap-1.5">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100">
-                    <User className="h-2.5 w-2.5 text-blue-500" />
+              {/* LEFT: borrower info + period */}
+              <div className="space-y-3">
+                {/* Borrower */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Borrower</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                      <User className="h-3.5 w-3.5 text-blue-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate">{viewingRequest?.borrower_name || '—'}</p>
+                      {viewingRequest?.borrower_email && (
+                        <p className="text-[10px] text-slate-400 truncate">{viewingRequest.borrower_email}</p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs font-semibold text-slate-800 truncate">{viewingRequest?.borrower_name || '—'}</p>
                 </div>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
-                <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Submitted</p>
-                <div className="flex items-center gap-1.5">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100">
-                    <Clock className="h-2.5 w-2.5 text-violet-500" />
+
+                {/* Submitted */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Submitted</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100">
+                      <Clock className="h-3.5 w-3.5 text-violet-500" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {viewingRequest?.created_date ? format(new Date(viewingRequest.created_date), 'MMM d, yyyy') : '—'}
+                    </p>
                   </div>
-                  <p className="text-xs font-semibold text-slate-800">
-                    {viewingRequest?.created_date ? format(new Date(viewingRequest.created_date), 'MMM d, yyyy') : '—'}
-                  </p>
+                </div>
+
+                {/* Borrow Period */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2.5">Borrow Period</p>
+                  <div className="space-y-2">
+                    <div className="rounded-lg bg-white border border-slate-200 px-3.5 py-2.5">
+                      <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">From</p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {viewingRequest?.borrow_date ? formatBorrowReturn(viewingRequest.borrow_date) : '—'}
+                      </p>
+                    </div>
+                    <div className="flex justify-center">
+                      <div className="h-4 w-px bg-slate-200" />
+                    </div>
+                    <div className="rounded-lg bg-white border border-slate-200 px-3.5 py-2.5">
+                      <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">Until</p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {viewingRequest?.return_date ? formatBorrowReturn(viewingRequest.return_date) : '—'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Borrow Period */}
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Borrow Period</p>
-              <div className="flex items-stretch gap-2">
-                <div className="flex-1 rounded-lg bg-white border border-slate-200 px-3.5 py-2.5">
-                  <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">From</p>
-                  <p className="text-xs font-semibold text-slate-800">
-                    {viewingRequest?.borrow_date ? formatBorrowReturn(viewingRequest.borrow_date) : '—'}
+              {/* RIGHT: purpose + remarks */}
+              <div className="space-y-3">
+                {/* Purpose */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5 flex flex-col">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Purpose</p>
+                  <p className="text-sm text-slate-700 leading-relaxed min-h-[72px]">
+                    {viewingRequest?.purpose || <span className="italic text-slate-300">No purpose provided.</span>}
                   </p>
                 </div>
-                <div className="flex items-center">
-                  <div className="h-px w-4 bg-slate-200" />
-                  <div className="mx-0.5 h-1.5 w-1.5 rotate-45 border-t border-r border-slate-300" />
+
+                {/* Equipment details */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2.5">Equipment</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">Name</span>
+                      <span className="text-xs font-semibold text-slate-800 truncate max-w-[140px]">{viewingRequest?.equipment_name || '—'}</span>
+                    </div>
+                    <div className="h-px bg-slate-100" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">Quantity</span>
+                      <span className="text-xs font-semibold text-slate-800">{viewingRequest?.quantity ?? '—'}</span>
+                    </div>
+                    {viewingRequest?.serial_number && (
+                      <>
+                        <div className="h-px bg-slate-100" />
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-slate-400">Serial</span>
+                          <span className="text-xs font-semibold text-slate-800 font-mono">{viewingRequest.serial_number}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 rounded-lg bg-white border border-slate-200 px-3.5 py-2.5">
-                  <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">Until</p>
-                  <p className="text-xs font-semibold text-slate-800">
-                    {viewingRequest?.return_date ? formatBorrowReturn(viewingRequest.return_date) : '—'}
-                  </p>
-                </div>
+
+                {/* Lecturer remarks if any */}
+                {viewingRequest?.lecturer_remarks && (
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-widest text-blue-400 mb-1.5">Remarks</p>
+                    <p className="text-xs text-blue-700 leading-relaxed">{viewingRequest.lecturer_remarks}</p>
+                  </div>
+                )}
               </div>
-            </div>
-
-            {/* Purpose */}
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3.5">
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Purpose</p>
-              {viewingRequest?.purpose ? (
-                <p className="text-xs text-slate-700 leading-relaxed">{viewingRequest.purpose}</p>
-              ) : (
-                <p className="text-xs italic text-slate-300">No purpose provided.</p>
-              )}
             </div>
           </div>
 
           {/* ── Footer Actions ── */}
-          <div className="grid grid-cols-3 gap-2 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+          <div className="grid grid-cols-4 gap-2 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
             <Button
               variant="ghost"
               size="sm"
@@ -460,6 +529,16 @@ export default function LecturerApprovals() {
               onClick={() => setViewingRequest(null)}
             >
               Close
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 rounded-xl text-xs font-semibold text-violet-600 border-violet-200 bg-violet-50 hover:bg-violet-100 hover:border-violet-300"
+              disabled={pdfLoadingId === viewingRequest?.id}
+              onClick={() => handlePreviewPdf(viewingRequest)}
+            >
+              <Eye className="h-3 w-3 mr-1.5" />
+              {pdfLoadingId === viewingRequest?.id ? 'Loading…' : 'Preview PDF'}
             </Button>
             <Button
               size="sm"
@@ -504,10 +583,11 @@ export default function LecturerApprovals() {
                 : <>Reject <span className="font-medium text-slate-700">{selectedRequest?.borrower_name}</span>'s request for <span className="font-medium text-slate-700">{selectedRequest?.equipment_name}</span>. The borrower will be notified.</>
               }
             </p>
+
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-600">
                 {t('Remarks')}
-                {action === 'reject' && <span className="ml-1 text-red-500">*</span>}
+                <span className="ml-1 text-slate-400 text-[10px] font-normal">(optional)</span>
               </Label>
               <Textarea
                 value={remarks}
@@ -526,7 +606,7 @@ export default function LecturerApprovals() {
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={actionMutation.isPending || (action === 'reject' && !remarks.trim())}
+              disabled={actionMutation.isPending}
               className={`text-xs text-white ${action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'}`}
             >
               {actionMutation.isPending ? (

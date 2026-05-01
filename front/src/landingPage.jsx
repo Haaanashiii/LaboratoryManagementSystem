@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  FlaskConical, BookOpen, CheckCircle2, Bell, BarChart3, RotateCcw,
+  BookOpen, CheckCircle2, Bell, BarChart3, RotateCcw,
   Users, ShieldCheck, ArrowRight, Globe, Menu as MenuIcon,
   ClipboardList, Package, ChevronRight, Zap, Lock,
   GraduationCap, ClipboardCheck, Wrench, Cpu, Wifi, Activity, Server, Gauge
 } from 'lucide-react'
-import equimonLogo from './assets/images/Equimon Logo.png'
+import itsLogo from './assets/images/ITSSecond.png'
 import ShapeGrid from './components/bits/ShapeGrid'
 import SpotlightCard from './components/bits/SpotlightCard'
 import CardSwap, { Card } from './components/bits/CardSwap'
@@ -72,7 +72,7 @@ const LP = {
 }
 
 // ─── Feature icon map ─────────────────────────────────────────────────────────
-const FEATURE_ICONS = [FlaskConical, ClipboardList, Bell, Users, BarChart3, RotateCcw]
+const FEATURE_ICONS = [Cpu, ClipboardList, Bell, Users, BarChart3, RotateCcw]
 const FEATURE_COLORS = [
   'rgba(59,130,246,0.15)',   // blue
   'rgba(34,197,94,0.15)',    // green
@@ -168,7 +168,7 @@ export default function LandingPage() {
           displayItemNumbering
           logoContent={
             <div className="flex items-center gap-2">
-              <img src={equimonLogo} alt="Equimon" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'rgba(255,255,255,0.95)', padding: '2px' }} />
+              <img src={itsLogo} alt="ITS" className="w-7 h-7 rounded-lg object-contain" style={{ background: 'rgba(255,255,255,0.95)', padding: '2px' }} />
               <span className="text-[#E2E8F0] text-sm font-bold tracking-tight">Equimon</span>
             </div>
           }
@@ -181,7 +181,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-between px-6 py-3">
             {/* Logo */}
             <div className="flex items-center gap-2.5 cursor-pointer select-none" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <img src={equimonLogo} alt="Equimon" className="w-9 h-9 rounded-xl object-contain shadow-lg shadow-blue-500/20" style={{ background: 'rgba(255,255,255,0.95)', padding: '3px' }} />
+              <img src={itsLogo} alt="ITS" className="w-9 h-9 rounded-xl object-contain shadow-lg shadow-blue-500/20" style={{ background: 'rgba(255,255,255,0.95)', padding: '3px' }} />
               <div>
                 <span className="text-[#E2E8F0] font-bold text-sm tracking-tight">Equimon</span>
                 <span className="text-[#475569] text-xs ml-2 hidden lg:inline">Lab Management</span>
@@ -312,7 +312,7 @@ export default function LandingPage() {
                     <div className="p-5 h-full flex flex-col gap-3">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/15 flex items-center justify-center">
-                          <FlaskConical size={16} color="#3B82F6" />
+                          <Cpu size={16} color="#3B82F6" />
                         </div>
                         <div>
                           <div className="text-xs font-bold text-[#E2E8F0]">Equipment Catalog</div>
@@ -714,7 +714,7 @@ export default function LandingPage() {
       <footer className="relative border-t border-[#111118] py-10 px-6 lg:px-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <img src={equimonLogo} alt="Equimon" className="w-8 h-8 rounded-lg object-contain" style={{ background: 'rgba(255,255,255,0.95)', padding: '2px' }} />
+            <img src={itsLogo} alt="ITS" className="w-8 h-8 rounded-lg object-contain" style={{ background: 'rgba(255,255,255,0.95)', padding: '2px' }} />
             <div>
               <span className="text-[#E2E8F0] font-bold text-sm">Equimon</span>
               <p className="text-[#2A2A3A] text-[11px] mt-0.5">{lp.footerSub}</p>

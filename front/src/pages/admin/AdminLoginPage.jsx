@@ -5,7 +5,6 @@ import { Eye, EyeOff, Mail, ShieldCheck, Lock } from 'lucide-react';
 import ShapeGrid from '@/components/bits/ShapeGrid';
 import { Button } from '@/components/ui/button';
 import { api, clearStoredAuth } from '@/api/apiClient';
-import equimonLogo from '@/assets/images/Equimon Logo.png';
 import itsSecondLogo from '@/assets/images/ITSSecond.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
 import { useLang } from '@/components/i18n/LangContext';
@@ -182,7 +181,7 @@ export default function AdminLoginPage() {
             {/* ── Card header ── */}
             <div className="flex items-center justify-between border-b border-white/[0.05] px-7 py-5">
               <div className="flex items-center gap-3">
-                <img src={equimonLogo} alt="Equimon" className="h-8 w-8 object-contain" />
+                <img src={itsSecondLogo} alt="ITS" className="h-8 w-8 object-contain" />
                 <div>
                   <p className="text-[9px] font-mono tracking-[0.28em] text-slate-300 uppercase">
                     Inventory Portal

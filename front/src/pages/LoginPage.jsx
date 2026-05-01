@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
 import ShapeGrid from '@/components/bits/ShapeGrid';
-import equimonLogo from '@/assets/images/Equimon Logo.png';
+import itsLogo from '@/assets/images/ITSSecond.png';
 import { useAuth } from '@/components/hooks/useAuth.js';
+import { toast } from 'sonner';
 
 const ADMIN_ACCESS_ROLES = ['lecturer', 'head', 'head_of_lab', 'lab_assistant', 'admin'];
 const MIN_SIGNUP_PASSWORD_LENGTH = 6;
@@ -250,6 +251,7 @@ export default function LoginPage() {
         email: signupForm.email,
         password: signupForm.password,
       });
+      toast.success('Account created successfully! Welcome aboard.');
       navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error('Registration failed:', error);
@@ -405,7 +407,7 @@ export default function LoginPage() {
               className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: '#111118', border: '1px solid rgba(59,130,246,0.2)' }}
             >
-              <img src={equimonLogo} alt="Equimon Logo" className="w-7 h-7 object-contain" />
+              <img src={itsLogo} alt="ITS Logo" className="w-7 h-7 object-contain" />
             </div>
             <div
               className="h-6 w-px flex-shrink-0"
@@ -485,7 +487,7 @@ export default function LoginPage() {
               className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-5"
               style={{ background: '#1A1A24', border: '1px solid rgba(59,130,246,0.18)' }}
             >
-              <img src={equimonLogo} alt="Equimon Logo" className="w-8 h-8 object-contain" />
+              <img src={itsLogo} alt="ITS Logo" className="w-8 h-8 object-contain" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-1">{t('signIn')}</h2>
             <p className="text-sm" style={{ color: '#475569' }}>{t('loginWelcome')}</p>
@@ -648,7 +650,7 @@ export default function LoginPage() {
                   animation: 'su-fadeInUp 0.5s ease 0.05s both',
                 }}
               >
-                <img src={equimonLogo} alt="Equimon Logo" className="w-12 h-12 object-contain" />
+                <img src={itsLogo} alt="ITS Logo" className="w-12 h-12 object-contain" />
               </div>
               <h1
                 className="text-3xl font-bold text-white mb-3"

@@ -33,19 +33,32 @@ export const DialogContent = React.forwardRef(({ className = '', children, ...pr
   const { isDark } = useTheme();
 
   if (!open) return null;
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <style>{`
+        @keyframes _dlg-overlay-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes _dlg-content-in {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        ._dlg-overlay { animation: _dlg-overlay-in  0.18s ease both; }
+        ._dlg-content { animation: _dlg-content-in  0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+      `}</style>
+
       {/* Overlay */}
-      <div 
-        className="fixed inset-0 bg-black/50" 
+      <div
+        className="_dlg-overlay fixed inset-0 bg-black/50"
         onClick={() => onOpenChange(false)}
       />
-      
+
       {/* Content */}
       <div
         ref={ref}
-        className={`relative z-50 w-full p-6 ${isDark ? 'bg-[#111118] text-slate-100' : 'bg-white text-slate-900'} ${className}`}
+        className={`_dlg-content relative z-50 w-full p-6 ${isDark ? 'bg-[#111118] text-slate-100' : 'bg-white text-slate-900'} ${className}`}
         {...props}
       >
         {children}

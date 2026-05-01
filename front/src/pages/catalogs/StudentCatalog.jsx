@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import BorrowRequestPreviewModal from '@/components/BorrowRequestPreviewModal';
 
 import CatalogContent from './CatalogContent';
 import { useCatalogData } from './useCatalogData';
@@ -20,6 +21,7 @@ import { useTheme } from '@/components/hooks/ThemeContext';
 const getDefaultBorrowForm = () => ({
   quantity: '1',
   purpose: '',
+  objective: '',
   borrow_date: format(new Date(), 'yyyy-MM-dd'),
   return_date: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
   lecturer_id: '',
@@ -31,6 +33,7 @@ export default function StudentCatalog() {
   const { isDark } = useTheme();
   const [viewedEquipment, setViewedEquipment] = useState(null);
   const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successPhase, setSuccessPhase] = useState(0); // 0 = check only, 1 = check moved + text shown
   const [borrowForm, setBorrowForm] = useState(getDefaultBorrowForm());
@@ -96,6 +99,7 @@ export default function StudentCatalog() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       setSelectedEquipment(null);
+      setShowPreview(false);
       setSuccessPhase(0);
       setShowSuccessModal(true);
       setBorrowForm(getDefaultBorrowForm());
@@ -103,10 +107,9 @@ export default function StudentCatalog() {
     },
   });
 
+  // Validate then open preview modal (not submit directly)
   const handleBorrowSubmit = () => {
-    if (!selectedEquipment) {
-      return;
-    }
+    if (!selectedEquipment) return;
 
     const availableQty = Number(selectedEquipment.available_quantity ?? 0);
     const parsedQuantity = Number.parseInt(String(borrowForm.quantity), 10);
@@ -144,19 +147,22 @@ export default function StudentCatalog() {
       return;
     }
 
-    if (!borrowForm.lecturer_id) {
-      setBorrowLecturerNotice('Please select a lecturer for approval.');
-      return;
-    }
-
     setBorrowDateNotice('');
-    setBorrowLecturerNotice('');
+    setBorrowQuantityNotice('');
+    // Open preview instead of submitting directly
+    setShowPreview(true);
+  };
 
+  // Called from preview modal "Confirm & Submit"
+  const handleConfirmSubmit = () => {
+    if (!selectedEquipment) return;
+    const parsedQuantity = Number.parseInt(String(borrowForm.quantity), 10);
     createRequestMutation.mutate({
       equipment: selectedEquipment.id,
       ...borrowForm,
-      quantity: parsedQuantity,
-      lecturer_id: borrowForm.lecturer_id,
+      objective: borrowForm.objective || borrowForm.purpose,
+      purpose:   borrowForm.purpose   || borrowForm.objective,
+      quantity:  parsedQuantity,
     });
   };
 
@@ -346,13 +352,13 @@ export default function StudentCatalog() {
             style={{
               width: '90vw',
               maxWidth: 440,
-              maxHeight: 'min(92dvh, 680px)',
+              maxHeight: 'min(92dvh, 720px)',
               padding: 0,
               boxShadow: isDark ? '0 32px 80px rgba(0,0,0,0.85)' : '0 24px 64px rgba(0,0,0,0.16)',
             }}
           >
             {/* borrow-enter triggers the open animation via catalogStyles */}
-            <div className="borrow-enter flex flex-col overflow-hidden">
+            <div className="borrow-enter flex flex-col" style={{ overflow: 'hidden' }}>
 
               {/* ── TOP: Image panel ──────────────────────────────────── */}
               <div className="relative flex-shrink-0 overflow-hidden h-[160px]">
@@ -513,7 +519,7 @@ export default function StudentCatalog() {
 
               {/* ── BOTTOM/RIGHT: Form panel ──────────────────────────────── */}
               <div
-                className={`flex flex-col flex-1 min-h-0 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}
+                className={`flex flex-col border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}
                 style={{ background: isDark ? '#111118' : '#ffffff' }}
               >
                 {/* Header bar */}
@@ -532,7 +538,7 @@ export default function StudentCatalog() {
                 </div>
 
                 {/* Form fields */}
-                <div className="px-5 py-3 space-y-2.5 overflow-y-auto flex-1 min-h-0">
+                <div className="px-5 py-3 space-y-2.5 overflow-y-auto">
 
                   {/* Qty row */}
                   <div className="space-y-1.5">
@@ -621,15 +627,15 @@ export default function StudentCatalog() {
                     </p>
                   )}
 
-                  {/* Purpose */}
+                  {/* Purpose / Objective */}
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                      Purpose
+                      Objective / Purpose
                     </Label>
                     <Textarea
                       placeholder="Briefly explain why you need this equipment..."
                       value={borrowForm.purpose}
-                      onChange={(e) => setBorrowForm({ ...borrowForm, purpose: e.target.value })}
+                      onChange={(e) => setBorrowForm({ ...borrowForm, purpose: e.target.value, objective: e.target.value })}
                       rows={2}
                       className={`rounded-lg text-xs resize-none font-medium ${isDark ? 'bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-600 focus:border-blue-500' : 'border-slate-200 placeholder:text-slate-400 focus:border-blue-400'}`}
                     />
@@ -715,14 +721,10 @@ export default function StudentCatalog() {
                   </button>
                   <button
                     onClick={handleBorrowSubmit}
-                    disabled={createRequestMutation.isPending || lecturersLoading || lecturersError || !borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded || isBorrowDateInvalid || isLecturerInvalid}
+                    disabled={!borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded || isBorrowDateInvalid}
                     className={`flex-[2] h-9 rounded-lg text-white text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5 ${isDark ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.35)]' : 'bg-blue-600 hover:bg-blue-700 shadow-[0_4px_16px_rgba(37,99,235,0.35)]'}`}
                   >
-                    {createRequestMutation.isPending ? (
-                      <><Loader2 className="w-3.5 h-3.5 animate-spin" />Submitting...</>
-                    ) : (
-                      'Submit Request'
-                    )}
+                    Review &amp; Submit
                   </button>
                 </div>
               </div>
@@ -731,6 +733,18 @@ export default function StudentCatalog() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Preview Modal — shown before final submit */}
+      <BorrowRequestPreviewModal
+        open={showPreview}
+        formData={borrowForm}
+        equipment={selectedEquipment}
+        user={user}
+        isDark={isDark}
+        onEdit={() => setShowPreview(false)}
+        onConfirm={handleConfirmSubmit}
+        isSubmitting={createRequestMutation.isPending}
+      />
 
       {/* Success Modal */}
       <AlertDialog open={showSuccessModal} onOpenChange={(v) => { setShowSuccessModal(v); if (!v) setSuccessPhase(0); }}>
@@ -805,7 +819,7 @@ export default function StudentCatalog() {
                   Request Submitted
                 </p>
                 <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Your borrow request is pending lecturer approval. Track its status on the Requests page.
+                  Your borrow request has been submitted and is pending lab assistant approval. Track its status on the Requests page.
                 </p>
               </div>
 

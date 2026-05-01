@@ -719,6 +719,104 @@ export const api = {
       delete: async (id) => {
         return await request(`/borrow-requests/${id}`, { method: 'DELETE' });
       },
+      // ── New simplified approval flow ──────────────────────────────────
+      approve: async (id) => {
+        const data = await request(`/borrow-requests/${id}/approve`, { method: 'PUT' });
+        return data.data;
+      },
+      reject: async (id, reason = '') => {
+        const data = await request(`/borrow-requests/${id}/reject`, {
+          method: 'PUT',
+          body: JSON.stringify({ reason }),
+        });
+        return data.data;
+      },
+      downloadPdf: async (id) => {
+        const token = getStoredToken();
+        if (!token || isTokenExpired(token)) {
+          clearAuthStorage();
+          throw new Error('Your session has expired. Please log in again.');
+        }
+        let res;
+        try {
+          res = await fetch(`${API_BASE_URL}/borrow-requests/${id}/pdf`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch {
+          throw new Error('Cannot connect to backend API.');
+        }
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          throw new Error(payload.message || `Request failed with status ${res.status}`);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `borrow-request-${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      },
+      getPdfBlob: async (id, inline = false) => {
+        const token = getStoredToken();
+        if (!token || isTokenExpired(token)) {
+          clearAuthStorage();
+          throw new Error('Your session has expired. Please log in again.');
+        }
+        const suffix = inline ? '?inline=true' : '';
+        let res;
+        try {
+          res = await fetch(`${API_BASE_URL}/borrow-requests/${id}/pdf${suffix}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch {
+          throw new Error('Cannot connect to backend API.');
+        }
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          throw new Error(payload.message || `Request failed with status ${res.status}`);
+        }
+        return res.blob();
+      },
+      previewPdf: async (formData, user) => {
+        const token = getStoredToken();
+        if (!token || isTokenExpired(token)) {
+          clearAuthStorage();
+          throw new Error('Your session has expired. Please log in again.');
+        }
+        const body = {
+          borrower_name: user?.name || '',
+          student_id: user?.studentId || '',
+          student_email: user?.email || '',
+          equipment_name: formData?.equipment_name || '',
+          serial_number: formData?.serial_number || '',
+          quantity: formData?.quantity || 1,
+          borrow_date: formData?.borrow_date || '',
+          return_date: formData?.return_date || '',
+          purpose: formData?.purpose || formData?.objective || '',
+          objective: formData?.objective || formData?.purpose || '',
+        };
+        let res;
+        try {
+          res = await fetch(`${API_BASE_URL}/borrow-requests/preview-pdf`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          });
+        } catch {
+          throw new Error('Cannot connect to backend API.');
+        }
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          throw new Error(payload.message || `Request failed with status ${res.status}`);
+        }
+        return res.blob();
+      },
     },
 
     // Stats

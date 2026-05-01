@@ -15,6 +15,10 @@ const borrowRequestSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  student_id: {
+    type: String,
+    trim: true
+  },
   
   // Equipment Information
   equipment: {
@@ -26,6 +30,10 @@ const borrowRequestSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  serial_number: {
+    type: String,
+    trim: true
+  },
   quantity: {
     type: Number,
     required: [true, 'Quantity is required'],
@@ -36,6 +44,10 @@ const borrowRequestSchema = new mongoose.Schema({
   purpose: {
     type: String,
     required: [true, 'Purpose is required'],
+    trim: true
+  },
+  objective: {
+    type: String,
     trim: true
   },
   borrow_date: {
@@ -170,6 +182,8 @@ const borrowRequestSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
+      'pending',
+      'approved',
       'pending_lecturer',
       'pending_head',
       'head_approved',
@@ -178,7 +192,22 @@ const borrowRequestSchema = new mongoose.Schema({
       'returned',
       'rejected'
     ],
-    default: 'pending_lecturer'
+    default: 'pending'
+  },
+  
+  // Lab Assistant Approval
+  approved_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  approved_at: {
+    type: Date
+  },
+  
+  // PDF
+  pdf_url: {
+    type: String,
+    trim: true
   },
   
   rejection_reason: {

@@ -39,7 +39,7 @@ export const DropdownMenuTrigger = React.forwardRef(({ children, asChild, ...pro
 });
 DropdownMenuTrigger.displayName = 'DropdownMenuTrigger';
 
-export function DropdownMenuContent({ children, align = 'start', className = '', ...props }) {
+export function DropdownMenuContent({ children, align = 'start', className = '', style, ...props }) {
   const { open, setOpen } = useContext(DropdownMenuContext);
   const contentRef = useRef(null);
   
@@ -68,17 +68,27 @@ export function DropdownMenuContent({ children, align = 'start', className = '',
   }, [open, setOpen]);
   
   if (!open) return null;
-  
+
   const alignmentClasses = {
     start: 'left-0',
     end: 'right-0',
     center: 'left-1/2 -translate-x-1/2'
   };
-  
+
+  const hasBg = className.includes('bg-');
+  const hasBorder = className.includes('border-');
+  const hasText = className.includes('text-slate-') || className.includes('text-white') || className.includes('text-gray-');
+  const defaultBase = [
+    !hasBg ? 'bg-white' : '',
+    !hasBorder ? 'border-slate-200' : '',
+    !hasText ? 'text-slate-950' : '',
+  ].filter(Boolean).join(' ');
+
   return (
     <div
       ref={contentRef}
-      className={`absolute ${alignmentClasses[align]} mt-2 z-50 min-w-[8rem] overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-md animate-in fade-in-0 zoom-in-95 ${className}`}
+      className={`absolute ${alignmentClasses[align]} mt-2 z-50 min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-md animate-in fade-in-0 zoom-in-95 ${defaultBase} ${className}`}
+      style={style}
       {...props}
     >
       {children}
@@ -121,9 +131,10 @@ export function DropdownMenuLabel({ children, className = '', ...props }) {
 }
 
 export function DropdownMenuSeparator({ className = '', ...props }) {
+  const hasBg = className.includes('bg-');
   return (
     <div
-      className={`-mx-1 my-1 h-px bg-slate-200 ${className}`}
+      className={`-mx-1 my-1 h-px ${hasBg ? '' : 'bg-slate-200'} ${className}`}
       {...props}
     />
   );

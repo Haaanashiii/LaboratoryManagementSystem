@@ -44,7 +44,7 @@ export default function LecturerApprovalHistory() {
 
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['lecturerApprovalHistory', user?.email],
-    queryFn: () => api.entities.BorrowRequest.filter({ lecturer_email: user?.email }, '-created_date'),
+    queryFn: () => api.entities.BorrowRequest.filter({ history: 'true' }, '-created_date'),
     enabled: !!user?.email,
   });
 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, CheckCircle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
+import { Package, CheckCircle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList, User, Hash } from 'lucide-react';
 import { EquipmentPreparationSkeleton } from '@/skeleton-framework/admin';
 import { format } from 'date-fns';
 
@@ -263,8 +263,9 @@ export default function EquipmentPrep() {
                           <TableCell className="text-right">
                             {request._section === 'prepare' ? (
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                className="h-7 gap-1.5 text-xs bg-amber-600 hover:bg-amber-700"
+                                className="h-7 gap-1.5 px-2.5 text-xs font-medium text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg"
                                 onClick={() => openPrepareDialog(request)}
                                 disabled={isPending}
                               >
@@ -273,8 +274,9 @@ export default function EquipmentPrep() {
                               </Button>
                             ) : (
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                className="h-7 gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700"
+                                className="h-7 gap-1.5 px-2.5 text-xs font-medium text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg"
                                 onClick={() => openReleaseDialog(request)}
                                 disabled={isPending}
                               >
@@ -335,42 +337,57 @@ export default function EquipmentPrep() {
 
       {/* Confirmation Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${dialogAction === 'prepare' ? 'bg-amber-50' : 'bg-indigo-50'}`}>
+                <CheckCircle className={`h-4 w-4 ${dialogAction === 'prepare' ? 'text-amber-600' : 'text-indigo-600'}`} />
+              </div>
               {dialogAction === 'prepare' ? 'Mark Equipment Ready' : 'Confirm Pickup'}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 mb-4 space-y-2">
-              <div>
-                <p className="text-xs text-slate-500">Equipment</p>
-                <p className="text-sm font-medium text-slate-900">{selectedRequest?.equipment_name}</p>
+          <div className="py-4 space-y-4">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Package className="h-4 w-4 shrink-0 text-slate-400" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Equipment</p>
+                  <p className="text-sm font-semibold text-slate-800">{selectedRequest?.equipment_name}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Borrower</p>
-                <p className="text-sm font-medium text-slate-900">{selectedRequest?.borrower_name}</p>
+              <div className="flex items-center gap-3">
+                <User className="h-4 w-4 shrink-0 text-slate-400" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Borrower</p>
+                  <p className="text-sm font-semibold text-slate-800">{selectedRequest?.borrower_name}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Quantity</p>
-                <p className="text-sm font-medium text-slate-900">{selectedRequest?.quantity}</p>
+              <div className="flex items-center gap-3">
+                <Hash className="h-4 w-4 shrink-0 text-slate-400" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Quantity</p>
+                  <p className="text-sm font-semibold text-slate-800">{selectedRequest?.quantity}</p>
+                </div>
               </div>
             </div>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-500 leading-relaxed">
               {dialogAction === 'prepare'
                 ? 'This will reserve the equipment and mark it as ready for pickup. The borrower will be notified.'
                 : 'Confirm that the borrower has picked up the equipment. This will mark the request as actively borrowed.'}
             </p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+          <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
+            <Button variant="outline" size="sm" onClick={closeDialog} className="text-xs">
+              Cancel
+            </Button>
             <Button
+              size="sm"
               onClick={handleConfirm}
               disabled={isPending}
-              className={dialogAction === 'prepare' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}
+              className={`text-xs text-white ${dialogAction === 'prepare' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
             >
               {isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing…</>
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Processing…</>
               ) : dialogAction === 'prepare' ? (
                 'Mark as Ready'
               ) : (

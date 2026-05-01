@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ReportsSkeleton } from '@/skeleton-framework/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import {
 import {
   FileSpreadsheet, FileText, BarChart3, RefreshCw,
   ChevronLeft, ChevronRight, Search, Users, Package,
-  ChevronDown, ChevronUp, CalendarDays, Layers,
+  ChevronDown, ChevronUp, CalendarDays, Layers, ClipboardList,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -62,6 +63,30 @@ const triggerDownload = (blob, filename) => {
 };
 
 const dateTag = () => new Date().toISOString().slice(0, 10);
+
+const STATUS_COLORS = {
+  pending:          { bg: '#fef9c3', color: '#854d0e', label: 'Pending' },
+  pending_lecturer: { bg: '#fef9c3', color: '#854d0e', label: 'Pending Lecturer' },
+  pending_head:     { bg: '#fef9c3', color: '#854d0e', label: 'Pending Head' },
+  head_approved:    { bg: '#dcfce7', color: '#166534', label: 'Head Approved' },
+  approved:         { bg: '#dcfce7', color: '#166534', label: 'Approved' },
+  ready_pickup:     { bg: '#dbeafe', color: '#1e40af', label: 'Ready for Pickup' },
+  borrowed:         { bg: '#ede9fe', color: '#5b21b6', label: 'Borrowed' },
+  returned:         { bg: '#f0fdf4', color: '#15803d', label: 'Returned' },
+  rejected:         { bg: '#fee2e2', color: '#991b1b', label: 'Rejected' },
+};
+
+function StatusBadge({ status }) {
+  const s = STATUS_COLORS[status] || { bg: '#f1f5f9', color: '#475569', label: status };
+  return (
+    <span
+      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+      style={{ background: s.bg, color: s.color }}
+    >
+      {s.label}
+    </span>
+  );
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -273,7 +298,7 @@ function exportPdfWeekly(weeklySummary, summary, startDate, endDate) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Reports() {
-  const [activeTab, setActiveTab]       = useState('lecturer'); // 'lecturer' | 'weekly'
+  const [activeTab, setActiveTab]       = useState('lecturer'); // 'lecturer' | 'weekly' | 'borrow'
   const [type, setType]                 = useState('monthly');
   const [startDate, setStartDate]       = useState('');
   const [endDate, setEndDate]           = useState('');
@@ -282,6 +307,12 @@ export default function Reports() {
   const [currentPage, setCurrentPage]   = useState(1);
   const [weekPage, setWeekPage]           = useState(1);
   const [expandedLecturers, setExpandedLecturers] = useState({});
+
+  // Borrow requests tab state
+  const [borrowSearch, setBorrowSearch]         = useState('');
+  const [borrowStatusFilter, setBorrowStatusFilter] = useState('');
+  const [borrowPage, setBorrowPage]             = useState(1);
+  const BORROW_PAGE_SIZE = 12;
 
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
@@ -330,6 +361,16 @@ export default function Reports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, startDate, endDate, lecturerFilter]);
 
+  // ── Borrow Requests (all) for admin report tab ─────────────────────────
+  const {
+    data: borrowRequests = [],
+    isLoading: borrowLoading,
+    refetch: refetchBorrow,
+  } = useQuery({
+    queryKey: ['adminBorrowRequests'],
+    queryFn: () => api.entities.BorrowRequest.list(),
+  });
+
   // All unique lecturers for filter dropdown
   const lecturerOptions = useMemo(() => {
     const seen = new Set();
@@ -372,6 +413,28 @@ export default function Reports() {
 
   const toggleLecturerExpand = (key) =>
     setExpandedLecturers((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Borrow requests filtering + pagination
+  const filteredBorrowRequests = useMemo(() => {
+    let list = borrowRequests;
+    if (borrowStatusFilter) list = list.filter((r) => r.status === borrowStatusFilter);
+    if (borrowSearch.trim()) {
+      const q = borrowSearch.trim().toLowerCase();
+      list = list.filter((r) =>
+        (r.borrower_name || '').toLowerCase().includes(q) ||
+        (r.student_id    || '').toLowerCase().includes(q) ||
+        (r.equipment?.name || '').toLowerCase().includes(q) ||
+        (r.status || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [borrowRequests, borrowStatusFilter, borrowSearch]);
+
+  const totalBorrowPages = Math.max(1, Math.ceil(filteredBorrowRequests.length / BORROW_PAGE_SIZE));
+  const paginatedBorrowRequests = filteredBorrowRequests.slice(
+    (borrowPage - 1) * BORROW_PAGE_SIZE,
+    borrowPage * BORROW_PAGE_SIZE
+  );
 
   const totalGroupPages = Math.max(1, Math.ceil(filteredGroups.length / GROUP_PAGE_SIZE));
   const paginatedGroups = filteredGroups.slice((currentPage - 1) * GROUP_PAGE_SIZE, currentPage * GROUP_PAGE_SIZE);
@@ -584,6 +647,17 @@ export default function Reports() {
           }`}
         >
           <CalendarDays className="h-3.5 w-3.5" /> Weekly Summary
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('borrow'); setBorrowPage(1); }}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            activeTab === 'borrow'
+              ? 'bg-violet-600 text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <ClipboardList className="h-3.5 w-3.5" /> Borrow Requests
         </button>
       </div>
 
@@ -820,6 +894,178 @@ export default function Reports() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══════════════ TAB: BORROW REQUESTS ═══════════════ */}
+      {activeTab === 'borrow' && (
+        <Card className="overflow-hidden border-slate-200 shadow-none">
+          {/* Toolbar */}
+          <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium text-slate-800">Borrow Requests</p>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {filteredBorrowRequests.length}
+              </span>
+              {/* Status filter pills */}
+              <div className="flex gap-1.5 flex-wrap">
+                {['', 'pending', 'approved', 'rejected', 'borrowed', 'returned'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => { setBorrowStatusFilter(s); setBorrowPage(1); }}
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
+                      borrowStatusFilter === s
+                        ? 'border-violet-200 bg-violet-50 text-violet-700'
+                        : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    {s === '' ? 'All' : STATUS_COLORS[s]?.label || s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative w-full sm:w-56">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Search borrower, equipment…"
+                  value={borrowSearch}
+                  onChange={(e) => { setBorrowPage(1); setBorrowSearch(e.target.value); }}
+                  className="h-8 pl-8 text-xs"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs shrink-0"
+                onClick={() => {
+                  const rows = filteredBorrowRequests.map((r) => [
+                    r.borrower_name || '—',
+                    r.student_id || '—',
+                    r.equipment?.name || '—',
+                    r.serial_number || '—',
+                    formatDate(r.borrow_date),
+                    formatDate(r.return_date),
+                    STATUS_COLORS[r.status]?.label || r.status,
+                    formatDate(r.createdAt),
+                  ]);
+                  const headers = ['Borrower', 'Student ID', 'Equipment', 'Serial No.', 'Borrow Date', 'Return Date', 'Status', 'Submitted'];
+                  const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
+                  triggerDownload(new Blob([csv], { type: 'text/csv' }), `borrow-requests-${dateTag()}.csv`);
+                }}
+                disabled={filteredBorrowRequests.length === 0}
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 shrink-0"
+                onClick={() => {
+                  const doc = new jsPDF({ orientation: 'landscape' });
+                  doc.setFontSize(14);
+                  doc.text('Borrow Request Report', 14, 16);
+                  doc.setFontSize(9);
+                  doc.setTextColor(120);
+                  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+                  autoTable(doc, {
+                    startY: 26,
+                    head: [['Borrower', 'Student ID', 'Equipment', 'Serial No.', 'Borrow Date', 'Return Date', 'Status', 'Submitted']],
+                    body: filteredBorrowRequests.map((r) => [
+                      r.borrower_name || '—',
+                      r.student_id || '—',
+                      r.equipment?.name || '—',
+                      r.serial_number || '—',
+                      formatDate(r.borrow_date),
+                      formatDate(r.return_date),
+                      STATUS_COLORS[r.status]?.label || r.status,
+                      formatDate(r.createdAt),
+                    ]),
+                    headStyles: { fillColor: [109, 40, 217], fontSize: 8 },
+                    bodyStyles: { fontSize: 8 },
+                    alternateRowStyles: { fillColor: [245, 243, 255] },
+                  });
+                  doc.save(`borrow-requests-${dateTag()}.pdf`);
+                }}
+                disabled={filteredBorrowRequests.length === 0}
+              >
+                <FileText className="h-3.5 w-3.5" /> PDF
+              </Button>
+            </div>
+          </div>
+
+          <CardContent className="p-0">
+            {borrowLoading ? (
+              <div className="flex items-center justify-center py-16 text-sm text-slate-400">Loading borrow requests…</div>
+            ) : paginatedBorrowRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-16">
+                <ClipboardList className="h-8 w-8 text-slate-300" />
+                <p className="text-sm text-slate-400">No borrow requests found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-100 bg-slate-50/60 hover:bg-slate-50/60">
+                      <TableHead className="text-xs font-semibold text-slate-500">Borrower</TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-500">Student ID</TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-500">Equipment</TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-500">Serial No.</TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-500">Borrow Date</TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-500">Return Date</TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-500">Status</TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-500">Submitted</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedBorrowRequests.map((r) => (
+                      <TableRow key={r._id || r.id} className="border-slate-50 hover:bg-slate-50/50">
+                        <TableCell className="text-xs font-medium text-slate-800">{r.borrower_name || '—'}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{r.student_id || '—'}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{r.equipment?.name || '—'}</TableCell>
+                        <TableCell className="text-xs text-slate-500 font-mono">{r.serial_number || '—'}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{formatDate(r.borrow_date)}</TableCell>
+                        <TableCell className="text-xs text-slate-600">{formatDate(r.return_date)}</TableCell>
+                        <TableCell><StatusBadge status={r.status} /></TableCell>
+                        <TableCell className="text-xs text-slate-500">{formatDate(r.createdAt)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalBorrowPages > 1 && (
+              <div className="flex items-center justify-end gap-1.5 border-t border-slate-100 px-4 py-3">
+                <Button
+                  variant="outline" size="icon" className="h-7 w-7"
+                  onClick={() => setBorrowPage((p) => Math.max(1, p - 1))}
+                  disabled={borrowPage === 1}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                {Array.from({ length: totalBorrowPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={borrowPage === page ? 'default' : 'outline'}
+                    size="icon"
+                    className={`h-7 w-7 text-xs ${borrowPage === page ? 'bg-violet-600 text-white hover:bg-violet-700' : ''}`}
+                    onClick={() => setBorrowPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline" size="icon" className="h-7 w-7"
+                  onClick={() => setBorrowPage((p) => Math.min(totalBorrowPages, p + 1))}
+                  disabled={borrowPage === totalBorrowPages}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
               </div>
             )}
           </CardContent>

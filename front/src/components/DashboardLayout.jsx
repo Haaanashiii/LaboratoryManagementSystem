@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, getStoredToken } from '@/api/apiClient';
-import equimonLogo from '@/assets/images/Equimon Logo.png';
+import itsLogo from '@/assets/images/ITSSecond.png';
 import { 
   Package, 
   FileText, 
@@ -250,19 +250,22 @@ export default function DashboardLayout() {
     }
   };
 
-  const notifBg = isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200';
-  const notifHeader = isDark ? 'border-slate-700/60' : 'border-slate-100';
-  const notifTextPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const notifTextSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-  const notifItemHover = isDark ? 'hover:bg-white/5 focus:bg-white/8' : 'hover:bg-slate-50 focus:bg-slate-50';
-  const notifDivider = isDark ? 'border-slate-700/40' : 'border-slate-100';
+  const LIGHT_NOTIF_ROLES = ['head_of_lab', 'lab_assistant', 'admin', 'lecturer'];
+  const notifIsDark = isDark && !LIGHT_NOTIF_ROLES.includes(user?.role);
+
+  const notifBg = notifIsDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-slate-200';
+  const notifHeader = notifIsDark ? 'border-slate-700/60' : 'border-slate-100';
+  const notifTextPrimary = notifIsDark ? 'text-slate-100' : 'text-slate-900';
+  const notifTextSecondary = notifIsDark ? 'text-slate-400' : 'text-slate-500';
+  const notifItemHover = notifIsDark ? 'hover:bg-white/5 focus:bg-white/8' : 'hover:bg-slate-50 focus:bg-slate-50';
+  const notifDivider = notifIsDark ? 'border-slate-700/40' : 'border-slate-100';
 
   const notificationsBell = (
     <DropdownMenu open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
       <DropdownMenuTrigger asChild>
         <button
           className={`relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
-            isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-white/60'
+            notifIsDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-white/60'
           }`}
         >
           <Bell className="w-5 h-5" />
@@ -272,12 +275,12 @@ export default function DashboardLayout() {
       <DropdownMenuContent
         align="end"
         className={`w-96 p-0 shadow-xl rounded-2xl border overflow-hidden ${notifBg}`}
-        style={isDark ? { background: '#0f172a', borderColor: 'rgba(255,255,255,0.08)', color: '#f1f5f9' } : {}}
+        style={notifIsDark ? { background: '#0f172a', borderColor: 'rgba(255,255,255,0.08)', color: '#f1f5f9' } : {}}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-4 py-3 border-b ${notifHeader}`}>
           <div className="flex items-center gap-2">
-            <Bell className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+            <Bell className={`w-4 h-4 ${notifIsDark ? 'text-blue-400' : 'text-blue-500'}`} />
             <span className={`text-sm font-semibold ${notifTextPrimary}`}>{t('notifications') || 'Notifications'}</span>
             {unreadCount > 0 && (
               <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-500 text-white min-w-[18px]">
@@ -306,17 +309,17 @@ export default function DashboardLayout() {
                   onClick={() => handleNotificationClick(itemId)}
                   className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors group ${notifItemHover} ${
                     idx < notifications.length - 1 ? `border-b ${notifDivider}` : ''
-                  } ${isUnread ? (isDark ? 'bg-blue-950/20' : 'bg-blue-50/60') : ''}`}
+                  } ${isUnread ? (notifIsDark ? 'bg-blue-950/20' : 'bg-blue-50/60') : ''}`}
                 >
                   {/* unread dot */}
                   <span
                     className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${
-                      isUnread ? 'bg-blue-500' : isDark ? 'bg-slate-700' : 'bg-slate-200'
+                      isUnread ? 'bg-blue-500' : notifIsDark ? 'bg-slate-700' : 'bg-slate-200'
                     }`}
                   />
 
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm leading-snug ${isUnread ? (isDark ? 'text-slate-100 font-medium' : 'text-slate-900 font-medium') : notifTextSecondary}`}>
+                    <p className={`text-sm leading-snug ${isUnread ? (notifIsDark ? 'text-slate-100 font-medium' : 'text-slate-900 font-medium') : notifTextSecondary}`}>
                       {item.message}
                     </p>
                     <p className={`text-xs mt-1 ${notifTextSecondary}`}>
@@ -330,7 +333,7 @@ export default function DashboardLayout() {
                       onClick={(e) => handleMarkUnread(e, itemId)}
                       title="Mark as unread"
                       className={`shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-medium px-2 py-1 rounded-md ${
-                        isDark
+                        notifIsDark
                           ? 'text-blue-400 hover:bg-blue-900/40 bg-transparent'
                           : 'text-blue-600 hover:bg-blue-100 bg-transparent'
                       }`}
@@ -518,7 +521,7 @@ export default function DashboardLayout() {
         <div className="flex h-[60px] items-center gap-3 px-4">
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <img src={equimonLogo} alt="Equimon Logo" className="w-9 h-9 object-contain" />
+            <img src={itsLogo} alt="ITS Logo" className="w-9 h-9 object-contain" />
             <div className="hidden sm:block">
               <span className={`text-base font-bold leading-none ${
                 isDark ? 'text-white' : 'text-slate-900'

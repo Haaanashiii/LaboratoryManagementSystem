@@ -18,7 +18,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
-import equimonLogo from '@/assets/images/Equimon Logo.png';
+import itsLogo from '@/assets/images/ITSSecond.png';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 
 // Each role's menu is an array of groups, each group has a translated label key and items.
@@ -256,14 +256,14 @@ export default function Sidebar({ user, isOpen, onClose, collapsed = false, onLo
           `}
         >
           {collapsed ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center" title="Equimon">
-              <img src={equimonLogo} alt="Equimon" className="h-full w-full object-contain" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center" title="ITS Lab">
+              <img src={itsLogo} alt="ITS" className="h-full w-full object-contain" />
             </div>
           ) : (
             <>
               <div className="flex min-w-0 flex-1 items-center gap-2.5">
                 <div className="h-8 w-8 shrink-0">
-                  <img src={equimonLogo} alt="Equimon" className="h-full w-full object-contain" />
+                  <img src={itsLogo} alt="ITS" className="h-full w-full object-contain" />
                 </div>
                 <div className="min-w-0">
                   <span className="block truncate text-sm font-semibold text-[hsl(var(--sidebar-primary))]">

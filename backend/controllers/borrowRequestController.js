@@ -107,7 +107,7 @@ exports.getBorrowRequests = async (req, res, next) => {
   try {
     await reconcileLegacyStockReservations();
 
-    const { status, student_email, lecturer_email, equipment_id } = req.query;
+    const { status, student_email, lecturer_email, equipment_id, history } = req.query;
     
     console.log('=== getBorrowRequests DEBUG ===');
     console.log('User role:', req.user.role);
@@ -122,11 +122,13 @@ exports.getBorrowRequests = async (req, res, next) => {
       query.student = req.user.id;
     } else if (req.user.role === 'lecturer') {
       query.lecturer = req.user.id;
-      query.status = status || 'pending_lecturer';
+      // history=true means fetch all statuses (approval history page)
+      // otherwise default to pending_lecturer (pending approvals page)
+      if (!status && !history) query.status = 'pending_lecturer';
     }
     
     // Additional filters
-    if (status && req.user.role !== 'lecturer') query.status = status;
+    if (status && req.user.role !== 'student') query.status = status;
     if (student_email) query.student_email = student_email;
     if (equipment_id) query.equipment = equipment_id;
 
@@ -198,6 +200,7 @@ exports.createBorrowRequest = async (req, res, next) => {
       equipment,
       quantity,
       purpose,
+      objective,
       borrow_date,
       return_date,
       lecturer_id,
@@ -236,7 +239,7 @@ exports.createBorrowRequest = async (req, res, next) => {
       });
     }
 
-    const blockingStatuses = ['pending_lecturer', 'pending_head', 'head_approved', 'ready_pickup', 'borrowed'];
+    const blockingStatuses = ['pending', 'pending_lecturer', 'pending_head', 'head_approved', 'ready_pickup', 'borrowed'];
     const existingActiveRequest = await BorrowRequest.findOne({
       student: req.user.id,
       equipment,
@@ -273,51 +276,64 @@ exports.createBorrowRequest = async (req, res, next) => {
       });
     }
 
-    if (!lecturer_id && !lecturer_email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please select a lecturer for approval'
-      });
-    }
+    // Determine workflow: new simplified flow (no lecturer) or legacy multi-step flow
+    const useLegacyFlow = !!(lecturer_id || lecturer_email);
 
-    // Find lecturer by id (preferred) or email
     let lecturer = null;
-    if (lecturer_id) {
-      lecturer = await User.findOne({ _id: lecturer_id, role: 'lecturer', status: 'active' });
-    } else if (lecturer_email) {
-      lecturer = await User.findOne({ email: lecturer_email, role: 'lecturer', status: 'active' });
+    if (useLegacyFlow) {
+      if (!lecturer_id && !lecturer_email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select a lecturer for approval'
+        });
+      }
+
+      if (lecturer_id) {
+        lecturer = await User.findOne({ _id: lecturer_id, role: 'lecturer', status: 'active' });
+      } else if (lecturer_email) {
+        lecturer = await User.findOne({ email: lecturer_email, role: 'lecturer', status: 'active' });
+      }
+
+      if (!lecturer) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected lecturer could not be found'
+        });
+      }
     }
 
-    if (!lecturer) {
-      return res.status(400).json({
-        success: false,
-        message: 'Selected lecturer could not be found'
-      });
-    }
+    // Resolve serial number from equipment document if not supplied
+    const resolvedSerialNumber = req.body.serial_number || equipmentItem.serialNumber || '';
+
+    // Notify role based on workflow
+    const notifyRole = useLegacyFlow ? 'lecturer' : 'lab_assistant';
 
     // Create request
     const request = await BorrowRequest.create({
       student: req.user.id,
       student_email: req.user.email,
       borrower_name: req.user.name,
+      student_id: req.user.studentId || '',
       equipment,
       equipment_name: equipmentItem.name,
+      serial_number: resolvedSerialNumber,
       quantity,
-      purpose,
+      purpose: purpose || objective || '',
+      objective: objective || purpose || '',
       borrow_date,
       return_date,
       agreed_replacement_policy: true,
       agreed_replacement_policy_at: Date.now(),
-      lecturer: lecturer._id,
-      lecturer_email: lecturer.email,
-      status: 'pending_lecturer'
+      ...(useLegacyFlow
+        ? { lecturer: lecturer._id, lecturer_email: lecturer.email, status: 'pending_lecturer' }
+        : { status: 'pending' })
     });
 
     // Populate before returning
     await request.populate('equipment', 'name category');
 
-    // Notify lecturer dashboards that new requests are waiting.
-    notifyRoleRefresh('lecturer', {
+    // Notify dashboards that a new request is waiting.
+    notifyRoleRefresh(notifyRole, {
       type: 'borrow_request_created',
       requestId: String(request._id)
     });
@@ -403,13 +419,6 @@ exports.lecturerAction = async (req, res, next) => {
       request.lecturer_remarks = normalizedRemarks;
       request.stock_reserved = true;
     } else if (action === 'reject') {
-      if (!normalizedRemarks) {
-        return res.status(400).json({
-          success: false,
-          message: 'Rejection reason is required'
-        });
-      }
-
       request.status = 'rejected';
       request.rejected_by = req.user.id;
       request.rejected_at = Date.now();
@@ -481,13 +490,6 @@ exports.headAction = async (req, res, next) => {
       request.head_approved_at = Date.now();
       request.head_remarks = normalizedRemarks;
     } else if (action === 'reject') {
-      if (!normalizedRemarks) {
-        return res.status(400).json({
-          success: false,
-          message: 'Rejection reason is required'
-        });
-      }
-
       if (request.stock_reserved) {
         request.equipment.available += request.quantity;
         await request.equipment.save();
@@ -995,7 +997,7 @@ exports.deleteBorrowRequest = async (req, res, next) => {
     }
 
     // Only allow deletion of pending requests
-    if (!['pending_lecturer', 'pending_head'].includes(request.status)) {
+    if (!['pending', 'pending_lecturer', 'pending_head'].includes(request.status)) {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete approved or processed requests'
@@ -1022,6 +1024,241 @@ exports.deleteBorrowRequest = async (req, res, next) => {
       success: true,
       message: 'Request deleted successfully'
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW SIMPLIFIED APPROVAL FLOW (Lab Assistant)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { saveBorrowRequestPdf } = require('../utils/pdfGenerator');
+const path = require('path');
+const fs = require('fs');
+
+// @desc    Lab assistant approves a pending request and generates PDF
+// @route   PUT /api/borrow-requests/:id/approve
+// @access  Private (lab_assistant)
+exports.approveBorrowRequest = async (req, res, next) => {
+  try {
+    const request = await BorrowRequest.findById(req.params.id)
+      .populate('approved_by', 'name')
+      .populate('student', 'name email studentId');
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (!['pending', 'pending_lecturer', 'pending_head'].includes(request.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot approve a request with status "${request.status}"`
+      });
+    }
+
+    request.status = 'approved';
+    request.approved_by = req.user.id;
+    request.approved_at = new Date();
+
+    await request.save();
+
+    // Re-populate for PDF
+    await request.populate('approved_by', 'name');
+
+    // Generate PDF
+    let pdfPath = null;
+    try {
+      pdfPath = await saveBorrowRequestPdf(request.toObject ? request.toObject() : request);
+      request.pdf_url = pdfPath;
+      await request.save();
+    } catch (pdfErr) {
+      console.error('PDF generation failed (non-fatal):', pdfErr.message);
+    }
+
+    // Real-time notifications
+    notifyStudentBorrowStatus(String(request.student?._id || request.student), {
+      type: 'borrow_approved',
+      requestId: String(request._id),
+      status: 'approved'
+    });
+    notifyRoleRefresh('lab_assistant', { type: 'request_approved', requestId: String(request._id) });
+
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: 'borrow_approved',
+      entityType: 'borrow_request',
+      entityId: request._id,
+      status: 'success',
+      details: { equipment: request.equipment_name, quantity: request.quantity }
+    });
+
+    res.json({ success: true, data: request, pdfUrl: pdfPath });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Lab assistant rejects a pending request
+// @route   PUT /api/borrow-requests/:id/reject
+// @access  Private (lab_assistant)
+exports.rejectBorrowRequest = async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+
+    const request = await BorrowRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    if (!['pending', 'pending_lecturer', 'pending_head'].includes(request.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot reject a request with status "${request.status}"`
+      });
+    }
+
+    request.status = 'rejected';
+    request.rejected_by = req.user.id;
+    request.rejected_at = new Date();
+    request.rejection_reason = String(reason || '').trim();
+
+    if (request.stock_reserved) {
+      await Equipment.findByIdAndUpdate(request.equipment, {
+        $inc: { available: request.quantity }
+      });
+      request.stock_reserved = false;
+    }
+
+    await request.save();
+
+    notifyStudentBorrowStatus(String(request.student?._id || request.student), {
+      type: 'borrow_rejected',
+      requestId: String(request._id),
+      status: 'rejected'
+    });
+    notifyRoleRefresh('lab_assistant', { type: 'request_rejected', requestId: String(request._id) });
+
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: 'borrow_rejected',
+      entityType: 'borrow_request',
+      entityId: request._id,
+      status: 'success',
+      details: { equipment: request.equipment_name, reason: request.rejection_reason }
+    });
+
+    res.json({ success: true, data: request });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Download generated PDF for a borrow request
+// @route   GET /api/borrow-requests/:id/pdf
+// @access  Private (student owner, lab_assistant, admin, lecturer, head_of_lab)
+exports.downloadBorrowPdf = async (req, res, next) => {
+  try {
+    const request = await BorrowRequest.findById(req.params.id)
+      .populate('approved_by', 'name')
+      .populate('student', 'name email studentId');
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    // Authorization: must be the student, a lab assistant, admin, lecturer, or head
+    const allowedRoles = ['lab_assistant', 'admin', 'lecturer', 'head_of_lab'];
+    const isOwner = String(request.student?._id || request.student) === String(req.user.id);
+    if (!isOwner && !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    // If PDF already saved on disk, serve it
+    if (request.pdf_url) {
+      const absPath = path.join(__dirname, '..', request.pdf_url.replace(/^\//, ''));
+      if (fs.existsSync(absPath)) {
+        const inline = req.query.inline === 'true';
+        const disposition = inline ? 'inline' : `attachment; filename="borrow-request-${request._id}.pdf"`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', disposition);
+        return res.sendFile(absPath);
+      }
+    }
+
+    // Generate on the fly if not saved yet
+    const { generateBorrowRequestPdf } = require('../utils/pdfGenerator');
+    const buffer = await generateBorrowRequestPdf(request.toObject ? request.toObject() : request);
+
+    const inline = req.query.inline === 'true';
+    const borrowerName = (request.borrower_name || 'Student').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = inline
+      ? `borrow-request-${request._id}.pdf`
+      : `BorrowRequest_${borrowerName}_${dateStr}.pdf`;
+    const disposition = inline ? 'inline' : `attachment; filename="${filename}"`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', disposition);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate a preview PDF from form data (no DB save)
+// @route   POST /api/borrow-requests/preview-pdf
+// @access  Private
+exports.previewBorrowPdf = async (req, res, next) => {
+  try {
+    const {
+      borrower_name,
+      student_id,
+      student_email,
+      equipment_name,
+      serial_number,
+      quantity,
+      borrow_date,
+      return_date,
+      purpose,
+      objective,
+      lecturer_name,
+    } = req.body;
+
+    const previewRequest = {
+      borrower_name: borrower_name || req.user?.name || '',
+      student_id: student_id || req.user?.studentId || '',
+      student_email: student_email || req.user?.email || '',
+      equipment_name: equipment_name || '',
+      serial_number: serial_number || '',
+      quantity: Number(quantity) || 1,
+      borrow_date,
+      return_date,
+      purpose: purpose || objective || '',
+      objective: objective || purpose || '',
+      lecturer_name,
+      status: 'pending_lecturer',
+    };
+
+    const { generateBorrowRequestPdf } = require('../utils/pdfGenerator');
+    const buffer = await generateBorrowRequestPdf(previewRequest);
+
+    const inline = req.query.inline === 'true';
+    const safeStudentName = (previewRequest.borrower_name || 'Student').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `BorrowRequest_${safeStudentName}_${dateStr}.pdf`;
+    const disposition = inline ? 'inline' : `attachment; filename="${filename}"`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', disposition);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
   } catch (error) {
     next(error);
   }

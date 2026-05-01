@@ -518,7 +518,7 @@ export default function HeadApproval() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-600">
                 {t('remarks')}
-                {action === 'reject' && <span className="ml-1 text-red-500">*</span>}
+                {action === 'reject' && <span className="ml-1 text-slate-400 text-[10px] font-normal">(optional)</span>}
               </Label>
               <Textarea
                 value={remarks}
@@ -537,7 +537,7 @@ export default function HeadApproval() {
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={actionMutation.isPending || (action === 'reject' && !remarks.trim())}
+              disabled={actionMutation.isPending}
               className={`text-xs text-white ${action === 'approve' ? 'bg-green-700 hover:bg-green-800' : 'bg-red-500 hover:bg-red-600'}`}
             >
               {actionMutation.isPending ? (

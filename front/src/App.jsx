@@ -35,6 +35,7 @@ import EditEquipmentPage from './pages/inventory/EditEquipment'
 import MyRequests from './pages/requests/StudentRequest'
 import EquipmentPrep from './pages/inventory/EquipmentPreparation'
 import Returns from './pages/inventory/AssistantReturns'
+import LabBorrowRequests from './pages/inventory/LabAssistantBorrowRequests'
 
 // Settings
 import Settings from './pages/settings/StudentSettings'
@@ -144,6 +145,7 @@ function App() {
             <Route path="equipment-prep" element={<EquipmentPrep />} />
             <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>
               <Route path="returns" element={<Returns />} />
+              <Route path="lab-borrow-requests" element={<LabBorrowRequests />} />
               <Route path="assistant-settings" element={<AssistantSettings />} />
             </Route>
             

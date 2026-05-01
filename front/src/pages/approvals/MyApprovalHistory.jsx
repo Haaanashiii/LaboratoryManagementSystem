@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { Search, History, Package, Calendar, CheckCircle, RotateCcw, AlertCircle, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, History, Package, Calendar, CheckCircle, RotateCcw, AlertCircle, Clock, ChevronLeft, ChevronRight, Loader2, Eye, Download } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 import { StudentApprovalHistorySkeleton } from '@/skeleton-framework/student';
 import { useTheme } from '@/components/hooks/ThemeContext';
@@ -143,6 +143,7 @@ export default function ApprovalHistory() {
   const [borrowAgainForm, setBorrowAgainForm] = useState(getDefaultBorrowAgainForm(null));
   const [borrowAgainQuantityNotice, setBorrowAgainQuantityNotice] = useState('');
   const [borrowAgainLecturerNotice, setBorrowAgainLecturerNotice] = useState('');
+  const [pdfLoadingId, setPdfLoadingId] = useState(null);
   const { isDark } = useTheme();
   const queryClient = useQueryClient();
 
@@ -251,6 +252,31 @@ export default function ApprovalHistory() {
       });
     },
   });
+
+  const handlePdf = async (requestId, borrowerName, mode) => {
+    setPdfLoadingId(`${requestId}-${mode}`);
+    try {
+      const blob = await api.entities.BorrowRequest.getPdfBlob(requestId, mode === 'preview');
+      const url = URL.createObjectURL(blob);
+      if (mode === 'preview') {
+        window.open(url, '_blank');
+      } else {
+        const safeName = (borrowerName || 'Student').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `BorrowRequest_${safeName}_${dateStr}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      console.error('PDF failed:', err);
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
 
   const activeFilter = STATUS_FILTERS.find(f => f.key === statusFilter) || STATUS_FILTERS[0];
 
@@ -526,8 +552,42 @@ export default function ApprovalHistory() {
                         </div>
                       )}
 
-                      {canBorrowAgain && (
-                        <div className="mt-3 flex items-center justify-end">
+                      {/* ── Card action strip: PDF + Borrow Again ── */}
+                      <div className={`mt-3 pt-3 border-t flex items-center justify-between gap-2 flex-wrap ${
+                        isDark ? 'border-white/[0.06]' : 'border-slate-100'
+                      }`}>
+                        {/* PDF buttons */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handlePdf(request.id, request.borrower_name, 'preview')}
+                            disabled={!!pdfLoadingId}
+                            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+                              isDark
+                                ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20'
+                                : 'bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100'
+                            }`}
+                          >
+                            {pdfLoadingId === `${request.id}-preview` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
+                            Preview PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePdf(request.id, request.borrower_name, 'download')}
+                            disabled={!!pdfLoadingId}
+                            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+                              isDark
+                                ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                            }`}
+                          >
+                            {pdfLoadingId === `${request.id}-download` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                            Download PDF
+                          </button>
+                        </div>
+
+                        {/* Borrow Again */}
+                        {canBorrowAgain && (
                           <button
                             type="button"
                             onClick={() => {
@@ -547,8 +607,8 @@ export default function ApprovalHistory() {
                             {isBorrowAgainLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
                             {isBorrowAgainLoading ? t('submitting') : t('borrowAgain')}
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
