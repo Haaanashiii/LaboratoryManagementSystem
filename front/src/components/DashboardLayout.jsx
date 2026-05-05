@@ -22,7 +22,8 @@ import {
   Clock,
   ChevronDown,
   Sun,
-  Moon
+  Moon,
+  Activity
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from './antd-icons';
@@ -78,6 +79,7 @@ const navigationConfig = {
     { name: 'users', href: '/users', icon: Users },
     { name: 'inventory', href: '/inventory', icon: Package },
     { name: 'allRequests', href: '/all-requests', icon: BarChart3 },
+    { name: 'equipmentProcess', href: '/admin-equipment-process', icon: Activity },
     { name: 'auditLogs', href: '/admin-audit-logs', icon: History },
     { name: 'settings', href: '/settings', icon: Settings },
   ],

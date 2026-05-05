@@ -817,6 +817,20 @@ export const api = {
         }
         return res.blob();
       },
+      requestExtension: async (id, { requested_date, reason = '' }) => {
+        const data = await request(`/borrow-requests/${id}/extension`, {
+          method: 'POST',
+          body: JSON.stringify({ requested_date, reason }),
+        });
+        return data.data;
+      },
+      reviewExtension: async (id, action, note = '') => {
+        const data = await request(`/borrow-requests/${id}/extension`, {
+          method: 'PUT',
+          body: JSON.stringify({ action, note }),
+        });
+        return data.data;
+      },
     },
 
     // Stats

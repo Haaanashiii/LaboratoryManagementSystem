@@ -121,7 +121,11 @@ exports.getBorrowRequests = async (req, res, next) => {
     if (req.user.role === 'student') {
       query.student = req.user.id;
     } else if (req.user.role === 'lecturer') {
-      query.lecturer = req.user.id;
+      // Match by ObjectId (normal) OR by stored email (fallback if account was recreated)
+      query.$or = [
+        { lecturer: req.user.id },
+        { lecturer_email: req.user.email }
+      ];
       // history=true means fetch all statuses (approval history page)
       // otherwise default to pending_lecturer (pending approvals page)
       if (!status && !history) query.status = 'pending_lecturer';
@@ -385,7 +389,9 @@ exports.lecturerAction = async (req, res, next) => {
       });
     }
 
-    if (request.lecturer && request.lecturer.toString() !== req.user.id) {
+    const assignedById = request.lecturer && request.lecturer.toString() === req.user.id;
+    const assignedByEmail = request.lecturer_email && request.lecturer_email === req.user.email;
+    if (!assignedById && !assignedByEmail) {
       return res.status(403).json({
         success: false,
         message: 'Only the assigned lecturer can approve or reject this request'
@@ -1065,6 +1071,9 @@ exports.approveBorrowRequest = async (req, res, next) => {
 
     // Re-populate for PDF
     await request.populate('approved_by', 'name');
+    await request.populate('lecturer', 'name email');
+    await request.populate('head_of_lab', 'name email');
+    await request.populate('equipment', 'name category image images');
 
     // Generate PDF
     let pdfPath = null;
@@ -1166,7 +1175,10 @@ exports.downloadBorrowPdf = async (req, res, next) => {
   try {
     const request = await BorrowRequest.findById(req.params.id)
       .populate('approved_by', 'name')
-      .populate('student', 'name email studentId');
+      .populate('student', 'name email studentId')
+      .populate('lecturer', 'name email')
+      .populate('head_of_lab', 'name email')
+      .populate('equipment', 'name category image images');
 
     if (!request) {
       return res.status(404).json({ success: false, message: 'Request not found' });
@@ -1212,7 +1224,128 @@ exports.downloadBorrowPdf = async (req, res, next) => {
   }
 };
 
-// @desc    Generate a preview PDF from form data (no DB save)
+// ── EXTENSION REQUEST ─────────────────────────────────────────────────────────
+
+// @desc    Student submits a return-date extension request
+// @route   POST /api/borrow-requests/:id/extension
+// @access  Private (student)
+exports.requestExtension = async (req, res, next) => {
+  try {
+    const { requested_date, reason } = req.body;
+
+    if (!requested_date) {
+      return res.status(400).json({ success: false, message: 'requested_date is required' });
+    }
+
+    const newDate = new Date(requested_date);
+    if (isNaN(newDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid requested_date format' });
+    }
+
+    const borrowReq = await BorrowRequest.findById(req.params.id);
+    if (!borrowReq) {
+      return res.status(404).json({ success: false, message: 'Borrow request not found' });
+    }
+
+    if (String(borrowReq.student) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    if (borrowReq.status !== 'borrowed') {
+      return res.status(400).json({ success: false, message: 'Extension can only be requested while the item is borrowed' });
+    }
+
+    if (borrowReq.extension_request && borrowReq.extension_request.status === 'pending') {
+      return res.status(409).json({ success: false, message: 'An extension request is already pending' });
+    }
+
+    if (newDate <= borrowReq.return_date) {
+      return res.status(400).json({ success: false, message: 'New return date must be after the current return date' });
+    }
+
+    borrowReq.extension_request = {
+      requested_date: newDate,
+      reason: (reason || '').trim(),
+      status: 'pending',
+      requested_at: new Date(),
+    };
+    await borrowReq.save();
+
+    // Notify lab assistant (for action) and admin (for awareness)
+    notifyRoleRefresh('lab_assistant', { type: 'extension_requested', borrowRequestId: String(borrowReq._id) });
+    notifyRoleRefresh('admin', { type: 'extension_requested', borrowRequestId: String(borrowReq._id) });
+
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: 'extension_requested',
+      entityType: 'borrow_request',
+      entityId: borrowReq._id,
+      status: 'success',
+      details: { equipment: borrowReq.equipment_name, requested_date: newDate },
+    });
+
+    res.json({ success: true, data: borrowReq });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Lab assistant approves or rejects an extension request
+// @route   PUT /api/borrow-requests/:id/extension
+// @access  Private (lab_assistant, admin)
+exports.reviewExtension = async (req, res, next) => {
+  try {
+    const { action, note } = req.body;
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'action must be "approve" or "reject"' });
+    }
+
+    const borrowReq = await BorrowRequest.findById(req.params.id);
+    if (!borrowReq) {
+      return res.status(404).json({ success: false, message: 'Borrow request not found' });
+    }
+
+    if (!borrowReq.extension_request || borrowReq.extension_request.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'No pending extension request found' });
+    }
+
+    borrowReq.extension_request.status = action === 'approve' ? 'approved' : 'rejected';
+    borrowReq.extension_request.reviewed_by = req.user.id;
+    borrowReq.extension_request.reviewed_at = new Date();
+    borrowReq.extension_request.review_note = (note || '').trim();
+
+    if (action === 'approve') {
+      borrowReq.return_date = borrowReq.extension_request.requested_date;
+    }
+
+    await borrowReq.save();
+
+    notifyUserRefresh(String(borrowReq.student), {
+      type: `extension_${action}d`,
+      borrowRequestId: String(borrowReq._id),
+    });
+    notifyRoleRefresh('lab_assistant', { type: 'extension_reviewed' });
+    notifyRoleRefresh('admin', { type: 'extension_reviewed', borrowRequestId: String(borrowReq._id) });
+
+    await logAuditEvent({
+      req,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      actionType: `extension_${action}d`,
+      entityType: 'borrow_request',
+      entityId: borrowReq._id,
+      status: 'success',
+      details: { equipment: borrowReq.equipment_name, action },
+    });
+
+    res.json({ success: true, data: borrowReq });
+  } catch (err) {
+    next(err);
+  }
+};
 // @route   POST /api/borrow-requests/preview-pdf
 // @access  Private
 exports.previewBorrowPdf = async (req, res, next) => {

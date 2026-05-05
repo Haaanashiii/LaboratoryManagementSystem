@@ -47,6 +47,7 @@ import AssistantSettings from './pages/settings/AssistantSettings'
 import AdminAuditLogs from './pages/admin/AdminAuditLogs'
 import Reports from './pages/admin/Reports'
 import BorrowReports from './pages/admin/BorrowReports'
+import AdminEquipmentProcess from './pages/admin/AdminEquipmentProcess'
 import Maintenance from './pages/Maintenance'
 
 import { Toaster } from 'sonner'
@@ -111,6 +112,7 @@ function App() {
             <Route element={<AdminRoute />}>
               <Route path="admin-dashboard" element={<Dashboard />} />
               <Route path="admin-audit-logs" element={<AdminAuditLogs />} />
+              <Route path="admin-equipment-process" element={<AdminEquipmentProcess />} />
             </Route>
             
             {/* User Management */}

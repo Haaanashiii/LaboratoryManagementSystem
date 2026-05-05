@@ -16,6 +16,7 @@ import {
   Pencil,
   ChevronDown,
   Printer,
+  Activity,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import itsLogo from '@/assets/images/ITSSecond.png';
@@ -40,6 +41,7 @@ const menuConfig = {
             { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },            { label: 'editEquipment', icon: Pencil, href: '/inventory' },          ],
         },
         { label: 'allRequests', icon: BarChart3, href: '/all-requests' },
+        { label: 'equipmentProcess', icon: Activity, href: '/admin-equipment-process' },
         { label: 'borrowReports', icon: Printer, href: '/borrow-reports' },
         { label: 'reports', icon: ClipboardList, href: '/reports' },
       ],

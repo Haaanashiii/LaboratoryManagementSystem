@@ -141,7 +141,7 @@ export default function LecturerDashboard() {
 
   const { data: allRequests = [] } = useQuery({
     queryKey: ['lecturerRequests', user?.email],
-    queryFn: () => api.entities.BorrowRequest.filter({ lecturer_email: user?.email }),
+    queryFn: () => api.entities.BorrowRequest.filter({ history: 'true' }),
     enabled: !!user?.email,
   });
 

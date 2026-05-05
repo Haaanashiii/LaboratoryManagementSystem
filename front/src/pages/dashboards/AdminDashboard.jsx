@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import {
   Users, Package, FileText,
   AlertTriangle, Clock, Activity, Sun, Sunset, Moon, CheckCircle,
-  ArrowUpRight, ArrowRight, ShieldAlert, BarChart2,
+  ArrowUpRight, ArrowRight, ShieldAlert, BarChart2, PackageCheck,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
@@ -308,6 +308,11 @@ export default function AdminDashboard() {
       .sort((a, b) => new Date(a.return_date) - new Date(b.return_date));
   }, [allRequests]);
 
+  const needsReadyItems = React.useMemo(
+    () => allRequests.filter((r) => r.status === 'head_approved'),
+    [allRequests]
+  );
+
   const mostBorrowedChartData = React.useMemo(
     () =>
       mostBorrowed.slice(0, 6).map((item) => ({
@@ -447,6 +452,77 @@ export default function AdminDashboard() {
           onClick={() => navigate(CATALOG_ROUTES_BY_ROLE.admin)}
         />
       </div>
+
+      {/* ── Equipment Awaiting Lab Assistant Prep ── */}
+      <Card className="overflow-hidden rounded-2xl border-blue-200/70 shadow-sm transition-all duration-200 hover:shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-4 ring-blue-100">
+              <PackageCheck className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Equipment Needs to Be Marked Ready</h3>
+              <p className="text-xs text-slate-500">Head-approved requests awaiting lab assistant preparation</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${needsReadyItems.length > 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+              {needsReadyItems.length} pending
+            </span>
+          </div>
+        </div>
+
+        {needsReadyItems.length === 0 ? (
+          <div className="flex h-[120px] flex-col items-center justify-center gap-2 text-slate-400">
+            <CheckCircle className="h-7 w-7 text-emerald-400 opacity-60" />
+            <p className="text-sm">All equipment has been prepared</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">#</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">Equipment</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">Borrower</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">Qty</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">Borrow Date</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">Return Date</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">Lecturer Approved</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {needsReadyItems.map((item, i) => (
+                  <tr key={item.id || item._id} className="group transition-colors hover:bg-blue-50/40">
+                    <td className="px-6 py-3.5 text-xs font-bold tabular-nums text-slate-300">{String(i + 1).padStart(2, '0')}</td>
+                    <td className="px-4 py-3.5">
+                      <p className="font-semibold text-slate-900 truncate max-w-[180px]">{item.equipment_name}</p>
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-600 text-xs">{item.borrower_name}</td>
+                    <td className="px-4 py-3.5 text-slate-600 text-xs">{item.quantity}</td>
+                    <td className="px-4 py-3.5 text-slate-600 text-xs">
+                      {item.borrow_date ? format(new Date(item.borrow_date), 'MMM d, yyyy') : '—'}
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-600 text-xs">
+                      {item.return_date ? format(new Date(item.return_date), 'MMM d, yyyy') : '—'}
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-600 text-xs">
+                      {item.lecturer?.name || item.lecturer_email || '—'}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                        Needs Preparation
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       {/* ── Equipment Utilization (compact) ── */}
       <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">

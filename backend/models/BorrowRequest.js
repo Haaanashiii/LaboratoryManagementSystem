@@ -220,6 +220,21 @@ const borrowRequestSchema = new mongoose.Schema({
   },
   rejected_at: {
     type: Date
+  },
+
+  // Extension Request (student → lab assistant)
+  extension_request: {
+    requested_date: { type: Date },
+    reason: { type: String, trim: true },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    requested_at: { type: Date },
+    reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reviewed_at: { type: Date },
+    review_note: { type: String, trim: true }
   }
 }, {
   timestamps: true,

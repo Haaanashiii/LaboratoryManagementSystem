@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, CheckCircle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList, User, Hash } from 'lucide-react';
+import { Package, CheckCircle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList, User, Hash, FileText } from 'lucide-react';
 import { EquipmentPreparationSkeleton } from '@/skeleton-framework/admin';
 import { format } from 'date-fns';
 
@@ -72,9 +72,26 @@ export default function EquipmentPrep() {
     },
   });
 
+  const [pdfLoadingId, setPdfLoadingId] = useState(null);
+
   const openPrepareDialog = (request) => { setSelectedRequest(request); setDialogAction('prepare'); };
   const openReleaseDialog = (request) => { setSelectedRequest(request); setDialogAction('release'); };
   const closeDialog = () => { setSelectedRequest(null); setDialogAction(null); };
+
+  const handlePreviewPdf = async (request) => {
+    if (!request?.id) return;
+    setPdfLoadingId(request.id);
+    try {
+      const blob = await api.entities.BorrowRequest.getPdfBlob(request.id, true);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      console.error('PDF preview failed:', err);
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
 
   const handleConfirm = () => {
     if (dialogAction === 'prepare') prepareMutation.mutate(selectedRequest.id);
@@ -225,13 +242,14 @@ export default function EquipmentPrep() {
                     <TableHead className="text-xs font-medium text-slate-500">Qty</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Preview</TableHead>
                     <TableHead className="text-right text-xs font-medium text-slate-500">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <td colSpan={6} className="py-14 text-center">
+                      <td colSpan={7} className="py-14 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
                             <Package className="h-4 w-4 text-slate-400" />
@@ -259,6 +277,22 @@ export default function EquipmentPrep() {
                             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${statusColor}`}>
                               {statusLabel}
                             </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 gap-1.5 px-2.5 text-xs font-medium text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                              onClick={() => handlePreviewPdf(request)}
+                              disabled={pdfLoadingId === request.id}
+                            >
+                              {pdfLoadingId === request.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <FileText className="h-3.5 w-3.5" />
+                              )}
+                              PDF
+                            </Button>
                           </TableCell>
                           <TableCell className="text-right">
                             {request._section === 'prepare' ? (

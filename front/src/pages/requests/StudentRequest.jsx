@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Package, Calendar, CheckCircle, RotateCcw, BookOpen, ChevronRight, AlertCircle,
   X, History, ChevronLeft, FilePlus2, UserCheck, BadgeCheck, PackageCheck, Laptop,
-  MessageSquare, User, Tag, Hash
+  Tag, Hash, GraduationCap, CalendarPlus, Clock, CheckCheck
 } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { useTheme } from '@/components/hooks/ThemeContext';
@@ -202,7 +203,12 @@ export default function MyRequests() {
   const [historyPage, setHistoryPage] = useState(1);
   const [historyFilter, setHistoryFilter] = useState('all');
   const [modalImageIndex, setModalImageIndex] = useState(0);
+  const [showExtensionForm, setShowExtensionForm] = useState(false);
+  const [extDate, setExtDate] = useState('');
+  const [extReason, setExtReason] = useState('');
   const { isDark } = useTheme();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -213,6 +219,18 @@ export default function MyRequests() {
     queryKey: ['myRequests'],
     queryFn: () => api.entities.BorrowRequest.myRequests(),
     enabled: !!user
+  });
+
+  const extensionMutation = useMutation({
+    mutationFn: ({ id, requested_date, reason }) =>
+      api.entities.BorrowRequest.requestExtension(id, { requested_date, reason }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['myRequests'] });
+      setSelectedRequest(prev => prev ? { ...prev, extension_request: updated.extension_request } : prev);
+      setShowExtensionForm(false);
+      setExtDate('');
+      setExtReason('');
+    },
   });
 
   const getHistoryTimestamp = (request) => {
@@ -666,7 +684,6 @@ export default function MyRequests() {
             const hasImages = images.length > 0;
             const currentImg = hasImages ? images[modalImageIndex] : null;
             const currentStep = selectedRequest.status !== 'rejected' ? getStatusStep(selectedRequest.status) : 0;
-            const hasRemarks = selectedRequest.lecturer_remarks || selectedRequest.head_remarks || (selectedRequest.status === 'rejected' && selectedRequest.rejection_reason);
 
             return (
               <>
@@ -770,6 +787,26 @@ export default function MyRequests() {
                         <span className={`font-bold mr-1.5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Purpose:</span>{selectedRequest.purpose}
                       </p>
                     )}
+                    {/* Assigned lecturer badge */}
+                    {(selectedRequest.lecturer?.name || selectedRequest.lecturer_email) && (
+                      <div className={`mt-1 flex items-center gap-2 rounded-lg px-3 py-2 border ${
+                        isDark ? 'bg-indigo-950/30 border-indigo-900/40' : 'bg-indigo-50 border-indigo-100'
+                      }`}>
+                        <GraduationCap className={`w-3.5 h-3.5 flex-shrink-0 ${
+                          isDark ? 'text-indigo-400' : 'text-indigo-500'
+                        }`} />
+                        <div className="min-w-0">
+                          <p className={`text-[9px] font-bold uppercase tracking-widest ${
+                            isDark ? 'text-indigo-600' : 'text-indigo-400'
+                          }`}>Assigned Lecturer</p>
+                          <p className={`text-xs font-semibold truncate ${
+                            isDark ? 'text-indigo-300' : 'text-indigo-700'
+                          }`}>
+                            {selectedRequest.lecturer?.name || selectedRequest.lecturer_email}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* ── HORIZONTAL JOURNEY STEPPER ── */}
@@ -847,58 +884,145 @@ export default function MyRequests() {
                     )}
                   </div>
 
-                  {/* ── REMARKS ── */}
-                  {hasRemarks && (
+                  {/* ── REJECTION REASON ONLY ── */}
+                  {selectedRequest.status === 'rejected' && selectedRequest.rejection_reason && (
                     <div className={`px-5 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
                       <div className="flex items-center gap-2 mb-2.5">
-                        <MessageSquare className={`w-3 h-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Remarks</p>
+                        <AlertCircle className={`w-3 h-3 ${isDark ? 'text-red-500' : 'text-red-400'}`} />
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Rejection Reason</p>
                       </div>
-                      <div className="space-y-2">
-                        {selectedRequest.lecturer_remarks && (
-                          <div className={`rounded-xl px-3 py-2.5 ${
-                            isDark ? 'bg-white/[0.03]' : 'bg-slate-50'
-                          }`}>
-                            <div className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                              isDark ? 'bg-white/[0.06] text-slate-400' : 'bg-slate-200 text-slate-600'
-                            }`}>
-                              <User className="w-2.5 h-2.5" /> Lecturer
-                            </div>
-                            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{selectedRequest.lecturer_remarks}</p>
-                          </div>
-                        )}
-                        {selectedRequest.head_remarks && (
-                          <div className={`rounded-xl px-3 py-2.5 ${
-                            isDark ? 'bg-white/[0.03]' : 'bg-slate-50'
-                          }`}>
-                            <div className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                              isDark ? 'bg-white/[0.06] text-slate-400' : 'bg-slate-200 text-slate-600'
-                            }`}>
-                              <User className="w-2.5 h-2.5" /> Head of Lab
-                            </div>
-                            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{selectedRequest.head_remarks}</p>
-                          </div>
-                        )}
-                        {selectedRequest.status === 'rejected' && selectedRequest.rejection_reason && (
-                          <div className={`rounded-xl px-3 py-2.5 ${
-                            isDark ? 'bg-white/[0.03]' : 'bg-slate-50'
-                          }`}>
-                            <div className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                              isDark ? 'bg-white/[0.06] text-slate-400' : 'bg-slate-200 text-slate-600'
-                            }`}>
-                              <AlertCircle className="w-2.5 h-2.5" /> Rejection Reason
-                            </div>
-                            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{selectedRequest.rejection_reason}</p>
-                          </div>
-                        )}
+                      <div className={`rounded-xl px-3 py-2.5 ${isDark ? 'bg-red-950/30 border border-red-900/40' : 'bg-red-50 border border-red-100'}`}>
+                        <p className={`text-xs leading-relaxed ${isDark ? 'text-red-300' : 'text-red-700'}`}>{selectedRequest.rejection_reason}</p>
                       </div>
                     </div>
                   )}
 
-                  {/* ── CLOSE ── */}
-                  <div className="px-5 py-3">
+                  {/* ── EXTENSION REQUEST ── */}
+                  {selectedRequest.status === 'borrowed' && (() => {
+                    const ext = selectedRequest.extension_request;
+                    const isPending  = ext?.status === 'pending';
+                    const isApproved = ext?.status === 'approved';
+                    const isRejected = ext?.status === 'rejected';
+
+                    return (
+                      <div className={`px-5 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <CalendarPlus className={`w-3.5 h-3.5 ${isDark ? 'text-violet-400' : 'text-violet-500'}`} />
+                          <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Return Date Extension</p>
+                        </div>
+
+                        {/* Status badges for existing extension */}
+                        {isPending && (
+                          <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-2 ${isDark ? 'bg-yellow-950/30 border border-yellow-900/40' : 'bg-yellow-50 border border-yellow-100'}`}>
+                            <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                            <div>
+                              <p className={`text-xs font-semibold ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>Extension pending approval</p>
+                              <p className={`text-[10px] ${isDark ? 'text-yellow-600' : 'text-yellow-500'}`}>Requested until {format(new Date(ext.requested_date), 'MMM d, yyyy')}</p>
+                            </div>
+                          </div>
+                        )}
+                        {isApproved && (
+                          <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-2 ${isDark ? 'bg-emerald-950/30 border border-emerald-900/40' : 'bg-emerald-50 border border-emerald-100'}`}>
+                            <CheckCheck className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                            <div>
+                              <p className={`text-xs font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Extension approved</p>
+                              <p className={`text-[10px] ${isDark ? 'text-emerald-600' : 'text-emerald-500'}`}>New return date: {format(new Date(ext.requested_date), 'MMM d, yyyy')}</p>
+                            </div>
+                          </div>
+                        )}
+                        {isRejected && (
+                          <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-2 ${isDark ? 'bg-red-950/30 border border-red-900/40' : 'bg-red-50 border border-red-100'}`}>
+                            <X className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+                            <div>
+                              <p className={`text-xs font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>Extension rejected</p>
+                              {ext.review_note && <p className={`text-[10px] ${isDark ? 'text-red-600' : 'text-red-500'}`}>{ext.review_note}</p>}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Extension form */}
+                        {showExtensionForm && !isPending ? (
+                          <div className={`rounded-xl border p-3 ${isDark ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-slate-50 border-slate-200'}`}>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>New return date</p>
+                            <input
+                              type="date"
+                              value={extDate}
+                              min={format(new Date(selectedRequest.return_date), 'yyyy-MM-dd')}
+                              onChange={e => setExtDate(e.target.value)}
+                              className={`w-full rounded-lg px-3 py-2 text-sm border mb-2 outline-none focus:ring-2 focus:ring-violet-500/50 ${
+                                isDark
+                                  ? 'bg-[#111118] border-white/[0.10] text-slate-200'
+                                  : 'bg-white border-slate-200 text-slate-800'
+                              }`}
+                            />
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Reason (optional)</p>
+                            <textarea
+                              rows={2}
+                              value={extReason}
+                              onChange={e => setExtReason(e.target.value)}
+                              placeholder="Why do you need more time?"
+                              className={`w-full rounded-lg px-3 py-2 text-sm border outline-none focus:ring-2 focus:ring-violet-500/50 resize-none mb-3 ${
+                                isDark
+                                  ? 'bg-[#111118] border-white/[0.10] text-slate-200 placeholder:text-slate-600'
+                                  : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'
+                              }`}
+                            />
+                            {extensionMutation.isError && (
+                              <p className="text-xs text-red-500 mb-2">{extensionMutation.error?.message || 'Failed to submit'}</p>
+                            )}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  if (!extDate) return;
+                                  extensionMutation.mutate({ id: selectedRequest._id || selectedRequest.id, requested_date: extDate, reason: extReason });
+                                }}
+                                disabled={!extDate || extensionMutation.isPending}
+                                className="flex-1 py-2 rounded-lg text-xs font-semibold bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white transition-colors"
+                              >
+                                {extensionMutation.isPending ? 'Submitting…' : 'Submit Request'}
+                              </button>
+                              <button
+                                onClick={() => { setShowExtensionForm(false); setExtDate(''); setExtReason(''); }}
+                                className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-slate-400' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'}`}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : !isPending ? (
+                          <button
+                            onClick={() => setShowExtensionForm(true)}
+                            className={`w-full py-2 rounded-xl text-xs font-semibold border transition-colors flex items-center justify-center gap-1.5 ${
+                              isDark
+                                ? 'border-violet-700/50 text-violet-400 hover:bg-violet-900/20'
+                                : 'border-violet-200 text-violet-600 hover:bg-violet-50'
+                            }`}
+                          >
+                            <CalendarPlus className="w-3.5 h-3.5" />
+                            Request Return Date Extension
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── CLOSE / BORROW AGAIN ── */}
+                  <div className={`px-5 py-3 flex flex-col gap-2`}>
+                    {selectedRequest.status === 'returned' && (
+                      <button
+                        onClick={() => {
+                          setSelectedRequest(null);
+                          setModalImageIndex(0);
+                          navigate('/catalog/student');
+                        }}
+                        className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Borrow Again
+                      </button>
+                    )}
                     <button
-                      onClick={() => { setSelectedRequest(null); setModalImageIndex(0); }}
+                      onClick={() => { setSelectedRequest(null); setModalImageIndex(0); setShowExtensionForm(false); setExtDate(''); setExtReason(''); }}
                       className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                         isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       }`}

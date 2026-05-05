@@ -17,6 +17,8 @@ const {
   rejectBorrowRequest,
   downloadBorrowPdf,
   previewBorrowPdf,
+  requestExtension,
+  reviewExtension,
 } = require('../controllers/borrowRequestController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -52,5 +54,9 @@ router.put('/:id/damage-verify', authorize('admin'), verifyDamageReport);
 
 // Delete route (student can delete own pending requests, admin can delete any pending)
 router.delete('/:id', deleteBorrowRequest);
+
+// Extension request routes
+router.post('/:id/extension', authorize('student'), requestExtension);
+router.put('/:id/extension', authorize('lab_assistant', 'admin'), reviewExtension);
 
 module.exports = router;

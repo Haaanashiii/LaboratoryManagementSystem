@@ -198,6 +198,37 @@ const generateBorrowRequestPdf = (request) => {
 
     curY += 14;
 
+    // ── EQUIPMENT IMAGE ──────────────────────────────────────────────────
+    const imgPath = (() => {
+      const raw = request.equipment?.image || request.equipment_image_path || null;
+      if (!raw) return null;
+      if (raw.startsWith('/uploads/')) {
+        return path.join(__dirname, '..', raw.replace(/^\/uploads\//, 'uploads/'));
+      }
+      if (path.isAbsolute(raw)) return raw;
+      return path.join(__dirname, '..', raw);
+    })();
+
+    if (imgPath) {
+      try {
+        if (fs.existsSync(imgPath)) {
+          const imgH = 140;
+          roundRect(doc, margin, curY, contentW, imgH, 8);
+          doc.fillColor(BG_SECTION).fill();
+          roundRect(doc, margin, curY, contentW, imgH, 8);
+          doc.strokeColor(BORDER).lineWidth(0.5).stroke();
+          doc.image(imgPath, margin + 8, curY + 8, {
+            fit: [contentW - 16, imgH - 16],
+            align: 'center',
+            valign: 'center',
+          });
+          curY += imgH + 10;
+        }
+      } catch (_) {
+        // skip image silently if unreadable
+      }
+    }
+
     // ── STUDENT INFORMATION ──────────────────────────────────────────────
     curY = drawSection(doc, 'Student Information', [
       { label: 'Full Name',   value: request.borrower_name },
@@ -220,6 +251,31 @@ const generateBorrowRequestPdf = (request) => {
     ], margin, curY, contentW);
 
     // ── APPROVAL INFORMATION ─────────────────────────────────────────────
+    // Lecturer approval
+    if (request.lecturer_approved_at || request.lecturer?.name || request.lecturer_name) {
+      const lecturerFields = [
+        { label: 'Lecturer',    value: request.lecturer?.name || request.lecturer_name || '—' },
+        { label: 'Approved At', value: formatDate(request.lecturer_approved_at) },
+      ];
+      if (request.lecturer_remarks) {
+        lecturerFields.push({ label: 'Remarks', value: request.lecturer_remarks });
+      }
+      curY = drawSection(doc, 'Lecturer Approval', lecturerFields, margin, curY, contentW);
+    }
+
+    // Head of Lab approval
+    if (request.head_approved_at || request.head_of_lab?.name) {
+      const headFields = [
+        { label: 'Head of Lab', value: request.head_of_lab?.name || '—' },
+        { label: 'Approved At', value: formatDate(request.head_approved_at) },
+      ];
+      if (request.head_remarks) {
+        headFields.push({ label: 'Remarks', value: request.head_remarks });
+      }
+      curY = drawSection(doc, 'Head of Lab Approval', headFields, margin, curY, contentW);
+    }
+
+    // Lab assistant / final approval
     if (request.status === 'approved' || request.approved_at) {
       curY = drawSection(doc, 'Approval Information', [
         { label: 'Approved By', value: request.approved_by?.name || '—' },
