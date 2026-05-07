@@ -93,7 +93,7 @@ function MaintenanceRedirectHandler() {
 function App() {
   return (
     <Router>
-      <AdminShortcutHandler />
+      {import.meta.env.DEV && <AdminShortcutHandler />}
       <MaintenanceRedirectHandler />
       <Toaster position="bottom-right" richColors theme="dark" />
       <Routes>

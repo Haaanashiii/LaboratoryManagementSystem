@@ -88,6 +88,6 @@ exports.authorizeAdminAccess = exports.authorize(...ADMIN_ACCESS_ROLES);
 // Generate JWT token with user id and role. Token expires in 1 day.
 exports.generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: '1d'
+    expiresIn: process.env.JWT_EXPIRE || '1d'
   });
 };

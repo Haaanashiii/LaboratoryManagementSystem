@@ -250,7 +250,7 @@ borrowRequestSchema.virtual('created_date').get(function() {
 // Validation: return date must be after borrow date
 borrowRequestSchema.pre('validate', function(next) {
   if (this.borrow_date && this.return_date && this.return_date <= this.borrow_date) {
-    next(new Error('Return date must be after borrow date'));
+    return next(new Error('Return date must be after borrow date'));
   }
   next();
 });
