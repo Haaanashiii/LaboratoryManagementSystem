@@ -105,8 +105,19 @@ const adminLoginRateLimiter = rateLimit({
   }
 });
 
+const registerRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many registration attempts. Please try again in 5 minutes.'
+  }
+});
+
 // Public routes
-router.post('/register', registerValidation, validate, register);
+router.post('/register', registerRateLimiter, registerValidation, validate, register);
 router.post('/login', loginRateLimiter, loginValidation, loginValidationWithAudit('default'), login);
 router.post('/admin/login', adminLoginRateLimiter, loginValidation, loginValidationWithAudit('admin'), adminLogin);
 router.get('/maintenance-status', async (req, res, next) => {

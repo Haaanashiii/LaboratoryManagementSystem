@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
+import { toast } from 'sonner';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,18 @@ export default function Inventory() {
   const deleteMutation = useMutation({
     mutationFn: (id) => api.entities.Equipment.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['equipment'] }); setDeleteItem(null); },
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: (id) => api.entities.Equipment.togglePublish(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      const label = data?.isPublished === false ? 'Hidden from students' : 'Visible to students';
+      toast.success(label);
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Failed to update visibility');
+    },
   });
 
   React.useEffect(() => { setCurrentPage(1); }, [search, activeCategory]);
@@ -221,13 +234,14 @@ export default function Inventory() {
                     <TableHead className="text-center text-xs font-medium text-slate-500">Total</TableHead>
                     <TableHead className="text-center text-xs font-medium text-slate-500">Available</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Condition</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Visibility</TableHead>
                     {canEdit && <TableHead className="text-right text-xs font-medium text-slate-500">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {displayedEquipment.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={canEdit ? 7 : 6} className="py-14 text-center">
+                      <TableCell colSpan={canEdit ? 8 : 7} className="py-14 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
                             <Package className="h-4 w-4 text-slate-400" />
@@ -247,7 +261,7 @@ export default function Inventory() {
                             <div className="flex items-center gap-2.5">
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
                                 {item.image_url ? (
-                                  <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                                  <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                 ) : (
                                   <Package className="h-4 w-4 text-slate-400" />
                                 )}
@@ -277,9 +291,37 @@ export default function Inventory() {
                               {item.condition || 'Good'}
                             </span>
                           </TableCell>
+                          <TableCell>
+                            {item.isPublished === false ? (
+                              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                                Hidden
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                                Published
+                              </span>
+                            )}
+                          </TableCell>
                           {canEdit && (
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
+                                {user?.role === 'admin' && (
+                                  <button
+                                    type="button"
+                                    title={item.isPublished === false ? 'Publish (show to students)' : 'Unpublish (hide from students)'}
+                                    onClick={() => publishMutation.mutate(item.id)}
+                                    disabled={publishMutation.isPending}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
+                                      item.isPublished === false ? 'bg-slate-200' : 'bg-emerald-500'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                                        item.isPublished === false ? 'translate-x-0' : 'translate-x-4'
+                                      }`}
+                                    />
+                                  </button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="icon"

@@ -1,4 +1,15 @@
 import React, { useMemo, useState } from 'react';
+
+const getPaginationRange = (current, total, delta = 2) => {
+  const left = Math.max(2, current - delta);
+  const right = Math.min(total - 1, current + delta);
+  const range = [1];
+  if (left > 2) range.push('...');
+  for (let i = left; i <= right; i++) range.push(i);
+  if (right < total - 1) range.push('...');
+  if (total > 1) range.push(total);
+  return range;
+};
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,13 +28,13 @@ import { format } from 'date-fns';
 const PAGE_SIZE = 15;
 
 const ACTION_CONFIG = [
-  { value: 'all',            label: 'All Logs',       color: 'bg-slate-50 text-slate-700 border-slate-200',      dot: '#64748b', icon: LayoutList },
-  { value: 'login_success',  label: 'Login Success',  color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: LogIn },
-  { value: 'login_failed',   label: 'Login Failed',   color: 'bg-red-50 text-red-700 border-red-200',             dot: '#ef4444', icon: ShieldAlert },
-  { value: 'borrow_created', label: 'Borrow Created', color: 'bg-blue-50 text-blue-700 border-blue-200',          dot: '#3b82f6', icon: PackagePlus },
-  { value: 'borrow_released',label: 'Released',       color: 'bg-violet-50 text-violet-700 border-violet-200',    dot: '#8b5cf6', icon: PackageCheck },
-  { value: 'borrow_returned',label: 'Returned',       color: 'bg-cyan-50 text-cyan-700 border-cyan-200',          dot: '#06b6d4', icon: RotateCcw },
-  { value: 'damage_verified',label: 'Damage Verified',color: 'bg-amber-50 text-amber-700 border-amber-200',       dot: '#f59e0b', icon: AlertTriangle },
+  { value: 'all',            labelKey: 'allLogs',       color: 'bg-slate-50 text-slate-700 border-slate-200',      dot: '#64748b', icon: LayoutList },
+  { value: 'login_success',  labelKey: 'loginSuccess',  color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: LogIn },
+  { value: 'login_failed',   labelKey: 'loginFailed',   color: 'bg-red-50 text-red-700 border-red-200',             dot: '#ef4444', icon: ShieldAlert },
+  { value: 'borrow_created', labelKey: 'borrowCreated', color: 'bg-blue-50 text-blue-700 border-blue-200',          dot: '#3b82f6', icon: PackagePlus },
+  { value: 'borrow_released',labelKey: 'released',      color: 'bg-violet-50 text-violet-700 border-violet-200',    dot: '#8b5cf6', icon: PackageCheck },
+  { value: 'borrow_returned',labelKey: 'returned',      color: 'bg-cyan-50 text-cyan-700 border-cyan-200',          dot: '#06b6d4', icon: RotateCcw },
+  { value: 'damage_verified',labelKey: 'damageVerified',color: 'bg-amber-50 text-amber-700 border-amber-200',       dot: '#f59e0b', icon: AlertTriangle },
 ];
 
 const normalizeIpForDisplay = (value) => {
@@ -56,11 +67,6 @@ export default function AdminAuditLogs() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['adminAuditLogs', queryFilters],
     queryFn: () => api.entities.AuditLogs.list(queryFilters),
-  });
-
-  const { data: currentUser } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => api.auth.me(),
   });
 
   const allLogs = data?.data || [];
@@ -175,7 +181,7 @@ export default function AdminAuditLogs() {
                 <CfgIcon className="h-4 w-4" style={isActive ? { color: cfg.dot } : { color: '#64748b' }} />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{cfg.label}</p>
+                <p className="truncate text-xs text-slate-500">{t(cfg.labelKey)}</p>
                 <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
               </div>
             </button>
@@ -191,7 +197,7 @@ export default function AdminAuditLogs() {
             {activeAction !== 'all' && (
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeConfig.dot }} />
             )}
-            <p className="text-sm font-medium text-slate-800">{activeConfig.label}</p>
+            <p className="text-sm font-medium text-slate-800">{t(activeConfig.labelKey)}</p>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
               {displayedLogs.length}
             </span>
@@ -298,7 +304,7 @@ export default function AdminAuditLogs() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
                   <p className="text-xs text-slate-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedLogs.length)} of {displayedLogs.length} logs
+                    {t('showing')} {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedLogs.length)} {t('ofLabel')} {displayedLogs.length} {t('logsLabel')}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button
@@ -310,17 +316,21 @@ export default function AdminAuditLogs() {
                     >
                       <ChevronLeft className="h-3.5 w-3.5" />
                     </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="icon"
-                        className={`h-7 w-7 text-xs ${currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    ))}
+                    {getPaginationRange(currentPage, totalPages).map((item, idx) =>
+                      item === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400">…</span>
+                      ) : (
+                        <Button
+                          key={item}
+                          variant={currentPage === item ? 'default' : 'outline'}
+                          size="icon"
+                          className={`h-7 w-7 text-xs ${currentPage === item ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
+                          onClick={() => setCurrentPage(item)}
+                        >
+                          {item}
+                        </Button>
+                      )
+                    )}
                     <Button
                       variant="outline"
                       size="icon"

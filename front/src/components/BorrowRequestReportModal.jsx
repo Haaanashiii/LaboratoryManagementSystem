@@ -13,6 +13,7 @@ import {
   CheckCircle2, XCircle, Clock, ClipboardList, Hash,
 } from 'lucide-react';
 import { api } from '@/api/apiClient';
+import { useLang } from '@/components/i18n/LangContext';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -433,6 +434,7 @@ function SectionCard({ icon: Icon, title, children }) {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function BorrowRequestReportModal({ requestId, onClose }) {
+  const { t } = useLang();
   const [exporting, setExporting] = useState(false);
 
   const { data: req, isLoading, isError } = useQuery({
@@ -468,7 +470,7 @@ export default function BorrowRequestReportModal({ requestId, onClose }) {
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-slate-900 px-6 py-4">
           <div>
             <DialogTitle className="text-base font-bold text-white">
-              Equipment Borrow Request
+              {t('equipmentBorrowRequest')}
             </DialogTitle>
             {req && (
               <p className="mt-0.5 font-mono text-xs text-slate-400">
@@ -487,7 +489,7 @@ export default function BorrowRequestReportModal({ requestId, onClose }) {
             ) : (
               <FileDown className="h-3.5 w-3.5" />
             )}
-            Export PDF
+            {t('exportPDF')}
           </Button>
         </div>
 
@@ -502,7 +504,7 @@ export default function BorrowRequestReportModal({ requestId, onClose }) {
           {/* ── Error ── */}
           {isError && (
             <div className="flex items-center justify-center py-20">
-              <p className="text-sm text-red-500">Failed to load request details.</p>
+              <p className="text-sm text-red-500">{t('failedLoadRequestDetails')}</p>
             </div>
           )}
 
@@ -518,51 +520,51 @@ export default function BorrowRequestReportModal({ requestId, onClose }) {
               </div>
 
               {/* Section A — Borrower */}
-              <SectionCard icon={User} title="A. Borrower Information">
-                <InfoRow label="Full Name"   value={studentName} />
-                <InfoRow label="Student ID"  value={studentId} />
-                <InfoRow label="Email"       value={studentEmail} />
-                <InfoRow label="Department"  value={department} />
+              <SectionCard icon={User} title={t('borrowerInformation')}>
+                <InfoRow label={t('fullName')}   value={studentName} />
+                <InfoRow label={t('studentId')}  value={studentId} />
+                <InfoRow label={t('email')}       value={studentEmail} />
+                <InfoRow label={t('department')}  value={department} />
               </SectionCard>
 
               {/* Section B — Equipment */}
-              <SectionCard icon={Package} title="B. Equipment Details">
+              <SectionCard icon={Package} title={t('equipmentDetails')}>
                 <div className="col-span-2">
-                  <InfoRow label="Equipment Name" value={req.equipment?.name || req.equipment_name} />
+                  <InfoRow label={t('equipmentName')} value={req.equipment?.name || req.equipment_name} />
                 </div>
-                <InfoRow label="Category"    value={req.equipment?.category} />
-                <InfoRow label="Location"    value={req.equipment?.location} />
-                <InfoRow label="Quantity"    value={req.quantity} />
+                <InfoRow label={t('category')}    value={req.equipment?.category} />
+                <InfoRow label={t('location')}    value={req.equipment?.location} />
+                <InfoRow label={t('quantity')}    value={req.quantity} />
                 <div className="col-span-3">
-                  <InfoRow label="Purpose"   value={req.purpose} />
+                  <InfoRow label={t('purpose')}   value={req.purpose} />
                 </div>
               </SectionCard>
 
               {/* Section C — Schedule */}
-              <SectionCard icon={Calendar} title="C. Borrow Schedule">
-                <InfoRow label="Borrow Date"        value={fmtDate(req.borrow_date)} />
-                <InfoRow label="Expected Return"    value={fmtDate(req.return_date)} />
-                <InfoRow label="Date Submitted"     value={fmtDateTime(req.created_date || req.createdAt)} />
-                <InfoRow label="Actual Return"      value={req.actual_return_date ? fmtDate(req.actual_return_date) : '—'} />
+              <SectionCard icon={Calendar} title={t('borrowSchedule')}>
+                <InfoRow label={t('borrowDate')}        value={fmtDate(req.borrow_date)} />
+                <InfoRow label={t('expectedReturn')}    value={fmtDate(req.return_date)} />
+                <InfoRow label={t('dateSubmitted')}     value={fmtDateTime(req.created_date || req.createdAt)} />
+                <InfoRow label={t('actualReturn')}      value={req.actual_return_date ? fmtDate(req.actual_return_date) : '—'} />
               </SectionCard>
 
               {/* Section D — Approvals */}
               <div className="rounded-lg border border-slate-100 bg-white overflow-hidden">
                 <div className="flex items-center gap-2 bg-slate-900 px-4 py-2.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-slate-300" />
-                  <span className="text-xs font-semibold uppercase tracking-widest text-slate-200">D. Approval Chain</span>
+                  <span className="text-xs font-semibold uppercase tracking-widest text-slate-200">{t('approvalChain')}</span>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {[
                     {
-                      role: 'Lecturer',
+                      role: t('lecturer'),
                       person: nameStr(req.lecturer),
                       approved: !!req.lecturer_approved_at,
                       date: req.lecturer_approved_at,
                       remarks: req.lecturer_remarks,
                     },
                     {
-                      role: 'Head of Lab',
+                      role: t('head_of_lab'),
                       person: nameStr(req.head_of_lab),
                       approved: !!req.head_approved_at,
                       date: req.head_approved_at,
@@ -570,10 +572,10 @@ export default function BorrowRequestReportModal({ requestId, onClose }) {
                     },
                   ].map((item) => (
                     <div key={item.role} className="grid grid-cols-4 gap-4 px-4 py-3">
-                      <InfoRow label="Role"     value={item.role} />
-                      <InfoRow label="Name"     value={item.person} />
+                      <InfoRow label={t('roleLabel')}     value={item.role} />
+                      <InfoRow label={t('name')}     value={item.person} />
                       <InfoRow
-                        label="Decision"
+                        label={t('decision')}
                         value={
                           <span
                             className="font-semibold"
@@ -594,9 +596,9 @@ export default function BorrowRequestReportModal({ requestId, onClose }) {
                         }
                       />
                       <div>
-                        <InfoRow label="Date" value={fmtDateTime(item.date)} />
+                        <InfoRow label={t('date')} value={fmtDateTime(item.date)} />
                         {item.remarks && (
-                          <InfoRow label="Remarks" value={item.remarks} />
+                          <InfoRow label={t('remarks')} value={item.remarks} />
                         )}
                       </div>
                     </div>
@@ -605,29 +607,29 @@ export default function BorrowRequestReportModal({ requestId, onClose }) {
               </div>
 
               {/* Section E — Lab Operations */}
-              <SectionCard icon={ClipboardList} title="E. Lab Operations">
+              <SectionCard icon={ClipboardList} title={t('labOperations')}>
                 <div className="col-span-2">
                   <InfoRow
-                    label="Prepared By"
+                    label={t('preparedBy')}
                     value={`${nameStr(req.prepared_by)}${req.prepared_at ? `  ·  ${fmtDateTime(req.prepared_at)}` : ''}`}
                   />
                 </div>
                 <div className="col-span-2">
                   <InfoRow
-                    label="Released By"
+                    label={t('releasedBy')}
                     value={`${nameStr(req.released_by)}${req.released_at ? `  ·  ${fmtDateTime(req.released_at)}` : ''}`}
                   />
                 </div>
-                <InfoRow label="Return Condition" value={req.return_condition} />
+                <InfoRow label={t('returnCondition')} value={req.return_condition} />
                 <div className="col-span-3">
-                  <InfoRow label="Return Remarks"   value={req.return_remarks} />
+                  <InfoRow label={t('returnRemarks')}   value={req.return_remarks} />
                 </div>
               </SectionCard>
 
               {/* Policy acknowledgement */}
               <div className="rounded-lg border border-slate-100 bg-white px-4 py-3">
                 <p className="text-[10px] text-slate-500">
-                  <span className="font-semibold text-slate-700">Replacement Policy Agreed: </span>
+                  <span className="font-semibold text-slate-700">{t('replacementPolicyAgreed')}: </span>
                   {req.agreed_replacement_policy ? (
                     <span className="text-emerald-600 font-semibold">
                       Yes — {fmtDateTime(req.agreed_replacement_policy_at)}

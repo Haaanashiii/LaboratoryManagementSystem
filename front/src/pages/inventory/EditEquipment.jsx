@@ -9,8 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Pencil, Upload, Loader2, Cpu, Monitor, Network, Mouse,
   HardDrive, Cable, Wrench, Boxes, Trash2, ArrowLeft,
-  MapPin, Tag, Package, CheckCircle2, ImagePlus, Link2, Plus,
-  AlertCircle,
+  MapPin, Tag, Package, CheckCircle2, ImagePlus, Link2, AlertCircle,
 } from 'lucide-react';
 import { EditEquipmentSkeleton } from '@/skeleton-framework/admin';
 
@@ -59,11 +58,13 @@ export default function EditEquipmentPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const urlInputRef = useRef(null);
+  const urlDebounceRef = useRef(null);
 
   const [formData, setFormData] = useState(null);
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [failedImages, setFailedImages] = useState(new Set());
+  const [urlInput, setUrlInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -83,6 +84,7 @@ export default function EditEquipmentPage() {
       const existingImages = equipment.images_urls || (equipment.image_url ? [equipment.image_url] : []);
       setFormData({
         name: equipment.name || '',
+        serialNumber: equipment.serialNumber || '',
         description: equipment.description || '',
         category: equipment.category || 'Other',
         images_urls: existingImages,
@@ -131,13 +133,27 @@ export default function EditEquipmentPage() {
     setFormData((prev) => ({ ...prev, images_urls: prev.images_urls.filter((_, i) => i !== index) }));
   };
 
-  const addImageUrl = () => {
-    const url = urlInputRef.current?.value?.trim();
-    if (url) {
-      setFormData((prev) => ({ ...prev, images_urls: [...prev.images_urls, url] }));
-      setImagePreviews((prev) => [...prev, url]);
-      urlInputRef.current.value = '';
+  const handleUrlChange = (e) => {
+    const val = e.target.value;
+    setUrlInput(val);
+    clearTimeout(urlDebounceRef.current);
+    const trimmed = val.trim();
+    if (/^https?:\/\/.{4,}/.test(trimmed)) {
+      urlDebounceRef.current = setTimeout(() => {
+        setFormData((prev) => ({ ...prev, images_urls: [...prev.images_urls, trimmed] }));
+        setImagePreviews((prev) => [...prev, trimmed]);
+        setUrlInput('');
+      }, 700);
     }
+  };
+
+  const commitUrlInput = () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) return;
+    clearTimeout(urlDebounceRef.current);
+    setFormData((prev) => ({ ...prev, images_urls: [...prev.images_urls, trimmed] }));
+    setImagePreviews((prev) => [...prev, trimmed]);
+    setUrlInput('');
   };
 
   /* ─── Submit ─────────────────────────────────────────────────── */
@@ -224,17 +240,31 @@ export default function EditEquipmentPage() {
             {/* § Basic Information */}
             <Section icon={Package} title="Basic Information" description="The primary details shown across the inventory.">
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Equipment Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => set('name', e.target.value)}
-                    placeholder="e.g., Oscilloscope DS1054Z"
-                    className="h-11 text-sm"
-                    disabled={isSubmitting}
-                  />
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Equipment Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => set('name', e.target.value)}
+                      placeholder="e.g., Oscilloscope DS1054Z"
+                      className="h-11 text-sm"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <span className="inline-flex items-center gap-1.5"><Tag className="h-3 w-3" /> Serial Number</span>
+                    </Label>
+                    <Input
+                      value={formData.serialNumber}
+                      onChange={(e) => set('serialNumber', e.target.value)}
+                      placeholder="e.g., SN-2024-00123"
+                      className="h-11 text-sm font-mono"
+                      disabled={isSubmitting}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Description</Label>
@@ -388,24 +418,58 @@ export default function EditEquipmentPage() {
               <Section icon={ImagePlus} title="Images" description="Add or replace photos for this equipment.">
                 <div className="space-y-4">
 
-                  {/* Drop zone */}
+                  {/* Drop zone — previews render inside */}
                   <label
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
-                    className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-4 py-10 text-center transition-all ${
+                    className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-4 text-center transition-all ${
                       isSubmitting
                         ? 'cursor-not-allowed opacity-60'
                         : dragOver
                           ? 'border-blue-400 bg-blue-50'
                           : 'border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40'
-                    }`}
+                    } ${imagePreviews.length > 0 ? 'py-4' : 'py-10'}`}
                   >
                     {uploading ? (
                       <>
                         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                         <p className="text-sm font-medium text-slate-600">Uploading images...</p>
                       </>
+                    ) : imagePreviews.length > 0 ? (
+                      <div className="w-full space-y-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          {imagePreviews.map((preview, index) => (
+                            <div key={index} className="group relative overflow-hidden rounded-xl border border-slate-200" style={{ aspectRatio: '1 / 1' }}>
+                              {failedImages.has(index) ? (
+                                <div className="flex h-full w-full items-center justify-center bg-slate-100">
+                                  <Package className="h-6 w-6 text-slate-300" />
+                                </div>
+                              ) : (
+                                <img
+                                  src={preview}
+                                  alt={`Preview ${index + 1}`}
+                                  className="h-full w-full object-cover"
+                                  onError={() => setFailedImages((prev) => new Set(prev).add(index))}
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); removeImage(index); }}
+                                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                              {index === 0 && (
+                                <span className="absolute bottom-1 left-1 rounded-full bg-black/50 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+                                  Cover
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-400">Drop more or click to browse</p>
+                      </div>
                     ) : (
                       <>
                         <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors ${dragOver ? 'bg-blue-100' : 'bg-white'} border border-slate-200`}>
@@ -430,59 +494,18 @@ export default function EditEquipmentPage() {
                     />
                   </label>
 
-                  {/* URL input */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Link2 className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        ref={urlInputRef}
-                        placeholder="Paste image URL..."
-                        className="h-9 pl-8 text-xs"
-                        disabled={isSubmitting}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImageUrl())}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      size="icon"
+                  {/* URL input — auto-adds after 700ms of no typing */}
+                  <div className="relative">
+                    <Link2 className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      value={urlInput}
+                      onChange={handleUrlChange}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), commitUrlInput())}
+                      placeholder="Paste image URL — preview auto-adds..."
+                      className="h-9 pl-8 text-xs"
                       disabled={isSubmitting}
-                      onClick={addImageUrl}
-                      className="h-9 w-9 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    />
                   </div>
-
-                  {/* Previews */}
-                  {imagePreviews.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-slate-500">{imagePreviews.length} image{imagePreviews.length > 1 ? 's' : ''}</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {imagePreviews.map((preview, index) => (
-                          <div key={index} className="group relative">
-                            <img
-                              src={preview}
-                              alt={`Preview ${index + 1}`}
-                              className="aspect-square w-full rounded-xl border border-slate-200 object-cover"
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                            {index === 0 && (
-                              <span className="absolute bottom-1 left-1 rounded-full bg-black/50 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-                                Cover
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                 </div>
               </Section>

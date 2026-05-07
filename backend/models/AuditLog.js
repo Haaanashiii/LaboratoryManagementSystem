@@ -21,7 +21,8 @@ const auditLogSchema = new mongoose.Schema({
       'damage_verified',
       'maintenance_toggled',
       'role_changed',
-      'audit_logs_cleared'
+      'audit_logs_cleared',
+      'data_purged'
     ],
     required: true
   },

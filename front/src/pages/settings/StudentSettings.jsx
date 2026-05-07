@@ -108,35 +108,32 @@ export default function Settings() {
       <style>{settingsStyles}</style>
 
       {/* ── PAGE HEADER BANNER ── */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-2 st-fade-up st-fade-up-1">
-        <div className="st-hero-banner relative overflow-hidden rounded-2xl px-6 py-8 sm:px-10 shadow-xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600">
+      <div className="px-4 sm:px-6 lg:px-8 pt-6 st-fade-up st-fade-up-1">
+        <div className="st-hero-banner relative overflow-hidden rounded-2xl px-6 py-6 sm:px-10 shadow-xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600">
           {/* animated orbs */}
           <div className="st-orb absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/10 pointer-events-none" />
           <div className="st-orb-2 absolute -bottom-16 -left-10 w-48 h-48 rounded-full bg-indigo-400/20 pointer-events-none" />
           <div className="absolute top-4 right-28 w-3 h-3 rounded-full bg-white/30 pointer-events-none" />
           <div className="absolute bottom-4 right-16 w-5 h-5 rounded-full bg-white/20 pointer-events-none" />
 
-          <div className="relative max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center gap-6">
+          <div className="relative max-w-5xl mx-auto flex flex-row items-center gap-4">
             {/* Avatar */}
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold shadow-xl shrink-0 bg-white/20 border border-white/30 text-white">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg shrink-0 bg-white/20 border border-white/30 text-white">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-widest mb-1 text-blue-200">{t('accountSettings')}</p>
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-blue-200">{t('accountSettings')}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <h1 className="text-lg font-bold text-white leading-tight">
                   {user?.name || t('user')}
                 </h1>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 border border-white/30 text-white">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/20 border border-white/30 text-white">
                   {roleLabel(user?.role)}
                 </span>
               </div>
-              <p className="text-sm text-blue-100 truncate">{user?.email || '—'}</p>
-              <p className="text-xs mt-0.5 text-blue-200/80">
-                ID: {user?.student_id || user?.id?.slice(-8)?.toUpperCase() || '—'}
-              </p>
+              <p className="text-xs text-blue-100 truncate mt-0.5">{user?.email || '—'}</p>
             </div>
 
             {/* Edit Profile Button */}
@@ -285,8 +282,8 @@ export default function Settings() {
                   isDark ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-600 border-blue-100'
                 }`}>v1.0.0</span>
               </div>
-              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('versionTagline')} · San Miguel University</p>
-              <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Built with React · Node.js · MongoDB</p>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('versionTagline')} · {t('universityName')}</p>
+              <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{t('builtWithStack')}</p>
             </div>
 
             <div className={`shrink-0 flex items-center gap-1.5 text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>

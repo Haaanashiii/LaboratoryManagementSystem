@@ -12,6 +12,7 @@ import {
 import { format, isToday } from 'date-fns';
 import { useTheme } from '@/components/hooks/ThemeContext';
 import { StudentRequestsSkeleton } from '@/skeleton-framework/student';
+import { useLang } from '@/components/i18n/LangContext';
 
 const pageStyles = `
   @keyframes fadeUp {
@@ -176,24 +177,24 @@ const pageStyles = `
 
 
 const journeySteps = [
-  { key: 'pending_lecturer', label: 'Request Submitted',  subtitle: 'Awaiting lecturer review',     Icon: FilePlus2    },
-  { key: 'pending_head',     label: 'Lecturer Approved',  subtitle: 'Forwarded to head of lab',     Icon: UserCheck    },
-  { key: 'head_approved',    label: 'Head Approved',      subtitle: 'Being prepared by lab staff',  Icon: BadgeCheck   },
-  { key: 'ready_pickup',     label: 'Ready for Pickup',   subtitle: 'Please collect at the lab',    Icon: PackageCheck },
-  { key: 'borrowed',         label: 'Equipment In Use',   subtitle: 'You currently have this item', Icon: Laptop      },
-  { key: 'returned',         label: 'Returned',           subtitle: 'Transaction complete',         Icon: RotateCcw    },
+  { key: 'pending_lecturer', labelKey: 'requestSubmitted',        Icon: FilePlus2    },
+  { key: 'pending_head',     labelKey: 'journeyLecturerApproved', Icon: UserCheck    },
+  { key: 'head_approved',    labelKey: 'journeyHeadApproved',     Icon: BadgeCheck   },
+  { key: 'ready_pickup',     labelKey: 'readyForPickup',          Icon: PackageCheck },
+  { key: 'borrowed',         labelKey: 'journeyInUse',            Icon: Laptop       },
+  { key: 'returned',         labelKey: 'returned',                Icon: RotateCcw    },
 ];
 
 const ACTIVE_PAGE_SIZE = 5;
 const HISTORY_PAGE_SIZE = 10;
 
 const HISTORY_FILTERS = [
-  { key: 'all',      label: 'All',       statuses: null },
-  { key: 'pending',  label: 'Pending',   statuses: ['pending_lecturer', 'pending_head'] },
-  { key: 'approved', label: 'Approved',  statuses: ['head_approved', 'ready_pickup'] },
-  { key: 'borrowed', label: 'Borrowed',  statuses: ['borrowed'] },
-  { key: 'returned', label: 'Returned',  statuses: ['returned'] },
-  { key: 'rejected', label: 'Rejected',  statuses: ['rejected'] },
+  { key: 'all',      labelKey: 'all',      statuses: null },
+  { key: 'pending',  labelKey: 'pending',  statuses: ['pending_lecturer', 'pending_head'] },
+  { key: 'approved', labelKey: 'approved', statuses: ['head_approved', 'ready_pickup'] },
+  { key: 'borrowed', labelKey: 'borrowed', statuses: ['borrowed'] },
+  { key: 'returned', labelKey: 'returned', statuses: ['returned'] },
+  { key: 'rejected', labelKey: 'rejected', statuses: ['rejected'] },
 ];
 
 export default function MyRequests() {
@@ -207,6 +208,7 @@ export default function MyRequests() {
   const [extDate, setExtDate] = useState('');
   const [extReason, setExtReason] = useState('');
   const { isDark } = useTheme();
+  const { t } = useLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -315,7 +317,7 @@ export default function MyRequests() {
       return (
         <div className={`mt-4 rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${isDark ? 'border-red-900/50 bg-red-950/40 text-red-400' : 'border-red-100 bg-red-50 text-red-700'}`}>
           <X className="w-4 h-4 flex-shrink-0" />
-          Request was rejected.
+          {t('requestWasRejected')}
         </div>
       );
     }
@@ -326,8 +328,8 @@ export default function MyRequests() {
     return (
       <div className={`mt-4 rounded-xl border p-4 ${isDark ? 'border-white/[0.08] bg-white/[0.03]' : 'border-slate-100 bg-slate-50'}`}>
         <div className="mb-3 flex items-center justify-between">
-          <p className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Progress</p>
-          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Step {currentStep} of {journeySteps.length}</p>
+          <p className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{t('progress')}</p>
+          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('step')} {currentStep} {t('ofLabel')} {journeySteps.length}</p>
         </div>
         <div className={`relative mb-4 h-1.5 w-full overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
           <div
@@ -357,7 +359,7 @@ export default function MyRequests() {
                   isDone || isCurrent
                     ? isDark ? 'text-slate-300' : 'text-slate-700'
                     : isDark ? 'text-slate-600' : 'text-slate-400'
-                }`}>{step.label}</span>
+                }`}>{t(step.labelKey)}</span>
               </div>
             );
           })}
@@ -399,7 +401,7 @@ export default function MyRequests() {
                 {request.equipment_name}
               </h3>
               <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                Qty: {request.quantity}
+                {t('qty')}: {request.quantity}
               </p>
               <div className={`flex items-center gap-1.5 mt-2 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                 <Calendar className="w-3.5 h-3.5" />
@@ -430,7 +432,7 @@ export default function MyRequests() {
           <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
             <Package className="w-6 h-6 text-red-500" />
           </div>
-          <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>Unable to load your requests</p>
+          <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{t('unableLoadRequests')}</p>
           <p className={`text-xs max-w-sm ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
             {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
           </p>
@@ -445,8 +447,8 @@ export default function MyRequests() {
   const rejectedCount = requests.filter(r => r.status === 'rejected').length;
 
   const tabs = [
-    { key: 'active',   label: 'Active',   count: activeCount },
-    { key: 'history',  label: 'All History', count: requests.length },
+    { key: 'active',  label: t('active'),     count: activeCount },
+    { key: 'history', label: t('allHistory'), count: requests.length },
   ];
 
   return (
@@ -461,19 +463,19 @@ export default function MyRequests() {
 
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <p className="text-blue-200 text-[10px] font-semibold uppercase tracking-widest mb-1">Equipment Borrowing</p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">My Requests</h1>
+            <p className="text-blue-200 text-[10px] font-semibold uppercase tracking-widest mb-1">{t('equipmentBorrowing')}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">{t('myRequestsTitle')}</h1>
             <p className="text-blue-200 text-sm mt-1.5 max-w-sm">
-              Track and manage all your equipment borrow requests in one place.
+              {t('myRequestsHeroDesc')}
             </p>
           </div>
 
           {/* Quick stat pills */}
           <div className="flex gap-2 flex-wrap">
             {[
-              { label: 'Active',   value: activeCount,   textColor: isDark ? 'text-blue-400' : 'text-white' },
-              { label: 'Returned', value: returnedCount,  textColor: isDark ? 'text-emerald-400' : 'text-white' },
-              { label: 'Rejected', value: rejectedCount,  textColor: isDark ? 'text-red-400' : 'text-white' },
+              { label: t('active'),   value: activeCount,   textColor: isDark ? 'text-blue-400' : 'text-white' },
+              { label: t('returned'), value: returnedCount, textColor: isDark ? 'text-emerald-400' : 'text-white' },
+              { label: t('rejected'), value: rejectedCount, textColor: isDark ? 'text-red-400' : 'text-white' },
             ].map(s => (
               <div key={s.label} className={`rounded-xl px-3 py-2 text-center min-w-[60px] border shadow-sm ${isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white/20 backdrop-blur-sm border-white/20'}`}>
                 <p className={`text-lg font-black leading-none ${s.textColor}`}>{s.value}</p>
@@ -529,7 +531,7 @@ export default function MyRequests() {
                         : 'border-slate-200 text-slate-500 bg-white hover:bg-slate-50'
                   }`}
                 >
-                  {hf.label}
+                  {t(hf.labelKey)}
                   <span className={`inline-flex items-center justify-center rounded-full text-[9px] font-bold min-w-[16px] h-4 px-1 ${
                     isActive
                       ? 'bg-white/20 text-white'
@@ -546,15 +548,15 @@ export default function MyRequests() {
             isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50/60'
           }`}>
             <History className={`w-10 h-10 mb-3 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>No matching requests</p>
-            <p className={`text-xs mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Try a different filter above.</p>
+            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{t('noMatchingRequests')}</p>
+            <p className={`text-xs mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{t('tryDifferentFilter')}</p>
           </div>
         ) : filteredRequests.length === 0 ? (
           <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed text-center ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50/60'}`}>
             <BookOpen className={`w-10 h-10 mb-3 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>No requests found</p>
+            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{t('noRequestsFound')}</p>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-              {filter === 'active' ? 'You have no active borrow requests.' : 'No request history yet.'}
+              {filter === 'active' ? t('noActiveRequests') : t('noRequestHistory')}
             </p>
           </div>
         ) : filter === 'history' ? (
@@ -575,7 +577,7 @@ export default function MyRequests() {
             {historyTotalPages > 1 && (
               <div className="flex items-center justify-between pt-2">
                 <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Showing {(safePage - 1) * HISTORY_PAGE_SIZE + 1}–{Math.min(safePage * HISTORY_PAGE_SIZE, allHistorySorted.length)} of {allHistorySorted.length}
+                  {t('showing')} {(safePage - 1) * HISTORY_PAGE_SIZE + 1}–{Math.min(safePage * HISTORY_PAGE_SIZE, allHistorySorted.length)} {t('ofLabel')} {allHistorySorted.length}
                 </p>
                 <div className="flex items-center gap-1">
                   <button
@@ -630,7 +632,7 @@ export default function MyRequests() {
               {activeTotalPages > 1 && (
                 <div className="flex items-center justify-between pt-2">
                   <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Showing {(safeActivePage - 1) * ACTIVE_PAGE_SIZE + 1}–{Math.min(safeActivePage * ACTIVE_PAGE_SIZE, activeTotal)} of {activeTotal}
+                    {t('showing')} {(safeActivePage - 1) * ACTIVE_PAGE_SIZE + 1}–{Math.min(safeActivePage * ACTIVE_PAGE_SIZE, activeTotal)} {t('ofLabel')} {activeTotal}
                   </p>
                   <div className="flex items-center gap-1">
                     <button
@@ -732,7 +734,7 @@ export default function MyRequests() {
                   ) : (
                     <div className={`req-img-placeholder ${isDark ? '' : 'req-img-placeholder-light'}`}>
                       <Package className={`w-10 h-10 ${isDark ? 'text-slate-700' : 'text-slate-300'}`} />
-                      <span className={`text-xs font-medium ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>No image available</span>
+                      <span className={`text-xs font-medium ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>{t('noImage')}</span>
                     </div>
                   )}
 
@@ -740,7 +742,7 @@ export default function MyRequests() {
                   <div className="absolute bottom-0 left-0 right-0 z-10 px-5 pb-4 flex items-end justify-between">
                     <div>
                       <p className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${hasImages ? 'text-blue-300' : isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                        Equipment
+                        {t('equipment')}
                       </p>
                       <h2 className={`text-lg font-black leading-tight drop-shadow-md ${hasImages ? 'text-white' : isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                         {selectedRequest.equipment_name}
@@ -784,7 +786,7 @@ export default function MyRequests() {
                     </div>
                     {selectedRequest.purpose && (
                       <p className={`text-xs leading-relaxed line-clamp-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        <span className={`font-bold mr-1.5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Purpose:</span>{selectedRequest.purpose}
+                        <span className={`font-bold mr-1.5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{t('purpose')}:</span>{selectedRequest.purpose}
                       </p>
                     )}
                     {/* Assigned lecturer badge */}
@@ -798,7 +800,7 @@ export default function MyRequests() {
                         <div className="min-w-0">
                           <p className={`text-[9px] font-bold uppercase tracking-widest ${
                             isDark ? 'text-indigo-600' : 'text-indigo-400'
-                          }`}>Assigned Lecturer</p>
+                          }`}>{t('assignedLecturer')}</p>
                           <p className={`text-xs font-semibold truncate ${
                             isDark ? 'text-indigo-300' : 'text-indigo-700'
                           }`}>
@@ -811,7 +813,7 @@ export default function MyRequests() {
 
                   {/* ── HORIZONTAL JOURNEY STEPPER ── */}
                   <div className={`px-5 pt-3 pb-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Request Journey</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{t('requestJourney')}</p>
 
                     {selectedRequest.status === 'rejected' ? (
                       <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 border ${
@@ -823,8 +825,8 @@ export default function MyRequests() {
                           <X className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <p className={`text-xs font-bold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Request Rejected</p>
-                          <p className={`text-[10px] ${isDark ? 'text-red-600' : 'text-red-500'}`}>This request was not approved.</p>
+                          <p className={`text-xs font-bold ${isDark ? 'text-red-400' : 'text-red-700'}`}>{t('requestRejectedTitle')}</p>
+                          <p className={`text-[10px] ${isDark ? 'text-red-600' : 'text-red-500'}`}>{t('requestNotApproved')}</p>
                         </div>
                       </div>
                     ) : (
@@ -873,7 +875,7 @@ export default function MyRequests() {
                                   : isCurrent
                                   ? isDark ? 'text-indigo-300' : 'text-indigo-600'
                                   : isDark ? 'text-slate-700' : 'text-slate-300'
-                              }`}>{step.label}</p>
+                              }`}>{t(step.labelKey)}</p>
                               {isCurrent && (
                                 <span className="w-1 h-1 rounded-full bg-indigo-500 animate-pulse mt-0.5" />
                               )}
@@ -889,7 +891,7 @@ export default function MyRequests() {
                     <div className={`px-5 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
                       <div className="flex items-center gap-2 mb-2.5">
                         <AlertCircle className={`w-3 h-3 ${isDark ? 'text-red-500' : 'text-red-400'}`} />
-                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Rejection Reason</p>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{t('rejectionDetails')}</p>
                       </div>
                       <div className={`rounded-xl px-3 py-2.5 ${isDark ? 'bg-red-950/30 border border-red-900/40' : 'bg-red-50 border border-red-100'}`}>
                         <p className={`text-xs leading-relaxed ${isDark ? 'text-red-300' : 'text-red-700'}`}>{selectedRequest.rejection_reason}</p>
@@ -908,7 +910,7 @@ export default function MyRequests() {
                       <div className={`px-5 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
                         <div className="flex items-center gap-2 mb-2.5">
                           <CalendarPlus className={`w-3.5 h-3.5 ${isDark ? 'text-violet-400' : 'text-violet-500'}`} />
-                          <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Return Date Extension</p>
+                          <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{t('returnDateExtension')}</p>
                         </div>
 
                         {/* Status badges for existing extension */}
@@ -916,8 +918,8 @@ export default function MyRequests() {
                           <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-2 ${isDark ? 'bg-yellow-950/30 border border-yellow-900/40' : 'bg-yellow-50 border border-yellow-100'}`}>
                             <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`} />
                             <div>
-                              <p className={`text-xs font-semibold ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>Extension pending approval</p>
-                              <p className={`text-[10px] ${isDark ? 'text-yellow-600' : 'text-yellow-500'}`}>Requested until {format(new Date(ext.requested_date), 'MMM d, yyyy')}</p>
+                              <p className={`text-xs font-semibold ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>{t('extensionPending')}</p>
+                              <p className={`text-[10px] ${isDark ? 'text-yellow-600' : 'text-yellow-500'}`}>{t('requestedUntil')} {format(new Date(ext.requested_date), 'MMM d, yyyy')}</p>
                             </div>
                           </div>
                         )}
@@ -925,8 +927,8 @@ export default function MyRequests() {
                           <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-2 ${isDark ? 'bg-emerald-950/30 border border-emerald-900/40' : 'bg-emerald-50 border border-emerald-100'}`}>
                             <CheckCheck className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                             <div>
-                              <p className={`text-xs font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Extension approved</p>
-                              <p className={`text-[10px] ${isDark ? 'text-emerald-600' : 'text-emerald-500'}`}>New return date: {format(new Date(ext.requested_date), 'MMM d, yyyy')}</p>
+                              <p className={`text-xs font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t('extensionApproved')}</p>
+                              <p className={`text-[10px] ${isDark ? 'text-emerald-600' : 'text-emerald-500'}`}>{t('newReturnDate')}: {format(new Date(ext.requested_date), 'MMM d, yyyy')}</p>
                             </div>
                           </div>
                         )}
@@ -934,7 +936,7 @@ export default function MyRequests() {
                           <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-2 ${isDark ? 'bg-red-950/30 border border-red-900/40' : 'bg-red-50 border border-red-100'}`}>
                             <X className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
                             <div>
-                              <p className={`text-xs font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>Extension rejected</p>
+                              <p className={`text-xs font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>{t('extensionRejected')}</p>
                               {ext.review_note && <p className={`text-[10px] ${isDark ? 'text-red-600' : 'text-red-500'}`}>{ext.review_note}</p>}
                             </div>
                           </div>
@@ -943,7 +945,7 @@ export default function MyRequests() {
                         {/* Extension form */}
                         {showExtensionForm && !isPending ? (
                           <div className={`rounded-xl border p-3 ${isDark ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-slate-50 border-slate-200'}`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>New return date</p>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('newReturnDate')}</p>
                             <input
                               type="date"
                               value={extDate}
@@ -955,12 +957,12 @@ export default function MyRequests() {
                                   : 'bg-white border-slate-200 text-slate-800'
                               }`}
                             />
-                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Reason (optional)</p>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('reasonOptional')}</p>
                             <textarea
                               rows={2}
                               value={extReason}
                               onChange={e => setExtReason(e.target.value)}
-                              placeholder="Why do you need more time?"
+                              placeholder={t('whyNeedMoreTime')}
                               className={`w-full rounded-lg px-3 py-2 text-sm border outline-none focus:ring-2 focus:ring-violet-500/50 resize-none mb-3 ${
                                 isDark
                                   ? 'bg-[#111118] border-white/[0.10] text-slate-200 placeholder:text-slate-600'
@@ -968,7 +970,7 @@ export default function MyRequests() {
                               }`}
                             />
                             {extensionMutation.isError && (
-                              <p className="text-xs text-red-500 mb-2">{extensionMutation.error?.message || 'Failed to submit'}</p>
+                              <p className="text-xs text-red-500 mb-2">{extensionMutation.error?.message || t('failedToSubmit')}</p>
                             )}
                             <div className="flex gap-2">
                               <button
@@ -979,13 +981,13 @@ export default function MyRequests() {
                                 disabled={!extDate || extensionMutation.isPending}
                                 className="flex-1 py-2 rounded-lg text-xs font-semibold bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white transition-colors"
                               >
-                                {extensionMutation.isPending ? 'Submitting…' : 'Submit Request'}
+                                {extensionMutation.isPending ? t('submitting') : t('submitRequest')}
                               </button>
                               <button
                                 onClick={() => { setShowExtensionForm(false); setExtDate(''); setExtReason(''); }}
                                 className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-slate-400' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'}`}
                               >
-                                Cancel
+                                {t('cancel')}
                               </button>
                             </div>
                           </div>
@@ -999,7 +1001,7 @@ export default function MyRequests() {
                             }`}
                           >
                             <CalendarPlus className="w-3.5 h-3.5" />
-                            Request Return Date Extension
+                            {t('requestExtensionButton')}
                           </button>
                         ) : null}
                       </div>
@@ -1018,7 +1020,7 @@ export default function MyRequests() {
                         className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
                       >
                         <RotateCcw className="w-4 h-4" />
-                        Borrow Again
+                        {t('borrowAgain')}
                       </button>
                     )}
                     <button
@@ -1027,7 +1029,7 @@ export default function MyRequests() {
                         isDark ? 'bg-white/[0.06] hover:bg-white/[0.10] text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       }`}
                     >
-                      Close
+                      {t('close')}
                     </button>
                   </div>
                 </div>

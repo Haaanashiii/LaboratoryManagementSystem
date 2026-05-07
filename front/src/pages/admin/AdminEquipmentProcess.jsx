@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
+import { useLang } from '@/components/i18n/LangContext';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,33 +16,35 @@ import { format } from 'date-fns';
 
 /* ─── Status filter cards ─────────────────────────────────────────────────── */
 const STATUS_TABS = [
-  { key: 'all',      label: 'All',        statuses: null,                                                          icon: Layers,       dot: '#475569', color: 'bg-slate-100 text-slate-700 border-slate-300' },
-  { key: 'pending',  label: 'Pending',    statuses: ['pending_lecturer', 'pending_head'],                          icon: Clock3,       dot: '#d97706', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  { key: 'approved', label: 'Approved',   statuses: ['head_approved', 'ready_pickup'],                             icon: CheckCircle2, dot: '#2563eb', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { key: 'borrowed', label: 'Borrowed',   statuses: ['borrowed'],                                                  icon: Laptop,       dot: '#7c3aed', color: 'bg-violet-50 text-violet-700 border-violet-200' },
-  { key: 'returned', label: 'Returned',   statuses: ['returned'],                                                  icon: RotateCcw,    dot: '#059669', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { key: 'rejected', label: 'Rejected',   statuses: ['rejected'],                                                  icon: XCircle,      dot: '#dc2626', color: 'bg-red-50 text-red-700 border-red-200' },
+  { key: 'all',      labelKey: 'all',      statuses: null,                                                          icon: Layers,       dot: '#475569', color: 'bg-slate-100 text-slate-700 border-slate-300' },
+  { key: 'pending',  labelKey: 'pending',  statuses: ['pending_lecturer', 'pending_head'],                          icon: Clock3,       dot: '#d97706', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { key: 'approved', labelKey: 'approved', statuses: ['head_approved', 'ready_pickup'],                             icon: CheckCircle2, dot: '#2563eb', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { key: 'borrowed', labelKey: 'borrowed', statuses: ['borrowed'],                                                  icon: Laptop,       dot: '#7c3aed', color: 'bg-violet-50 text-violet-700 border-violet-200' },
+  { key: 'returned', labelKey: 'returned', statuses: ['returned'],                                                  icon: RotateCcw,    dot: '#059669', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { key: 'rejected', labelKey: 'rejected', statuses: ['rejected'],                                                  icon: XCircle,      dot: '#dc2626', color: 'bg-red-50 text-red-700 border-red-200' },
 ];
 
 /* ─── Journey steps ───────────────────────────────────────────────────────── */
 const JOURNEY_STEPS = [
-  { key: 'pending_lecturer', label: 'Submitted'     },
-  { key: 'pending_head',     label: 'Lec. Approved' },
-  { key: 'head_approved',    label: 'Head Approved' },
-  { key: 'ready_pickup',     label: 'Ready Pickup'  },
-  { key: 'borrowed',         label: 'Borrowed'      },
-  { key: 'returned',         label: 'Returned'      },
+  { key: 'pending_lecturer', labelKey: 'submitted'        },
+  { key: 'pending_head',     labelKey: 'lecApproved'      },
+  { key: 'head_approved',    labelKey: 'headapproved'     },
+  { key: 'ready_pickup',     labelKey: 'readyPickup'      },
+  { key: 'borrowed',         labelKey: 'borrowed'         },
+  { key: 'returned',         labelKey: 'returned'         },
 ];
 
 const PAGE_SIZE = 15;
 
 /* ─── Inline progress tracker ─────────────────────────────────────────────── */
 function ProgressTracker({ status }) {
+  const { t } = useLang();
+
   if (status === 'rejected') {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
         <X className="h-3.5 w-3.5 flex-shrink-0" />
-        Request was rejected
+        {t('requestWasRejected')}
       </div>
     );
   }
@@ -52,8 +55,8 @@ function ProgressTracker({ status }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-600">Progress</span>
-        <span className="text-xs text-slate-400">Step {currentStep} of {JOURNEY_STEPS.length}</span>
+        <span className="text-xs font-medium text-slate-600">{t('progress')}</span>
+        <span className="text-xs text-slate-400">{t('step')} {currentStep} {t('ofLabel')} {JOURNEY_STEPS.length}</span>
       </div>
       <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
         <div
@@ -74,7 +77,7 @@ function ProgressTracker({ status }) {
                             'bg-slate-200 text-slate-400'
               }`}>{num}</div>
               <span className={`text-[9px] leading-tight ${isDone || isCurrent ? 'text-slate-700' : 'text-slate-400'}`}>
-                {step.label}
+                {t(step.labelKey)}
               </span>
             </div>
           );
@@ -86,6 +89,7 @@ function ProgressTracker({ status }) {
 
 /* ─── Main component ──────────────────────────────────────────────────────── */
 export default function AdminEquipmentProcess() {
+  const { t } = useLang();
   const [search, setSearch]         = useState('');
   const [activeStatus, setActiveStatus] = useState('all');
   const [currentPage, setCurrentPage]   = useState(1);
@@ -99,7 +103,7 @@ export default function AdminEquipmentProcess() {
   React.useEffect(() => { setCurrentPage(1); }, [search, activeStatus]);
 
   /* ── derived ── */
-  const selectedTab = STATUS_TABS.find(t => t.key === activeStatus) ?? STATUS_TABS[0];
+  const selectedTab = STATUS_TABS.find(tab => tab.key === activeStatus) ?? STATUS_TABS[0];
 
   const statusCounts = useMemo(() =>
     STATUS_TABS.reduce((acc, tab) => {
@@ -165,9 +169,9 @@ export default function AdminEquipmentProcess() {
             <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
               {format(new Date(), 'EEEE, MMMM d, yyyy')}
             </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Equipment Process</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('equipmentProcess')}</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Monitor the ongoing progress of all borrow requests system-wide
+              {t('monitorBorrowRequestsDesc')}
             </p>
           </div>
         </div>
@@ -178,7 +182,7 @@ export default function AdminEquipmentProcess() {
           onClick={() => refetch()}
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
+          {t('refresh')}
         </Button>
       </div>
 
@@ -202,7 +206,7 @@ export default function AdminEquipmentProcess() {
                 <TabIcon className="h-4 w-4" style={isActive ? { color: tab.dot } : { color: '#64748b' }} />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{tab.label}</p>
+                <p className="truncate text-xs text-slate-500">{t(tab.labelKey)}</p>
                 <p className="text-lg font-semibold leading-tight text-slate-900">{statusCounts[tab.key] ?? 0}</p>
               </div>
             </button>
@@ -218,7 +222,7 @@ export default function AdminEquipmentProcess() {
             {selectedTab.key !== 'all' && (
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: selectedTab.dot }} />
             )}
-            <p className="text-sm font-medium text-slate-800">{selectedTab.label}</p>
+            <p className="text-sm font-medium text-slate-800">{t(selectedTab.labelKey)}</p>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
               {filtered.length}
             </span>
@@ -227,14 +231,14 @@ export default function AdminEquipmentProcess() {
                 onClick={() => setActiveStatus('all')}
                 className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
               >
-                Clear
+                {t('clear')}
               </button>
             )}
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search equipment or borrower…"
+              placeholder={t('searchEquipmentOrBorrower')}
               value={search}
               onChange={e => { setCurrentPage(1); setSearch(e.target.value); }}
               className="h-8 pl-8 text-xs"
@@ -248,9 +252,9 @@ export default function AdminEquipmentProcess() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <XCircle className="h-5 w-5 text-red-400" />
               </div>
-              <p className="text-sm font-medium text-slate-800">Unable to load requests</p>
+              <p className="text-sm font-medium text-slate-800">{t('unableLoadRequests')}</p>
               <p className="max-w-xs text-center text-xs text-slate-500">
-                {error?.message || 'Failed to connect to the server.'}
+                {error?.message || t('failedConnectServer')}
               </p>
             </div>
           ) : (
@@ -259,12 +263,12 @@ export default function AdminEquipmentProcess() {
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
                     <TableHead className="w-8" />
-                    <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrower</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Return Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Submitted</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('borrowDate')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('returnDate')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('submitted')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -275,8 +279,8 @@ export default function AdminEquipmentProcess() {
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
                             <Activity className="h-4 w-4 text-slate-400" />
                           </div>
-                          <p className="text-sm text-slate-500">No requests found</p>
-                          <p className="text-xs text-slate-400">Try adjusting the filter or search above.</p>
+                          <p className="text-sm text-slate-500">{t('noRequestsFound')}</p>
+                          <p className="text-xs text-slate-400">{t('tryAdjustingFilter')}</p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -295,7 +299,7 @@ export default function AdminEquipmentProcess() {
                             </TableCell>
                             <TableCell>
                               <p className="text-sm font-medium text-slate-900">{request.equipment_name}</p>
-                              <p className="text-xs text-slate-400">Qty: {request.quantity}</p>
+                              <p className="text-xs text-slate-400">{t('qty')}: {request.quantity}</p>
                             </TableCell>
                             <TableCell>
                               <p className="text-sm font-medium text-slate-900">{request.borrower_name || '—'}</p>
@@ -338,7 +342,7 @@ export default function AdminEquipmentProcess() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
                   <p className="text-xs text-slate-500">
-                    Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} requests
+                    {t('showing')} {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} {t('ofLabel')} {filtered.length} {t('requestsLabel')}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button

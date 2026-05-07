@@ -277,11 +277,11 @@ export const api = {
       return userData;
     },
 
-    register: async ({ name, email, password }) => {
+    register: async ({ name, email, password, studentId, department, phone }) => {
       // Perform real registration with backend
       const data = await request('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, studentId, department, phone }),
       });
 
       if (!data.success || !data.data) {
@@ -538,6 +538,7 @@ export const api = {
         const images = formData.images_urls ? formData.images_urls.filter(Boolean) : [];
         const payload = {
           name: formData.name,
+          serialNumber: formData.serialNumber || '',
           description: formData.description,
           category: formData.category,
           image: images.length > 0 ? images[0] : (formData.image_url || ''),
@@ -558,6 +559,7 @@ export const api = {
         const images = formData.images_urls ? formData.images_urls.filter(Boolean) : [];
         const payload = {
           name: formData.name,
+          serialNumber: formData.serialNumber || '',
           description: formData.description,
           category: formData.category,
           image: images.length > 0 ? images[0] : (formData.image_url || ''),
@@ -576,6 +578,18 @@ export const api = {
       },
       delete: async (id) => {
         return await request(`/equipment/${id}`, { method: 'DELETE' });
+      },
+      togglePublish: async (id) => {
+        const data = await request(`/equipment/${id}/publish`, { method: 'PATCH' });
+        const item = data.data;
+        const normalizedImages = normalizeEquipmentImages(item);
+        return {
+          ...item,
+          ...normalizedImages,
+          id: item._id || item.id,
+          total_quantity: item.quantity,
+          available_quantity: item.available,
+        };
       },
       uploadImage: async (file) => {
         const formData = new FormData();
@@ -797,6 +811,7 @@ export const api = {
           return_date: formData?.return_date || '',
           purpose: formData?.purpose || formData?.objective || '',
           objective: formData?.objective || formData?.purpose || '',
+          lecturer_name: formData?.lecturer_name || '',
         };
         let res;
         try {
@@ -920,6 +935,14 @@ export const api = {
           records:        Array.isArray(data.records)        ? data.records        : [],
         };
       },
+      equipmentChanges: async (filters = {}) => {
+        const params = new URLSearchParams(filters).toString();
+        const data = await request(`/reports/equipment-changes${params ? `?${params}` : ''}`);
+        return {
+          summary: data.summary || { totalAdded: 0, totalDeleted: 0, totalQuantityChanges: 0, totalPublished: 0, totalUnpublished: 0 },
+          records: Array.isArray(data.records) ? data.records : [],
+        };
+      },
     },
     AdminMaintenance: {
       status: async () => {
@@ -931,6 +954,19 @@ export const api = {
         const data = await request('/admin/toggle-maintenance', {
           method: 'POST',
           body: JSON.stringify(body),
+        });
+        return data.data;
+      },
+    },
+    AdminStorage: {
+      stats: async () => {
+        const data = await request('/admin/storage-stats');
+        return data.data;
+      },
+      purge: async ({ collections, olderThanDays }) => {
+        const data = await request('/admin/purge', {
+          method: 'POST',
+          body: JSON.stringify({ collections, olderThanDays }),
         });
         return data.data;
       },

@@ -17,10 +17,10 @@ import { useTheme } from '@/components/hooks/ThemeContext';
 
 // ─── Password requirement checks ─────────────────────────────────────────────
 const PWD_CHECKS = [
-  { label: 'At least 6 characters',  fn: (p) => p.length >= 6 },
-  { label: 'One uppercase letter',    fn: (p) => /[A-Z]/.test(p) },
-  { label: 'One lowercase letter',    fn: (p) => /[a-z]/.test(p) },
-  { label: 'One number',              fn: (p) => /[0-9]/.test(p) },
+  { labelKey: 'pwdCheck1', fn: (p) => p.length >= 6 },
+  { labelKey: 'pwdCheck2', fn: (p) => /[A-Z]/.test(p) },
+  { labelKey: 'pwdCheck3', fn: (p) => /[a-z]/.test(p) },
+  { labelKey: 'pwdCheck4', fn: (p) => /[0-9]/.test(p) },
 ];
 
 const profileStyles = `
@@ -135,7 +135,8 @@ export default function ProfilePage() {
     () => PWD_CHECKS.filter(({ fn }) => fn(pw.next)).length,
     [pw.next]
   );
-  const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][pwScore] || '';
+  const strengthLabels = ['', t('strengthWeak'), t('strengthFair'), t('strengthGood'), t('strengthStrong')];
+  const strengthLabel = strengthLabels[pwScore] || '';
   const strengthColor = ['', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-emerald-400'][pwScore] || 'bg-red-500';
 
   const verifyMutation = useMutation({
@@ -144,11 +145,11 @@ export default function ProfilePage() {
       setCurVerified(true);
       setVerifyMsg(null);
     },
-    onError: (err) => setVerifyMsg(err.message || 'Incorrect password. Please try again.'),
+    onError: (err) => setVerifyMsg(err.message || t('incorrectPasswordTryAgain')),
   });
 
   const handleVerify = () => {
-    if (!pw.cur) { setVerifyMsg('Please enter your current password.'); return; }
+    if (!pw.cur) { setVerifyMsg(t('pleaseEnterCurrentPassword')); return; }
     setVerifyMsg(null);
     verifyMutation.mutate(pw.cur);
   };
@@ -166,28 +167,34 @@ export default function ProfilePage() {
       setPw({ cur: '', next: '', confirm: '' });
       setCurVerified(false);
       setPwMsg(null);
-      toast.success('Password updated successfully.', {
-        description: 'Your new password is now active.',
+      toast.success(t('passwordChangedSuccess'), {
+        description: t('newPasswordIsNowActive'),
         duration: 3000,
       });
     },
     onError: (err) => {
-      toast.error(err.message || 'Failed to update password.');
+      toast.error(err.message || t('passwordUpdateError'));
     },
   });
 
   const handlePwSave = (e) => {
     e.preventDefault();
-    if (pw.next.length < 6)     { setPwMsg({ type: 'err', text: 'New password must be at least 6 characters.' }); return; }
-    if (pw.next === pw.cur)      { setPwMsg({ type: 'err', text: 'New password must differ from your current password.' }); return; }
-    if (pw.next !== pw.confirm)  { setPwMsg({ type: 'err', text: 'Passwords do not match.' }); return; }
+    if (pw.next.length < 6)     { setPwMsg({ type: 'err', text: t('newPwMinLength') }); return; }
+    if (pw.next === pw.cur)      { setPwMsg({ type: 'err', text: t('newPasswordMustDiffer') }); return; }
+    if (pw.next !== pw.confirm)  { setPwMsg({ type: 'err', text: t('passwordsDoNotMatch') }); return; }
     setPwMsg(null);
     pwMutation.mutate({ currentPassword: pw.cur, newPassword: pw.next });
   };
 
   const roleLabel = (role) => {
-    const map = { student: 'Student', admin: 'Administrator', lecturer: 'Lecturer', head_of_lab: 'Head of Lab', lab_assistant: 'Lab Assistant' };
-    return map[role] || role?.replace(/_/g, ' ') || 'User';
+    const map = {
+      student: t('student'),
+      admin: t('administrator'),
+      lecturer: t('lecturer'),
+      head_of_lab: t('head_of_lab'),
+      lab_assistant: t('lab_assistant'),
+    };
+    return map[role] || role?.replace(/_/g, ' ') || t('user');
   };
 
   const roleBadge = isDark ? {
@@ -217,8 +224,8 @@ export default function ProfilePage() {
             <UserCircle2 className={`h-6 w-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
           </div>
           <div>
-            <p className={`text-[11px] font-medium uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Account</p>
-            <h1 className={`text-xl font-bold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Profile Settings</h1>
+            <p className={`text-[11px] font-medium uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('account')}</p>
+            <h1 className={`text-xl font-bold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{t('profileSettings')}</h1>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -231,7 +238,7 @@ export default function ProfilePage() {
               {initials}
             </div>
             <div className="text-left">
-              <p className={`text-sm font-semibold leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{user?.name || 'User'}</p>
+              <p className={`text-sm font-semibold leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{user?.name || t('user')}</p>
               <p className={`mt-0.5 text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{user?.email || '—'}</p>
             </div>
           </div>
@@ -243,7 +250,7 @@ export default function ProfilePage() {
                 : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <ArrowLeft className="w-4 h-4" /> Back
+            <ArrowLeft className="w-4 h-4" /> {t('back')}
           </button>
         </div>
       </div>
@@ -270,8 +277,8 @@ export default function ProfilePage() {
                 <UserCircle2 className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
               </div>
               <div>
-                <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Account Details</p>
-                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Your identity information</p>
+                <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{t('accountDetails')}</p>
+                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('yourIdentityInfo')}</p>
               </div>
             </div>
             <CardContent className="p-5 space-y-4">
@@ -295,9 +302,9 @@ export default function ProfilePage() {
               <div className={`rounded-xl border px-4 py-3.5 ${
                 isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-slate-50 border-slate-200'
               }`}>
-                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>User ID</p>
+                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('userId')}</p>
                 <p className={`text-sm font-semibold font-mono tracking-wide truncate ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                  {user?.student_id || user?.id?.slice(-10)?.toUpperCase() || '—'}
+                  {user?.studentId || '—'}
                 </p>
               </div>
             </CardContent>
@@ -309,7 +316,7 @@ export default function ProfilePage() {
           }`}>
             <ShieldCheck className={`w-4 h-4 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
             <p className={`text-xs leading-relaxed ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-              Never share your credentials with anyone. Use a strong, unique password for this account.
+              {t('securityTip')}
             </p>
           </div>
         </div>
@@ -333,8 +340,8 @@ export default function ProfilePage() {
                 <Lock className={`w-5 h-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`} />
               </div>
               <div>
-                <p className={`text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Change Password</p>
-                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Keep your account secure with a strong password</p>
+                <p className={`text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{t('changePassword')}</p>
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('keepAccountSecure')}</p>
               </div>
             </div>
 
@@ -349,16 +356,16 @@ export default function ProfilePage() {
                         ? 'bg-emerald-500 text-white'
                         : isDark ? 'bg-white/[0.08] text-slate-400' : 'bg-slate-100 text-slate-500'
                     }`}>{curVerified ? '✓' : '1'}</span>
-                    Current Password
+                    {t('currentPassword')}
                     {curVerified && (
                       <span className={`ml-auto flex items-center gap-1 text-[10px] font-semibold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        <CheckCircle className="w-3 h-3" /> Verified
+                        <CheckCircle className="w-3 h-3" /> {t('verifiedLabel')}
                         <button
                           type="button"
                           onClick={handleResetVerify}
                           className={`ml-2 underline underline-offset-2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                          Change
+                          {t('change')}
                         </button>
                       </span>
                     )}
@@ -373,7 +380,7 @@ export default function ProfilePage() {
                             visible={vis.cur}
                             onChange={(e) => { setPw((p) => ({ ...p, cur: e.target.value })); setVerifyMsg(null); }}
                             onToggle={() => setVis((v) => ({ ...v, cur: !v.cur }))}
-                            placeholder="Enter your current password"
+                            placeholder={t('enterCurrentPassword')}
                             autoComplete="current-password"
                             isDark={isDark}
                           />
@@ -388,7 +395,7 @@ export default function ProfilePage() {
                         >
                           {verifyMutation.isPending
                             ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <><ShieldOk className="w-4 h-4" /> Verify</>
+                            : <><ShieldOk className="w-4 h-4" /> {t('verify')}</>
                           }
                         </Button>
                       </div>
@@ -404,7 +411,7 @@ export default function ProfilePage() {
                       isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
                     }`}>
                       <CheckCircle className="w-4 h-4 shrink-0" />
-                      Current password confirmed
+                      {t('currentPasswordConfirmed')}
                     </div>
                   )}
                 </div>
@@ -413,7 +420,7 @@ export default function ProfilePage() {
                 {curVerified && (
                   <div className="flex items-center gap-3">
                     <div className={`flex-1 border-t border-dashed ${isDark ? 'border-white/[0.08]' : 'border-slate-200'}`} />
-                    <span className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>New credentials</span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{t('newCredentials')}</span>
                     <div className={`flex-1 border-t border-dashed ${isDark ? 'border-white/[0.08]' : 'border-slate-200'}`} />
                   </div>
                 )}
@@ -425,7 +432,7 @@ export default function ProfilePage() {
                       <span className={`inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-bold ${
                         isDark ? 'bg-white/[0.08] text-slate-400' : 'bg-slate-100 text-slate-500'
                       }`}>2</span>
-                      New Password
+                      {t('newPassword')}
                     </Label>
                     <PasswordField
                       id="new-pw"
@@ -433,13 +440,13 @@ export default function ProfilePage() {
                       visible={vis.next}
                       onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))}
                       onToggle={() => setVis((v) => ({ ...v, next: !v.next }))}
-                      placeholder="Create a strong password"
+                      placeholder={t('createStrongPassword')}
                       isDark={isDark}
                     />
                     {pw.next.length > 0 && pw.next === pw.cur && (
                       <p className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        New password must differ from your current password.
+                        {t('newPasswordMustDiffer')}
                       </p>
                     )}
                   </div>
@@ -452,7 +459,7 @@ export default function ProfilePage() {
                       <span className={`inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-bold ${
                         isDark ? 'bg-white/[0.08] text-slate-400' : 'bg-slate-100 text-slate-500'
                       }`}>3</span>
-                      Confirm New Password
+                      {t('confirmNewPassword')}
                     </Label>
                     <PasswordField
                       id="confirm-pw"
@@ -460,7 +467,7 @@ export default function ProfilePage() {
                       visible={vis.confirm}
                       onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))}
                       onToggle={() => setVis((v) => ({ ...v, confirm: !v.confirm }))}
-                      placeholder="Re-enter your new password"
+                      placeholder={t('reEnterNewPassword')}
                       disabled={pw.next.length === 0 || pw.next === pw.cur}
                       isDark={isDark}
                     />
@@ -470,7 +477,7 @@ export default function ProfilePage() {
                           ? isDark ? 'text-emerald-400' : 'text-emerald-600'
                           : isDark ? 'text-red-400' : 'text-red-500'
                       }`}>
-                        {pw.next === pw.confirm ? '✓ Passwords match' : '✕ Passwords do not match'}
+                        {pw.next === pw.confirm ? t('passwordsMatch') : `✕ ${t('passwordsDoNotMatch')}`}
                       </p>
                     )}
                   </div>
@@ -485,8 +492,8 @@ export default function ProfilePage() {
                     }`}
                   >
                     {pwMutation.isPending
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating…</>
-                      : <><Lock className="w-4 h-4" /> Update Password</>
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('updating')}</>
+                      : <><Lock className="w-4 h-4" /> {t('updatePassword')}</>
                     }
                   </Button>
                 )}
@@ -511,17 +518,17 @@ export default function ProfilePage() {
                   <CheckCircle className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                 </div>
                 <div>
-                  <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Requirements</p>
-                  <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Must meet all 4</p>
+                  <p className={`text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{t('requirements')}</p>
+                  <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{t('mustMeetAll4')}</p>
                 </div>
               </div>
               <CardContent className="p-4">
                 <div className="space-y-2">
-                  {PWD_CHECKS.map(({ label, fn }) => {
+                  {PWD_CHECKS.map(({ labelKey, fn }) => {
                     const ok = fn(pw.next);
                     return (
                       <div
-                        key={label}
+                        key={labelKey}
                         className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 transition-all duration-200 ${
                           ok
                             ? isDark ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
@@ -536,7 +543,7 @@ export default function ProfilePage() {
                         <span className={`text-xs font-medium leading-tight ${
                           ok ? isDark ? 'text-emerald-400' : 'text-emerald-700' : isDark ? 'text-slate-400' : 'text-slate-500'
                         }`}>
-                          {label}
+                          {t(labelKey)}
                         </span>
                       </div>
                     );
@@ -549,7 +556,7 @@ export default function ProfilePage() {
             <div className={`rounded-xl border px-4 py-4 ${
               isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-slate-50 border-slate-200'
             }`}>
-              <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Strength Progress</p>
+              <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('strengthProgress')}</p>
               <div className="flex gap-1 mb-1.5">
                 {[0, 1, 2, 3].map((i) => (
                   <div key={i} className={`h-2 flex-1 rounded-full transition-all duration-300 ${
@@ -563,7 +570,7 @@ export default function ProfilePage() {
                 pwScore === 2 ? 'text-orange-500' :
                 pwScore === 3 ? 'text-yellow-500' : 'text-emerald-500'
               }`}>
-                {pwScore === 0 ? 'Enter a password' : `${pwScore}/4 — ${strengthLabel}`}
+                {pwScore === 0 ? t('enterAPassword') : `${pwScore}/4 — ${strengthLabel}`}
               </p>
             </div>
           </div>
@@ -573,9 +580,8 @@ export default function ProfilePage() {
 
       {/* Footer */}
       <p className="pf-fade-up pf-fade-up-5 text-center text-xs text-slate-400 pb-2">
-        Equimon Laboratory Management System · v1.0.0
+        {t('appName')} {t('versionTagline')} · v1.0.0
       </p>
     </div>
   );
 }
-

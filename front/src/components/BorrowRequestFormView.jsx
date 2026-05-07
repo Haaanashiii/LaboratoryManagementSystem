@@ -23,6 +23,7 @@ import {
   ClipboardList, Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLang } from '@/components/i18n/LangContext';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ function Section({ title, children, isDark }) {
 // ─── Reject dialog ────────────────────────────────────────────────────────────
 
 function RejectDialog({ open, onClose, onConfirm, isRejecting, isDark }) {
+  const { t } = useLang();
   const [reason, setReason] = useState('');
   if (!open) return null;
   return (
@@ -116,13 +118,13 @@ function RejectDialog({ open, onClose, onConfirm, isRejecting, isDark }) {
         className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
         style={{ background: isDark ? '#111118' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.09)' : '#e2e8f0' }}
       >
-        <p className="text-sm font-bold mb-1" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>Reject Request</p>
+        <p className="text-sm font-bold mb-1" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>{t('rejectRequest')}</p>
         <p className="text-xs mb-4" style={{ color: isDark ? '#64748b' : '#64748b' }}>
-          Optionally provide a reason so the student understands why this request was rejected.
+          {t('optionalRejectReason')}
         </p>
         <textarea
           rows={3}
-          placeholder="Reason for rejection…"
+          placeholder={t('reasonForRejection')}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           className="w-full rounded-lg border px-3 py-2 text-xs resize-none outline-none focus:ring-1 focus:ring-red-400"
@@ -138,7 +140,7 @@ function RejectDialog({ open, onClose, onConfirm, isRejecting, isDark }) {
             className="flex-1 h-9 rounded-lg text-xs font-semibold cursor-pointer"
             style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9', color: isDark ? '#94a3b8' : '#475569', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0' }}
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             onClick={() => onConfirm(reason)}
@@ -146,7 +148,7 @@ function RejectDialog({ open, onClose, onConfirm, isRejecting, isDark }) {
             className="flex-1 h-9 rounded-lg text-xs font-semibold text-white cursor-pointer disabled:opacity-40"
             style={{ background: '#EF4444' }}
           >
-            {isRejecting ? 'Rejecting…' : 'Confirm Reject'}
+            {isRejecting ? t('rejecting') : t('confirmReject')}
           </button>
         </div>
       </div>
@@ -167,6 +169,7 @@ export default function BorrowRequestFormView({
   onDownloadPdf,
   showDownload = false,
 }) {
+  const { t } = useLang();
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   if (!request) return null;
 
@@ -185,7 +188,7 @@ export default function BorrowRequestFormView({
       >
         <div>
           <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: '#3B82F6' }}>
-            Equipment Borrow Request
+            {t('equipmentBorrowRequest')}
           </p>
           <p className="text-base font-bold leading-snug" style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
             {request.equipment_name || '—'}
@@ -208,43 +211,43 @@ export default function BorrowRequestFormView({
       </div>
 
       {/* ── STUDENT INFORMATION ─────────────────────────────────────────── */}
-      <Section title="Student Information" isDark={isDark}>
-        <FieldRow icon={User}         label="Full Name"   value={request.borrower_name}   isDark={isDark} accent="#3B82F6" />
-        <FieldRow icon={Hash}         label="Student ID"  value={request.student_id}       isDark={isDark} accent="#8B5CF6" />
-        <FieldRow icon={Building2}    label="Email"       value={request.student_email}    isDark={isDark} accent="#6366F1" />
+      <Section title={t('studentInformation')} isDark={isDark}>
+        <FieldRow icon={User}         label={t('fullName')}   value={request.borrower_name}   isDark={isDark} accent="#3B82F6" />
+        <FieldRow icon={Hash}         label={t('studentId')}  value={request.student_id}       isDark={isDark} accent="#8B5CF6" />
+        <FieldRow icon={Building2}    label={t('email')}       value={request.student_email}    isDark={isDark} accent="#6366F1" />
       </Section>
 
       {/* ── EQUIPMENT INFORMATION ───────────────────────────────────────── */}
-      <Section title="Equipment Information" isDark={isDark}>
-        <FieldRow icon={Package}      label="Equipment Name"  value={request.equipment_name}  isDark={isDark} accent="#22C55E" />
-        <FieldRow icon={Tag}          label="Serial Number"   value={request.serial_number}   isDark={isDark} accent="#14B8A6" />
-        <FieldRow icon={ClipboardList} label="Number of Units" value={request.quantity != null ? String(request.quantity) : null} isDark={isDark} accent="#F59E0B" />
+      <Section title={t('equipmentInformation')} isDark={isDark}>
+        <FieldRow icon={Package}      label={t('equipmentName')}  value={request.equipment_name}  isDark={isDark} accent="#22C55E" />
+        <FieldRow icon={Tag}          label={t('serialNumber')}   value={request.serial_number}   isDark={isDark} accent="#14B8A6" />
+        <FieldRow icon={ClipboardList} label={t('numberOfUnits')} value={request.quantity != null ? String(request.quantity) : null} isDark={isDark} accent="#F59E0B" />
       </Section>
 
       {/* ── BORROW DETAILS ──────────────────────────────────────────────── */}
-      <Section title="Borrow Details" isDark={isDark}>
-        <FieldRow icon={Calendar}  label="Borrow Date"         value={fmt(request.borrow_date)}  isDark={isDark} accent="#3B82F6" />
-        <FieldRow icon={Calendar}  label="Planned Return Date" value={fmt(request.return_date)}  isDark={isDark} accent="#8B5CF6" />
-        <FieldRow icon={FileText}  label="Objective / Purpose" value={request.objective || request.purpose} isDark={isDark} accent="#F59E0B" />
+      <Section title={t('borrowDetails')} isDark={isDark}>
+        <FieldRow icon={Calendar}  label={t('borrowDate')}         value={fmt(request.borrow_date)}  isDark={isDark} accent="#3B82F6" />
+        <FieldRow icon={Calendar}  label={t('plannedReturnDate')}  value={fmt(request.return_date)}  isDark={isDark} accent="#8B5CF6" />
+        <FieldRow icon={FileText}  label={t('objectivePurpose')}   value={request.objective || request.purpose} isDark={isDark} accent="#F59E0B" />
       </Section>
 
       {/* ── APPROVAL INFORMATION (if approved/rejected) ─────────────────── */}
       {(request.approved_at || request.rejected_at || request.rejection_reason) && (
         <Section
-          title={status === 'rejected' ? 'Rejection Details' : 'Approval Details'}
+          title={status === 'rejected' ? t('rejectionDetails') : t('approvalDetails')}
           isDark={isDark}
         >
           {status === 'approved' && (
             <>
-              <FieldRow icon={User}     label="Approved By" value={request.approved_by?.name || '—'}  isDark={isDark} accent="#22C55E" />
-              <FieldRow icon={Calendar} label="Approved At" value={fmt(request.approved_at)}           isDark={isDark} accent="#22C55E" />
+              <FieldRow icon={User}     label={t('approvedBy')} value={request.approved_by?.name || '—'}  isDark={isDark} accent="#22C55E" />
+              <FieldRow icon={Calendar} label={t('approvedAt')} value={fmt(request.approved_at)}           isDark={isDark} accent="#22C55E" />
             </>
           )}
           {status === 'rejected' && (
             <>
-              <FieldRow icon={User}     label="Rejected By" value={request.rejected_by?.name || '—'}  isDark={isDark} accent="#EF4444" />
-              <FieldRow icon={Calendar} label="Rejected At" value={fmt(request.rejected_at)}           isDark={isDark} accent="#EF4444" />
-              <FieldRow icon={FileText} label="Reason"      value={request.rejection_reason}           isDark={isDark} accent="#EF4444" />
+              <FieldRow icon={User}     label={t('rejectedBy')} value={request.rejected_by?.name || '—'}  isDark={isDark} accent="#EF4444" />
+              <FieldRow icon={Calendar} label={t('rejectedAt')} value={fmt(request.rejected_at)}           isDark={isDark} accent="#EF4444" />
+              <FieldRow icon={FileText} label={t('reason')}     value={request.rejection_reason}           isDark={isDark} accent="#EF4444" />
             </>
           )}
         </Section>
@@ -258,7 +261,7 @@ export default function BorrowRequestFormView({
           style={{ background: '#3B82F6', boxShadow: '0 4px 16px rgba(59,130,246,0.3)' }}
         >
           <Download className="w-4 h-4" />
-          Download PDF
+          {t('downloadPDF')}
         </button>
       )}
 
@@ -276,7 +279,7 @@ export default function BorrowRequestFormView({
             }}
           >
             <XCircle className="w-4 h-4" />
-            Reject
+            {t('reject')}
           </button>
           <button
             onClick={onApprove}
@@ -285,7 +288,7 @@ export default function BorrowRequestFormView({
             style={{ background: '#22C55E', boxShadow: '0 4px 20px rgba(34,197,94,0.3)' }}
           >
             <CheckCircle2 className="w-4 h-4" />
-            {isApproving ? 'Approving…' : 'Approve'}
+            {isApproving ? t('approving') : t('approve')}
           </button>
         </div>
       )}

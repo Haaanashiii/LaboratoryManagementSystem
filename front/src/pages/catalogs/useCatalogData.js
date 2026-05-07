@@ -21,7 +21,8 @@ export const useCatalogData = ({ includeInactive = false } = {}) => {
         || name.includes(normalizedSearch)
         || description.includes(normalizedSearch);
       const isActive = includeInactive ? true : item.is_active !== false;
-      return matchesSearch && isActive;
+      const isPublished = item.isPublished !== false;
+      return matchesSearch && isActive && isPublished;
     })
   ), [equipment, includeInactive, normalizedSearch]);
 

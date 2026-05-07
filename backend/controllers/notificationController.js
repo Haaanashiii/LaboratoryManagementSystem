@@ -12,6 +12,10 @@ const buildCandidatesForRole = (requests, role) => {
       const eventDate = toEventDate(request);
       let message = null;
 
+      let message_key = null;
+      let message_params = null;
+      const borrowerName = request.borrower_name || 'A student';
+
       if (role === 'student') {
         const studentMessages = {
           pending_lecturer: `Request submitted for ${equipmentName}`,
@@ -22,17 +26,38 @@ const buildCandidatesForRole = (requests, role) => {
           returned: `${equipmentName} has been marked as returned`,
           rejected: `Request for ${equipmentName} was rejected`
         };
+        const studentKeys = {
+          pending_lecturer: 'notifReqSubmitted',
+          pending_head: 'notifPendingHead',
+          head_approved: 'notifHeadApproved',
+          ready_pickup: 'notifReadyPickup',
+          borrowed: 'notifMarkedBorrowed',
+          returned: 'notifMarkedReturned',
+          rejected: 'notifRejected'
+        };
         message = studentMessages[request.status] || null;
+        message_key = studentKeys[request.status] || null;
+        message_params = message_key ? { equipmentName } : null;
       } else if (role === 'lecturer' && request.status === 'pending_lecturer') {
-        message = `${request.borrower_name || 'A student'} requested ${equipmentName}`;
+        message = `${borrowerName} requested ${equipmentName}`;
+        message_key = 'notifStudentRequested';
+        message_params = { borrowerName, equipmentName };
       } else if (role === 'head_of_lab' && request.status === 'pending_head') {
-        message = `${request.borrower_name || 'A student'} request is waiting final approval`;
+        message = `${borrowerName} request is waiting final approval`;
+        message_key = 'notifWaitingFinalApproval';
+        message_params = { borrowerName };
       } else if (role === 'lab_assistant' && request.status === 'head_approved') {
         message = `${equipmentName} is approved and needs preparation`;
+        message_key = 'notifNeedsPrep';
+        message_params = { equipmentName };
       } else if (role === 'lab_assistant' && request.status === 'ready_pickup') {
         message = `${equipmentName} is ready and waiting pickup confirmation`;
+        message_key = 'notifWaitingPickupConfirm';
+        message_params = { equipmentName };
       } else if (role === 'admin' && ['borrowed', 'returned', 'rejected'].includes(request.status)) {
         message = `${equipmentName} status changed to ${request.status.replace('_', ' ')}`;
+        message_key = 'notifStatusChanged';
+        message_params = { equipmentName, status: request.status.replace('_', ' ') };
       }
 
       if (!message) {
@@ -48,6 +73,8 @@ const buildCandidatesForRole = (requests, role) => {
         event_key: eventKey,
         event_type: request.status,
         message,
+        message_key,
+        message_params,
         event_time: eventDate
       };
     })
@@ -93,19 +120,23 @@ exports.getNotifications = async (req, res, next) => {
 
     if (candidates.length > 0) {
       await Notification.bulkWrite(
-        candidates.map((candidate) => ({
-          updateOne: {
-            filter: {
-              user: candidate.user,
-              recipient_role: candidate.recipient_role,
-              event_key: candidate.event_key
-            },
-            update: {
-              $setOnInsert: candidate
-            },
-            upsert: true
-          }
-        })),
+        candidates.map((candidate) => {
+          const { message_key, message_params, ...coreCandidate } = candidate;
+          return {
+            updateOne: {
+              filter: {
+                user: candidate.user,
+                recipient_role: candidate.recipient_role,
+                event_key: candidate.event_key
+              },
+              update: {
+                $setOnInsert: coreCandidate,
+                $set: { message_key, message_params }
+              },
+              upsert: true
+            }
+          };
+        }),
         { ordered: false }
       );
     }

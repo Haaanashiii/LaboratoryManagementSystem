@@ -93,9 +93,18 @@ const emitNotificationRefreshToUser = (userId, payload = {}) => {
   ioInstance.to(`user:${String(userId)}`).emit('notification:refresh', payload);
 };
 
+const emitEquipmentUpdate = (payload = {}) => {
+  if (!ioInstance) {
+    return;
+  }
+
+  ioInstance.emit('equipment:update', payload);
+};
+
 module.exports = {
   initSocket,
   emitNotificationToUser,
   emitNotificationRefreshToRole,
-  emitNotificationRefreshToUser
+  emitNotificationRefreshToUser,
+  emitEquipmentUpdate
 };

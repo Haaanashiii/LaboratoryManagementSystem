@@ -1,7 +1,9 @@
 const Equipment = require('../models/Equipment');
+const EquipmentHistory = require('../models/EquipmentHistory');
 const path = require('path');
 const fs = require('fs');
 const { uploadToGridFS, downloadFromGridFS, deleteFromGridFS, getFileMetadata } = require('../config/gridfs');
+const { emitEquipmentUpdate } = require('../socket');
 
 const IMAGE_ROUTE_PATTERN = /\/api\/equipment\/image\/[a-f0-9]{24}$/i;
 
@@ -140,6 +142,9 @@ exports.getEquipment = async (req, res, next) => {
     
     // Build query
     const query = {};
+    if (req.user?.role === 'student') {
+      query.isPublished = { $ne: false };
+    }
     if (category && category !== 'all') query.category = category;
     if (status) query.status = status;
     if (available === 'true') query.available = { $gt: 0 };
@@ -195,8 +200,21 @@ exports.createEquipment = async (req, res, next) => {
     console.log('Creating equipment with data:', payload);
     
     const equipment = await Equipment.create(payload);
-    
+
     console.log('Equipment created successfully:', equipment._id);
+
+    await EquipmentHistory.create({
+      action: 'added',
+      performedBy: req.user?._id || null,
+      performedByName: req.user?.name || 'Unknown',
+      equipmentId: equipment._id,
+      equipmentName: equipment.name,
+      category: equipment.category || '',
+      previousQuantity: null,
+      newQuantity: equipment.quantity,
+    });
+
+    emitEquipmentUpdate({ action: 'added', equipmentId: String(equipment._id) });
 
     res.status(201).json({
       success: true,
@@ -228,6 +246,10 @@ exports.updateEquipment = async (req, res, next) => {
       currentAvailable: existingEquipment.available
     });
 
+    const quantityChanged =
+      payload.quantity !== undefined &&
+      payload.quantity !== existingEquipment.quantity;
+
     const equipment = await Equipment.findByIdAndUpdate(
       req.params.id,
       payload,
@@ -236,6 +258,22 @@ exports.updateEquipment = async (req, res, next) => {
         runValidators: true
       }
     );
+
+    if (quantityChanged) {
+      await EquipmentHistory.create({
+        action: 'quantity_changed',
+        performedBy: req.user?._id || null,
+        performedByName: req.user?.name || 'Unknown',
+        equipmentId: equipment._id,
+        equipmentName: equipment.name,
+        category: equipment.category || '',
+        previousQuantity: existingEquipment.quantity,
+        newQuantity: equipment.quantity,
+      });
+    }
+
+    emitEquipmentUpdate({ action: 'updated', equipmentId: String(equipment._id) });
+
     res.json({
       success: true,
       data: equipment
@@ -259,7 +297,20 @@ exports.deleteEquipment = async (req, res, next) => {
       });
     }
 
+    await EquipmentHistory.create({
+      action: 'deleted',
+      performedBy: req.user?._id || null,
+      performedByName: req.user?.name || 'Unknown',
+      equipmentId: equipment._id,
+      equipmentName: equipment.name,
+      category: equipment.category || '',
+      previousQuantity: equipment.quantity,
+      newQuantity: null,
+    });
+
     await equipment.deleteOne();
+
+    emitEquipmentUpdate({ action: 'deleted', equipmentId: String(equipment._id) });
 
     res.json({
       success: true,
@@ -300,6 +351,8 @@ exports.updateQuantity = async (req, res, next) => {
       });
     }
 
+    const previousQuantity = equipment.quantity;
+
     const normalizedPayload = applyQuantityRules(
       {
         quantity: req.body.quantity,
@@ -316,6 +369,21 @@ exports.updateQuantity = async (req, res, next) => {
     if (normalizedPayload.available !== undefined) equipment.available = normalizedPayload.available;
 
     await equipment.save();
+
+    if (normalizedPayload.quantity !== undefined && normalizedPayload.quantity !== previousQuantity) {
+      await EquipmentHistory.create({
+        action: 'quantity_changed',
+        performedBy: req.user?._id || null,
+        performedByName: req.user?.name || 'Unknown',
+        equipmentId: equipment._id,
+        equipmentName: equipment.name,
+        category: equipment.category || '',
+        previousQuantity,
+        newQuantity: equipment.quantity,
+      });
+    }
+
+    emitEquipmentUpdate({ action: 'updated', equipmentId: String(equipment._id) });
 
     res.json({
       success: true,
@@ -350,6 +418,50 @@ exports.markOutOfStock = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+// @desc    Toggle equipment published/unpublished state
+// @route   PATCH /api/equipment/:id/publish
+// @access  Private (Admin, Head of Lab)
+exports.togglePublish = async (req, res, next) => {
+  try {
+    const existing = await Equipment.findById(req.params.id).select('isPublished name category');
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: 'Equipment not found'
+      });
+    }
+
+    const newPublished = existing.isPublished !== false;
+
+    const equipment = await Equipment.findByIdAndUpdate(
+      req.params.id,
+      { isPublished: !newPublished },
+      { new: true }
+    );
+
+    await EquipmentHistory.create({
+      action: !newPublished ? 'published' : 'unpublished',
+      performedBy: req.user?._id || null,
+      performedByName: req.user?.name || 'Unknown',
+      equipmentId: equipment._id,
+      equipmentName: equipment.name,
+      category: equipment.category || '',
+      previousQuantity: null,
+      newQuantity: null,
+    });
+
+    emitEquipmentUpdate({ action: !newPublished ? 'published' : 'unpublished', equipmentId: String(equipment._id) });
+
+    return res.json({
+      success: true,
+      data: equipment
+    });
+  } catch (error) {
+    return next(error);
   }
 };
 

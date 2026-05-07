@@ -1,4 +1,5 @@
 const BorrowRequest = require('../models/BorrowRequest');
+const EquipmentHistory = require('../models/EquipmentHistory');
 
 const normalizeCondition = (value) => {
   const condition = String(value || '').trim().toLowerCase();
@@ -8,6 +9,24 @@ const normalizeCondition = (value) => {
 
   // Treat all non-damaged/non-lost return states as good for report summary.
   return 'Good';
+};
+
+const parseDateRange = (query, defaults) => {
+  const startDate = query.startDate ? new Date(query.startDate) : defaults.startDate;
+  const endDate   = query.endDate   ? new Date(query.endDate)   : defaults.endDate;
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+  return { startDate, endDate };
+};
+
+const getDateRangeError = (startDate, endDate) => {
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return 'Invalid date format. Use ISO date values for startDate and endDate.';
+  }
+  if (startDate > endDate) {
+    return 'startDate cannot be after endDate.';
+  }
+  return null;
 };
 
 const buildDefaultDateRange = (type) => {
@@ -37,25 +56,9 @@ exports.getBorrowingReport = async (req, res, next) => {
     const type = req.query.type === 'weekly' ? 'weekly' : 'monthly';
     const defaults = buildDefaultDateRange(type);
 
-    const startDate = req.query.startDate ? new Date(req.query.startDate) : defaults.startDate;
-    const endDate = req.query.endDate ? new Date(req.query.endDate) : defaults.endDate;
-
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid date format. Use ISO date values for startDate and endDate.'
-      });
-    }
-
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
-
-    if (startDate > endDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'startDate cannot be after endDate.'
-      });
-    }
+    const { startDate, endDate } = parseDateRange(req.query, defaults);
+    const dateError = getDateRangeError(startDate, endDate);
+    if (dateError) return res.status(400).json({ success: false, message: dateError });
 
     const borrowRecords = await BorrowRequest.find({
       status: 'returned',
@@ -108,25 +111,9 @@ exports.getLecturerReleasesReport = async (req, res, next) => {
     const type = req.query.type === 'weekly' ? 'weekly' : 'monthly';
     const defaults = buildDefaultDateRange(type);
 
-    const startDate = req.query.startDate ? new Date(req.query.startDate) : defaults.startDate;
-    const endDate   = req.query.endDate   ? new Date(req.query.endDate)   : defaults.endDate;
-
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid date format. Use ISO date values for startDate and endDate.'
-      });
-    }
-
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
-
-    if (startDate > endDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'startDate cannot be after endDate.'
-      });
-    }
+    const { startDate, endDate } = parseDateRange(req.query, defaults);
+    const dateError = getDateRangeError(startDate, endDate);
+    if (dateError) return res.status(400).json({ success: false, message: dateError });
 
     // Build base query – only requests that have been lecturer-approved (released)
     const baseQuery = {
@@ -237,6 +224,44 @@ exports.getLecturerReleasesReport = async (req, res, next) => {
       weeklySummary,
       records,
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// @desc    Get equipment inventory changes (added, deleted, quantity changed)
+// @route   GET /api/reports/equipment-changes
+// @access  Private (Admin)
+exports.getEquipmentChangesReport = async (req, res, next) => {
+  try {
+    const type = req.query.type === 'weekly' ? 'weekly' : 'monthly';
+    const defaults = buildDefaultDateRange(type);
+    const { startDate, endDate } = parseDateRange(req.query, defaults);
+    const dateError = getDateRangeError(startDate, endDate);
+    if (dateError) return res.status(400).json({ success: false, message: dateError });
+
+    const query = { createdAt: { $gte: startDate, $lte: endDate } };
+    if (req.query.action && ['added', 'deleted', 'quantity_changed', 'published', 'unpublished'].includes(req.query.action)) {
+      query.action = req.query.action;
+    }
+
+    const records = await EquipmentHistory.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const summary = records.reduce(
+      (acc, r) => {
+        if (r.action === 'added') acc.totalAdded += 1;
+        else if (r.action === 'deleted') acc.totalDeleted += 1;
+        else if (r.action === 'quantity_changed') acc.totalQuantityChanges += 1;
+        else if (r.action === 'published') acc.totalPublished += 1;
+        else if (r.action === 'unpublished') acc.totalUnpublished += 1;
+        return acc;
+      },
+      { totalAdded: 0, totalDeleted: 0, totalQuantityChanges: 0, totalPublished: 0, totalUnpublished: 0 }
+    );
+
+    return res.json({ success: true, summary, records });
   } catch (error) {
     return next(error);
   }

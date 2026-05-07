@@ -9,13 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Package, CheckCircle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList, User, Hash, FileText } from 'lucide-react';
 import { EquipmentPreparationSkeleton } from '@/skeleton-framework/admin';
 import { format } from 'date-fns';
+import { useLang } from '@/components/i18n/LangContext';
 
 const PAGE_SIZE = 10;
 
 const SECTION_CONFIG = [
-  { key: 'all',     label: 'All',           color: 'bg-slate-100 text-slate-700 border-slate-300',        dot: '#475569', icon: ClipboardList },
-  { key: 'prepare', label: 'Needs Preparation',    color: 'bg-amber-50 text-amber-700 border-amber-200',         dot: '#d97706', icon: Package },
-  { key: 'release', label: 'Ready Pickup',  color: 'bg-indigo-50 text-indigo-700 border-indigo-200',      dot: '#6366f1', icon: CheckCircle },
+  { key: 'all',     labelKey: 'all',             color: 'bg-slate-100 text-slate-700 border-slate-300',   dot: '#475569', icon: ClipboardList },
+  { key: 'prepare', labelKey: 'needsPreparation', color: 'bg-amber-50 text-amber-700 border-amber-200',   dot: '#d97706', icon: Package },
+  { key: 'release', labelKey: 'readyPickup',      color: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: '#6366f1', icon: CheckCircle },
 ];
 
 const STATUS_COLOR = {
@@ -23,12 +24,13 @@ const STATUS_COLOR = {
   ready_pickup:  'bg-indigo-50 text-indigo-700 border-indigo-200',
 };
 
-const STATUS_LABEL = {
-  head_approved: 'Needs Preparation',
-  ready_pickup:  'Ready for Pickup',
+const STATUS_LABEL_KEY = {
+  head_approved: 'needsPreparation',
+  ready_pickup:  'readyPickup',
 };
 
 export default function EquipmentPrep() {
+  const { t } = useLang();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [dialogAction, setDialogAction] = useState(null);
   const [search, setSearch] = useState('');
@@ -151,7 +153,7 @@ export default function EquipmentPrep() {
             <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
               {format(new Date(), 'EEEE, MMMM d, yyyy')}
             </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Equipment Preparation</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('equipmentPreparation')}</h1>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -179,7 +181,7 @@ export default function EquipmentPrep() {
                 <CfgIcon className="h-4 w-4" style={isActive ? { color: cfg.dot } : { color: '#64748b' }} />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{cfg.label}</p>
+                <p className="truncate text-xs text-slate-500">{t(cfg.labelKey)}</p>
                 <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
               </div>
             </button>
@@ -195,7 +197,7 @@ export default function EquipmentPrep() {
             {activeSection !== 'all' && (
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeConfig.dot }} />
             )}
-            <p className="text-sm font-medium text-slate-800">{activeConfig.label}</p>
+            <p className="text-sm font-medium text-slate-800">{t(activeConfig.labelKey)}</p>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
               {filtered.length}
             </span>
@@ -204,14 +206,14 @@ export default function EquipmentPrep() {
                 onClick={() => handleSectionChange('all')}
                 className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
               >
-                clear
+                {t('clear')}
               </button>
             )}
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search equipment or borrower…"
+              placeholder={t('searchEquipmentOrBorrower')}
               value={search}
               onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
               className="h-8 pl-8 text-xs"
@@ -227,7 +229,7 @@ export default function EquipmentPrep() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <Package className="h-5 w-5 text-red-400" />
               </div>
-              <p className="text-sm font-medium text-slate-800">Unable to load equipment requests</p>
+              <p className="text-sm font-medium text-slate-800">{t('unableLoadEquipmentRequests')}</p>
               <p className="max-w-xs text-center text-xs text-slate-500">
                 {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
               </p>
@@ -237,13 +239,13 @@ export default function EquipmentPrep() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrower</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Qty</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Preview</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-slate-500">Action</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('qty')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('borrowDate')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('preview')}</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-slate-500">{t('action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -254,15 +256,15 @@ export default function EquipmentPrep() {
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
                             <Package className="h-4 w-4 text-slate-400" />
                           </div>
-                          <p className="text-sm text-slate-500">No equipment to prepare</p>
-                          <p className="text-xs text-slate-400">All equipment has been prepared and distributed</p>
+                          <p className="text-sm text-slate-500">{t('noEquipmentToPrepare')}</p>
+                          <p className="text-xs text-slate-400">{t('allEquipmentPreparedAndDistributed')}</p>
                         </div>
                       </td>
                     </TableRow>
                   ) : (
                     paginated.map((request) => {
                       const statusColor = STATUS_COLOR[request.status] ?? 'bg-slate-100 text-slate-500 border-slate-200';
-                      const statusLabel = STATUS_LABEL[request.status] ?? request.status;
+                      const statusLabel = t(STATUS_LABEL_KEY[request.status] ?? request.status);
                       return (
                         <TableRow key={request.id} className="border-slate-50 hover:bg-slate-50/50">
                           <TableCell>
@@ -304,7 +306,7 @@ export default function EquipmentPrep() {
                                 disabled={isPending}
                               >
                                 <CheckCircle className="h-3.5 w-3.5" />
-                                Mark Ready
+                                {t('markReady')}
                               </Button>
                             ) : (
                               <Button
@@ -315,7 +317,7 @@ export default function EquipmentPrep() {
                                 disabled={isPending}
                               >
                                 <CheckCircle className="h-3.5 w-3.5" />
-                                Confirm Pickup
+                                {t('confirmPickup')}
                               </Button>
                             )}
                           </TableCell>
@@ -329,7 +331,7 @@ export default function EquipmentPrep() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
                   <p className="text-xs text-slate-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                    {t('showing')} {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} {t('ofLabel')} {filtered.length}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button
@@ -377,7 +379,7 @@ export default function EquipmentPrep() {
               <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${dialogAction === 'prepare' ? 'bg-amber-50' : 'bg-indigo-50'}`}>
                 <CheckCircle className={`h-4 w-4 ${dialogAction === 'prepare' ? 'text-amber-600' : 'text-indigo-600'}`} />
               </div>
-              {dialogAction === 'prepare' ? 'Mark Equipment Ready' : 'Confirm Pickup'}
+              {dialogAction === 'prepare' ? t('markEquipmentReady') : t('confirmPickup')}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
@@ -385,34 +387,32 @@ export default function EquipmentPrep() {
               <div className="flex items-center gap-3">
                 <Package className="h-4 w-4 shrink-0 text-slate-400" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Equipment</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('equipment')}</p>
                   <p className="text-sm font-semibold text-slate-800">{selectedRequest?.equipment_name}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <User className="h-4 w-4 shrink-0 text-slate-400" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Borrower</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('borrower')}</p>
                   <p className="text-sm font-semibold text-slate-800">{selectedRequest?.borrower_name}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Hash className="h-4 w-4 shrink-0 text-slate-400" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Quantity</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t('quantity')}</p>
                   <p className="text-sm font-semibold text-slate-800">{selectedRequest?.quantity}</p>
                 </div>
               </div>
             </div>
             <p className="text-sm text-slate-500 leading-relaxed">
-              {dialogAction === 'prepare'
-                ? 'This will reserve the equipment and mark it as ready for pickup. The borrower will be notified.'
-                : 'Confirm that the borrower has picked up the equipment. This will mark the request as actively borrowed.'}
+              {dialogAction === 'prepare' ? t('reserveEquipmentMessage') : t('confirmPickupMessage')}
             </p>
           </div>
           <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
             <Button variant="outline" size="sm" onClick={closeDialog} className="text-xs">
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               size="sm"
@@ -421,11 +421,11 @@ export default function EquipmentPrep() {
               className={`text-xs text-white ${dialogAction === 'prepare' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
             >
               {isPending ? (
-                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Processing…</>
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />{t('processing')}</>
               ) : dialogAction === 'prepare' ? (
-                'Mark as Ready'
+                t('markAsReady')
               ) : (
-                'Confirm Pickup'
+                t('confirmPickup')
               )}
             </Button>
           </DialogFooter>

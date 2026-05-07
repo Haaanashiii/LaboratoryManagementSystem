@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell } from 'lucide-react';
+import { Mail, Lock, User, Hash, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
@@ -88,7 +88,7 @@ export default function LoginPage() {
   // Sign-up modal state
   const [showSignup, setShowSignup] = useState(false);
   const [signupStep, setSignupStep] = useState(0); // 0 = welcome, 1 = form
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '', studentId: '' });
   const [signupErrors, setSignupErrors] = useState({});
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const passwordStrength = getSignupPasswordStrength(signupForm.password);
@@ -171,6 +171,11 @@ export default function LoginPage() {
   const validateSignup = () => {
     const newErrors = {};
     if (!signupForm.name) newErrors.name = t('errorNameRequired');
+    if (!signupForm.studentId) {
+      newErrors.studentId = 'Student ID is required';
+    } else if (/\D/.test(signupForm.studentId)) {
+      newErrors.studentId = 'Student ID must contain numbers only';
+    }
     if (!signupForm.email) newErrors.email = t('errorEmailRequired');
     else if (!/\S+@\S+\.\S+/.test(signupForm.email)) newErrors.email = t('errorEmailInvalid');
     if (!signupForm.password) newErrors.password = t('errorPasswordRequired');
@@ -250,6 +255,7 @@ export default function LoginPage() {
         name: signupForm.name,
         email: signupForm.email,
         password: signupForm.password,
+        studentId: signupForm.studentId,
       });
       toast.success('Account created successfully! Welcome aboard.');
       navigate('/dashboard', { replace: true });
@@ -733,6 +739,29 @@ export default function LoginPage() {
                     />
                   </div>
                   {signupErrors.name && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.name}</p>}
+                </div>
+
+                {/* Student ID */}
+                <div>
+                  <label htmlFor="signup-studentId" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                    Student ID
+                  </label>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                    <input
+                      type="text"
+                      id="signup-studentId"
+                      name="studentId"
+                      value={signupForm.studentId}
+                      onChange={handleSignupChange}
+                      placeholder="Enter your student ID"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                      className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.studentId ? 'su-input-err' : ''}`}
+                    />
+                  </div>
+                  {signupErrors.studentId && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.studentId}</p>}
                 </div>
 
                 {/* Email */}

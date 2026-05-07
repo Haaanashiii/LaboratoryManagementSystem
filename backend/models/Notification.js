@@ -31,6 +31,14 @@ const notificationSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  message_key: {
+    type: String,
+    default: null
+  },
+  message_params: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
   event_time: {
     type: Date,
     required: true,

@@ -108,12 +108,7 @@ exports.getBorrowRequests = async (req, res, next) => {
     await reconcileLegacyStockReservations();
 
     const { status, student_email, lecturer_email, equipment_id, history } = req.query;
-    
-    console.log('=== getBorrowRequests DEBUG ===');
-    console.log('User role:', req.user.role);
-    console.log('User id:', req.user.id);
-    console.log('Query params:', req.query);
-    
+
     // Build query
     const query = {};
     
@@ -136,17 +131,12 @@ exports.getBorrowRequests = async (req, res, next) => {
     if (student_email) query.student_email = student_email;
     if (equipment_id) query.equipment = equipment_id;
 
-    console.log('Final query:', JSON.stringify(query));
-    
     const requests = await BorrowRequest.find(query)
       .populate('student', 'name email')
       .populate('equipment', 'name category')
       .populate('lecturer', 'name email')
       .sort('-createdAt');
 
-    console.log('Results count:', requests.length);
-    console.log('=== END DEBUG ===');
-    
     res.json({
       success: true,
       count: requests.length,
@@ -1191,19 +1181,7 @@ exports.downloadBorrowPdf = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    // If PDF already saved on disk, serve it
-    if (request.pdf_url) {
-      const absPath = path.join(__dirname, '..', request.pdf_url.replace(/^\//, ''));
-      if (fs.existsSync(absPath)) {
-        const inline = req.query.inline === 'true';
-        const disposition = inline ? 'inline' : `attachment; filename="borrow-request-${request._id}.pdf"`;
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', disposition);
-        return res.sendFile(absPath);
-      }
-    }
-
-    // Generate on the fly if not saved yet
+    // Always regenerate so the PDF reflects the latest approval state
     const { generateBorrowRequestPdf } = require('../utils/pdfGenerator');
     const buffer = await generateBorrowRequestPdf(request.toObject ? request.toObject() : request);
 

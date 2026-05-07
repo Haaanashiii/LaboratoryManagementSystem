@@ -132,15 +132,18 @@ export default function DashboardLayout() {
     queryFn: () => api.auth.me(),
   });
 
-  useQuery({
+  const { data: fetchedNotifications } = useQuery({
     queryKey: ['notifications', user?.id, user?.role],
     enabled: !!user,
     refetchInterval: 20000,
     queryFn: () => api.notifications.list(),
-    onSuccess: (data) => {
-      setNotifications(Array.isArray(data) ? data : []);
-    }
   });
+
+  useEffect(() => {
+    if (fetchedNotifications) {
+      setNotifications(Array.isArray(fetchedNotifications) ? fetchedNotifications : []);
+    }
+  }, [fetchedNotifications]);
 
   useEffect(() => {
     if (!user) {
@@ -163,6 +166,15 @@ export default function DashboardLayout() {
         predicate: (query) => {
           const firstKey = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
           return typeof firstKey === 'string' && /(request|approval)/i.test(firstKey);
+        }
+      });
+    };
+
+    const handleEquipmentUpdate = () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const firstKey = Array.isArray(query.queryKey) ? query.queryKey[0] : query.queryKey;
+          return typeof firstKey === 'string' && /^equipment/i.test(firstKey);
         }
       });
     };
@@ -198,10 +210,12 @@ export default function DashboardLayout() {
 
     socket.on('notification:new', handleNotificationNew);
     socket.on('notification:refresh', handleNotificationRefresh);
+    socket.on('equipment:update', handleEquipmentUpdate);
 
     return () => {
       socket.off('notification:new', handleNotificationNew);
       socket.off('notification:refresh', handleNotificationRefresh);
+      socket.off('equipment:update', handleEquipmentUpdate);
     };
   }, [queryClient, user]);
 
@@ -212,6 +226,13 @@ export default function DashboardLayout() {
   const markNotificationUnreadMutation = useMutation({
     mutationFn: (id) => api.notifications.markAsUnread(id)
   });
+
+  const buildNotifMessage = (item) => {
+    if (!item.message_key) return item.message;
+    const template = t(item.message_key);
+    const params = item.message_params || {};
+    return template.replace(/\{\{(\w+)\}\}/g, (_, key) => params[key] ?? '');
+  };
 
   const unreadCount = notifications.filter((item) => item.isRead === false).length;
 
@@ -290,7 +311,7 @@ export default function DashboardLayout() {
               </span>
             )}
           </div>
-          <span className={`text-xs ${notifTextSecondary}`}>{notifications.length} total</span>
+          <span className={`text-xs ${notifTextSecondary}`}>{notifications.length} {t('total').toLowerCase()}</span>
         </div>
 
         {/* List */}
@@ -298,7 +319,7 @@ export default function DashboardLayout() {
           {notifications.length === 0 ? (
             <div className={`flex flex-col items-center justify-center py-10 gap-2 ${notifTextSecondary}`}>
               <Bell className="w-8 h-8 opacity-30" />
-              <p className="text-sm">No notifications yet.</p>
+              <p className="text-sm">{t('noNotificationsYet')}</p>
             </div>
           ) : (
             notifications.map((item, idx) => {
@@ -322,10 +343,10 @@ export default function DashboardLayout() {
 
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm leading-snug ${isUnread ? (notifIsDark ? 'text-slate-100 font-medium' : 'text-slate-900 font-medium') : notifTextSecondary}`}>
-                      {item.message}
+                      {buildNotifMessage(item)}
                     </p>
                     <p className={`text-xs mt-1 ${notifTextSecondary}`}>
-                      {item.event_time ? new Date(item.event_time).toLocaleString() : 'Just now'}
+                      {item.event_time ? new Date(item.event_time).toLocaleString(locale) : t('justNow')}
                     </p>
                   </div>
 
@@ -333,14 +354,14 @@ export default function DashboardLayout() {
                   {!isUnread && (
                     <button
                       onClick={(e) => handleMarkUnread(e, itemId)}
-                      title="Mark as unread"
+                      title={t('markAsUnread')}
                       className={`shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-medium px-2 py-1 rounded-md ${
                         notifIsDark
                           ? 'text-blue-400 hover:bg-blue-900/40 bg-transparent'
                           : 'text-blue-600 hover:bg-blue-100 bg-transparent'
                       }`}
                     >
-                      Unread
+                      {t('unread')}
                     </button>
                   )}
                 </div>
@@ -353,7 +374,7 @@ export default function DashboardLayout() {
         {notifications.length > 0 && (
           <div className={`px-4 py-2.5 border-t ${notifHeader}`}>
             <p className={`text-xs text-center ${notifTextSecondary}`}>
-              Click a notification to mark it as read
+              {t('clickToMarkRead')}
             </p>
           </div>
         )}

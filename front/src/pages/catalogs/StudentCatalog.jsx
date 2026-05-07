@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, addDays } from 'date-fns';
-import { Loader2, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Package, ChevronLeft, ChevronRight, Hash, Calendar, AlignLeft, GraduationCap, ArrowRight } from 'lucide-react';
 
 import { api } from '@/api/apiClient';
 import { useAuth } from '@/components/hooks/useAuth.js';
@@ -17,6 +17,7 @@ import BorrowRequestPreviewModal from '@/components/BorrowRequestPreviewModal';
 import CatalogContent from './CatalogContent';
 import { useCatalogData } from './useCatalogData';
 import { useTheme } from '@/components/hooks/ThemeContext';
+import { useLang } from '@/components/i18n/LangContext';
 
 const getDefaultBorrowForm = () => ({
   quantity: '1',
@@ -31,6 +32,7 @@ const getDefaultBorrowForm = () => ({
 export default function StudentCatalog() {
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const { t } = useLang();
   const [viewedEquipment, setViewedEquipment] = useState(null);
   const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -115,12 +117,12 @@ export default function StudentCatalog() {
     const parsedQuantity = Number.parseInt(String(borrowForm.quantity), 10);
 
     if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
-      setBorrowQuantityNotice('Please enter a valid quantity (minimum 1).');
+      setBorrowQuantityNotice(t('pleaseEnterValidQuantity'));
       return;
     }
 
     if (parsedQuantity > availableQty) {
-      setBorrowQuantityNotice(`Quantity exceeded. Only ${availableQty} item${availableQty === 1 ? '' : 's'} available.`);
+      setBorrowQuantityNotice(t('quantityExceededShort'));
       return;
     }
 
@@ -130,7 +132,7 @@ export default function StudentCatalog() {
     const returnDate = new Date(borrowForm.return_date);
 
     if (Number.isNaN(borrowDate.getTime()) || Number.isNaN(returnDate.getTime())) {
-      setBorrowDateNotice('Please select valid borrow and return dates.');
+      setBorrowDateNotice(t('pleaseSelectValidDates'));
       return;
     }
 
@@ -138,12 +140,12 @@ export default function StudentCatalog() {
     returnDate.setHours(0, 0, 0, 0);
 
     if (borrowDate < today) {
-      setBorrowDateNotice('Borrow date cannot be yesterday or earlier.');
+      setBorrowDateNotice(t('borrowDateCantBePast'));
       return;
     }
 
     if (returnDate <= borrowDate) {
-      setBorrowDateNotice('Return date must be after borrow date.');
+      setBorrowDateNotice(t('returnDateMustBeAfter'));
       return;
     }
 
@@ -280,18 +282,18 @@ export default function StudentCatalog() {
 
           <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-blue-200 text-[10px] font-semibold uppercase tracking-widest mb-1">Laboratory Management</p>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">Equipment Catalog</h1>
+              <p className="text-blue-200 text-[10px] font-semibold uppercase tracking-widest mb-1">{t('labManagement')}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">{t('equipmentCatalogTitle')}</h1>
               <p className="text-blue-200 text-sm mt-1.5 max-w-sm">
-                Browse and borrow available laboratory equipment for your sessions.
+                {t('browseCatalogHeroDesc')}
               </p>
             </div>
 
             {/* Quick stat pills */}
             <div className="flex gap-2 flex-wrap">
               {[
-                { label: 'Total',     value: isLoading ? '—' : filteredEquipment.length },
-                { label: 'Available', value: isLoading ? '—' : filteredEquipment.filter(e => (e.available_quantity ?? e.available ?? 0) > 0).length },
+                { label: t('total'),          value: isLoading ? '—' : filteredEquipment.length },
+                { label: t('availableLabel'), value: isLoading ? '—' : filteredEquipment.filter(e => (e.available_quantity ?? e.available ?? 0) > 0).length },
               ].map(s => (
                 <div key={s.label} className={`rounded-xl px-3 py-2 text-center min-w-[60px] border shadow-sm ${isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white/20 backdrop-blur-sm border-white/20'}`}>
                   <p className={`text-lg font-black leading-none ${isDark ? 'text-blue-400' : 'text-white'}`}>{s.value}</p>
@@ -348,20 +350,21 @@ export default function StudentCatalog() {
       {user?.role === 'student' && (
         <Dialog open={!!selectedEquipment} onOpenChange={closeBorrowDialog}>
           <DialogContent
-            className={`p-0 gap-0 overflow-hidden rounded-2xl border ${isDark ? 'bg-[#0e0e16] border-white/[0.08]' : 'bg-white border-slate-200'}`}
+            className={`p-0 gap-0 overflow-hidden rounded-2xl border ${isDark ? 'bg-[#0e0e16] border-white/[0.07]' : 'bg-white border-slate-200/80'}`}
             style={{
-              width: '90vw',
-              maxWidth: 440,
-              maxHeight: 'min(92dvh, 720px)',
+              width: '92vw',
+              maxWidth: 472,
+              maxHeight: 'min(92dvh, 740px)',
               padding: 0,
-              boxShadow: isDark ? '0 32px 80px rgba(0,0,0,0.85)' : '0 24px 64px rgba(0,0,0,0.16)',
+              boxShadow: isDark
+                ? '0 40px 100px rgba(0,0,0,0.90), 0 0 0 1px rgba(255,255,255,0.04)'
+                : '0 24px 72px rgba(0,0,0,0.18)',
             }}
           >
-            {/* borrow-enter triggers the open animation via catalogStyles */}
-            <div className="borrow-enter flex flex-col" style={{ overflow: 'hidden' }}>
+            <div className="borrow-enter flex flex-col" style={{ overflow: 'hidden', maxHeight: 'min(92dvh, 740px)' }}>
 
-              {/* ── TOP: Image panel ──────────────────────────────────── */}
-              <div className="relative flex-shrink-0 overflow-hidden h-[160px]">
+              {/* ── IMAGE PANEL ─────────────────────────────────────────── */}
+              <div className="relative flex-shrink-0 overflow-hidden h-[175px]">
                 {(() => {
                   const allImgs = selectedEquipment?.images_urls?.length > 0
                     ? selectedEquipment.images_urls
@@ -382,21 +385,21 @@ export default function StudentCatalog() {
                           className="w-full h-full flex flex-col items-center justify-center gap-3"
                           style={{
                             background: isDark
-                              ? 'linear-gradient(160deg,#0d1117 0%,#111827 100%)'
+                              ? 'linear-gradient(160deg,#0d1117 0%,#0f172a 100%)'
                               : 'linear-gradient(160deg,#eff6ff 0%,#f8fafc 100%)',
                           }}
                         >
                           <div
-                            className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                            className="w-16 h-16 rounded-2xl flex items-center justify-center"
                             style={{
                               background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(59,130,246,0.08)',
                               border:     isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(59,130,246,0.14)',
                             }}
                           >
-                            <Package className="w-9 h-9" style={{ color: isDark ? '#334155' : '#93c5fd' }} />
+                            <Package className="w-8 h-8" style={{ color: isDark ? '#334155' : '#93c5fd' }} />
                           </div>
                           <span className="text-[11px] font-medium" style={{ color: isDark ? '#334155' : '#94a3b8' }}>
-                            No image
+                            {t('noImage')}
                           </span>
                         </div>
                       )}
@@ -406,15 +409,15 @@ export default function StudentCatalog() {
                         className="absolute inset-0 pointer-events-none"
                         style={{
                           background: isDark
-                            ? 'linear-gradient(to top, rgba(14,14,22,0.97) 0%, rgba(14,14,22,0.45) 42%, rgba(14,14,22,0.14) 100%)'
-                            : 'linear-gradient(to top, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.40) 42%, transparent 100%)',
+                            ? 'linear-gradient(to top, rgba(14,14,22,1) 0%, rgba(14,14,22,0.5) 40%, rgba(14,14,22,0.10) 100%)'
+                            : 'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.45) 40%, transparent 100%)',
                         }}
                       />
 
                       {/* Category badge */}
                       {selectedEquipment?.category && (
                         <span
-                          className="absolute top-4 left-4 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider"
+                          className="absolute top-3.5 left-4 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider"
                           style={{
                             background:     isDark ? 'rgba(59,130,246,0.22)' : 'rgba(255,255,255,0.92)',
                             border:         isDark ? '1px solid rgba(59,130,246,0.35)' : '1px solid rgba(59,130,246,0.20)',
@@ -426,13 +429,12 @@ export default function StudentCatalog() {
                         </span>
                       )}
 
-                      {/* Prev / Next arrows */}
                       {hasMany && (
                         <>
                           <button
                             onClick={() => setBorrowImgIdx(i => i === 0 ? allImgs.length - 1 : i - 1)}
                             aria-label="Previous image"
-                            className="absolute left-2 top-[40%] -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full hover:opacity-90 transition-opacity"
+                            className="absolute left-2 top-[38%] -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full hover:opacity-90 transition-opacity"
                             style={{ background: 'rgba(0,0,0,0.48)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', backdropFilter: 'blur(6px)' }}
                           >
                             <ChevronLeft className="w-3.5 h-3.5" />
@@ -440,7 +442,7 @@ export default function StudentCatalog() {
                           <button
                             onClick={() => setBorrowImgIdx(i => i === allImgs.length - 1 ? 0 : i + 1)}
                             aria-label="Next image"
-                            className="absolute right-2 top-[40%] -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full hover:opacity-90 transition-opacity"
+                            className="absolute right-2 top-[38%] -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full hover:opacity-90 transition-opacity"
                             style={{ background: 'rgba(0,0,0,0.48)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', backdropFilter: 'blur(6px)' }}
                           >
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -448,9 +450,8 @@ export default function StudentCatalog() {
                         </>
                       )}
 
-                      {/* Dot indicators */}
                       {hasMany && (
-                        <div className="absolute bottom-[120px] left-1/2 -translate-x-1/2 flex gap-1.5">
+                        <div className="absolute bottom-[115px] left-1/2 -translate-x-1/2 flex gap-1.5">
                           {allImgs.map((_, i) => (
                             <button
                               key={i}
@@ -470,25 +471,14 @@ export default function StudentCatalog() {
                   );
                 })()}
 
-                {/* Bottom info */}
-                <div className="absolute bottom-0 left-0 right-0 px-4 py-5">
-                  <p
-                    className="text-[9px] font-bold uppercase tracking-[0.15em] mb-1.5"
-                    style={{ color: isDark ? '#475569' : '#94a3b8' }}
-                  >
-                    Borrow Request
-                  </p>
+                {/* Equipment name + availability */}
+                <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-2">
                   <h3
-                    className="text-[15px] font-bold leading-snug mb-3"
-                    style={{
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      letterSpacing: '-0.02em',
-                    }}
+                    className="text-[15px] font-bold leading-snug mb-2"
+                    style={{ color: isDark ? '#f1f5f9' : '#0f172a', letterSpacing: '-0.02em' }}
                   >
                     {selectedEquipment?.name}
                   </h3>
-
-                  {/* Availability pill */}
                   <div
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                     style={{
@@ -501,53 +491,65 @@ export default function StudentCatalog() {
                       style={{
                         background:
                           (selectedEquipment?.available_quantity ?? 0) === 0 ? '#ef4444' :
-                          (selectedEquipment?.available_quantity ?? 0) <= 3 ? '#f59e0b' : '#22c55e',
+                          (selectedEquipment?.available_quantity ?? 0) <= 3  ? '#f59e0b' : '#22c55e',
                         boxShadow:
                           (selectedEquipment?.available_quantity ?? 0) === 0 ? '0 0 5px #ef444499' :
-                          (selectedEquipment?.available_quantity ?? 0) <= 3 ? '0 0 5px #f59e0b99' : '0 0 5px #22c55e99',
+                          (selectedEquipment?.available_quantity ?? 0) <= 3  ? '0 0 5px #f59e0b99' : '0 0 5px #22c55e99',
                       }}
                     />
-                    <span
-                      className="text-[10px] font-semibold tabular-nums"
-                      style={{ color: isDark ? '#94a3b8' : '#475569' }}
-                    >
-                      {selectedEquipment?.available_quantity ?? 0} available
+                    <span className="text-[10px] font-semibold tabular-nums" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
+                      {selectedEquipment?.available_quantity ?? 0} {t('availableLabel')}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* ── BOTTOM/RIGHT: Form panel ──────────────────────────────── */}
-              <div
-                className={`flex flex-col border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}
-                style={{ background: isDark ? '#111118' : '#ffffff' }}
-              >
-                {/* Header bar */}
+              {/* ── FORM PANEL ──────────────────────────────────────────── */}
+              <div className="flex flex-col min-h-0" style={{ background: isDark ? '#0f0f1a' : '#fafbff' }}>
+
+                {/* Header strip with left accent bar */}
                 <div
-                  className="flex items-center justify-between px-5 py-3 flex-shrink-0"
-                  style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #f1f5f9' }}
+                  className="relative px-5 py-3 flex-shrink-0"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(90deg, rgba(59,130,246,0.09) 0%, transparent 70%)'
+                      : 'linear-gradient(90deg, rgba(59,130,246,0.06) 0%, transparent 70%)',
+                    borderBottom: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #eef0f6',
+                  }}
                 >
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isDark ? '#475569' : '#94a3b8' }}>
-                      Equipment Request
+                  <div
+                    className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
+                    style={{ background: 'linear-gradient(to bottom, #3b82f6, #6366f1)' }}
+                  />
+                  <div className="pl-3.5">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.20em]" style={{ color: '#3b82f6' }}>
+                      {t('equipmentRequest')}
                     </p>
-                    <p className="text-sm font-semibold mt-0.5" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
-                      Fill in the borrow details
+                    <p className="text-[13px] font-bold mt-0.5 leading-tight" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
+                      {t('fillBorrowDetails')}
                     </p>
                   </div>
                 </div>
 
-                {/* Form fields */}
-                <div className="px-5 py-3 space-y-2.5 overflow-y-auto">
+                {/* Scrollable form fields */}
+                <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
 
-                  {/* Qty row */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                      Quantity
-                      <span className="ml-1.5 font-normal normal-case" style={{ color: isDark ? '#475569' : '#cbd5e1' }}>
-                        (max {selectedEquipment?.available_quantity})
+                  {/* ── Quantity ── */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(139,92,246,0.12)' }}
+                      >
+                        <Hash className="w-2.5 h-2.5" style={{ color: '#8b5cf6' }} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                        {t('quantity')}
                       </span>
-                    </Label>
+                      <span className="text-[10px] font-medium ml-auto" style={{ color: isDark ? '#374151' : '#cbd5e1' }}>
+                        {t('maxLabel')} {selectedEquipment?.available_quantity}
+                      </span>
+                    </div>
                     <Input
                       type="number"
                       min="1"
@@ -556,177 +558,184 @@ export default function StudentCatalog() {
                       onChange={(e) => {
                         const nextQuantity = e.target.value;
                         setBorrowForm({ ...borrowForm, quantity: nextQuantity });
-
                         const parsedQuantity = Number.parseInt(nextQuantity, 10);
-                        if (nextQuantity === '') {
-                          setBorrowQuantityNotice('Please enter a quantity.');
-                          return;
-                        }
-
-                        if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
-                          setBorrowQuantityNotice('Please enter a valid quantity (minimum 1).');
-                          return;
-                        }
-
-                        if (parsedQuantity > Number(selectedEquipment?.available_quantity ?? 0)) {
-                          const availableQty = Number(selectedEquipment?.available_quantity ?? 0);
-                          setBorrowQuantityNotice(`Quantity exceeded. Only ${availableQty} item${availableQty === 1 ? '' : 's'} available.`);
-                          return;
-                        }
-
+                        if (nextQuantity === '') { setBorrowQuantityNotice(t('pleaseEnterQuantity')); return; }
+                        if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) { setBorrowQuantityNotice(t('pleaseEnterValidQuantity')); return; }
+                        if (parsedQuantity > Number(selectedEquipment?.available_quantity ?? 0)) { setBorrowQuantityNotice(t('quantityExceededShort')); return; }
                         setBorrowQuantityNotice('');
                       }}
-                      className={`rounded-lg text-xs font-semibold h-8 w-full ${isDark ? 'bg-white/5 border-white/10 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'}`}
+                      className={`rounded-xl text-sm font-bold h-10 w-full text-center ${isDark ? 'bg-white/[0.04] border-white/10 focus:border-violet-500' : 'bg-white border-slate-200 focus:border-violet-400'}`}
                       style={isDark ? { color: '#e2e8f0' } : undefined}
                     />
                     {(borrowQuantityNotice || isBorrowQuantityExceeded) && (
-                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
-                        {borrowQuantityNotice || `Quantity exceeded. Only ${selectedAvailableQty} item${selectedAvailableQty === 1 ? '' : 's'} available.`}
+                      <p className="text-[11px] font-medium mt-1.5" style={{ color: '#ef4444' }}>
+                        {borrowQuantityNotice || t('quantityExceededShort')}
                       </p>
                     )}
                   </div>
 
-                  {/* Dates row */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                        Borrow Date
-                      </Label>
-                      <Input
-                        type="date"
-                        min={todayIso}
-                        value={borrowForm.borrow_date}
-                        onChange={(e) => {
-                          setBorrowDateNotice('');
-                          setBorrowForm({ ...borrowForm, borrow_date: e.target.value });
-                        }}
-                        className={`rounded-lg text-xs font-medium h-8 w-full ${isDark ? 'bg-white/5 border-white/10 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'}`}
-                        style={isDark ? { color: '#e2e8f0', colorScheme: 'dark' } : { colorScheme: 'light' }}
-                      />
+                  {/* ── Dates ── */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(59,130,246,0.12)' }}
+                      >
+                        <Calendar className="w-2.5 h-2.5" style={{ color: '#3b82f6' }} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                        {t('borrowDate')} — {t('returnDate')}
+                      </span>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                        Return Date
-                      </Label>
-                      <Input
-                        type="date"
-                        min={borrowForm.borrow_date || todayIso}
-                        value={borrowForm.return_date}
-                        onChange={(e) => {
-                          setBorrowDateNotice('');
-                          setBorrowForm({ ...borrowForm, return_date: e.target.value });
-                        }}
-                        className={`rounded-lg text-xs font-medium h-8 w-full ${isDark ? 'bg-white/5 border-white/10 focus:border-blue-500' : 'border-slate-200 focus:border-blue-400'}`}
-                        style={isDark ? { color: '#e2e8f0', colorScheme: 'dark' } : { colorScheme: 'light' }}
-                      />
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <p className="text-[9px] font-semibold mb-1.5 pl-0.5" style={{ color: isDark ? '#475569' : '#94a3b8' }}>
+                          {t('borrowDate')}
+                        </p>
+                        <Input
+                          type="date"
+                          min={todayIso}
+                          value={borrowForm.borrow_date}
+                          onChange={(e) => { setBorrowDateNotice(''); setBorrowForm({ ...borrowForm, borrow_date: e.target.value }); }}
+                          className={`rounded-xl text-xs font-medium h-10 w-full ${isDark ? 'bg-white/[0.04] border-white/10 focus:border-blue-500' : 'bg-white border-slate-200 focus:border-blue-400'}`}
+                          style={isDark ? { color: '#e2e8f0', colorScheme: 'dark' } : { colorScheme: 'light' }}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold mb-1.5 pl-0.5" style={{ color: isDark ? '#475569' : '#94a3b8' }}>
+                          {t('returnDate')}
+                        </p>
+                        <Input
+                          type="date"
+                          min={borrowForm.borrow_date || todayIso}
+                          value={borrowForm.return_date}
+                          onChange={(e) => { setBorrowDateNotice(''); setBorrowForm({ ...borrowForm, return_date: e.target.value }); }}
+                          className={`rounded-xl text-xs font-medium h-10 w-full ${isDark ? 'bg-white/[0.04] border-white/10 focus:border-blue-500' : 'bg-white border-slate-200 focus:border-blue-400'}`}
+                          style={isDark ? { color: '#e2e8f0', colorScheme: 'dark' } : { colorScheme: 'light' }}
+                        />
+                      </div>
                     </div>
+                    {borrowDateNotice && (
+                      <p className="text-[11px] font-medium mt-1.5" style={{ color: '#ef4444' }}>{borrowDateNotice}</p>
+                    )}
                   </div>
-                  {borrowDateNotice && (
-                    <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
-                      {borrowDateNotice}
-                    </p>
-                  )}
 
-                  {/* Purpose / Objective */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                      Objective / Purpose
-                    </Label>
+                  {/* ── Purpose ── */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(245,158,11,0.12)' }}
+                      >
+                        <AlignLeft className="w-2.5 h-2.5" style={{ color: '#f59e0b' }} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                        {t('objectivePurpose')}
+                      </span>
+                    </div>
                     <Textarea
-                      placeholder="Briefly explain why you need this equipment..."
+                      placeholder={t('brieflyExplainPurpose')}
                       value={borrowForm.purpose}
                       onChange={(e) => setBorrowForm({ ...borrowForm, purpose: e.target.value, objective: e.target.value })}
                       rows={2}
-                      className={`rounded-lg text-xs resize-none font-medium ${isDark ? 'bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-600 focus:border-blue-500' : 'border-slate-200 placeholder:text-slate-400 focus:border-blue-400'}`}
+                      className={`rounded-xl text-xs resize-none font-medium ${isDark ? 'bg-white/[0.04] border-white/10 text-slate-200 placeholder:text-slate-600 focus:border-amber-500' : 'bg-white border-slate-200 placeholder:text-slate-400 focus:border-amber-400'}`}
                     />
                   </div>
 
-                  {/* Lecturer */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest block" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                      Approving Lecturer
-                    </Label>
+                  {/* ── Lecturer ── */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(34,197,94,0.12)' }}
+                      >
+                        <GraduationCap className="w-2.5 h-2.5" style={{ color: '#22c55e' }} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                        {t('approvingLecturer')}
+                      </span>
+                    </div>
                     <select
                       value={borrowForm.lecturer_id}
-                      onChange={(e) => {
-                        setBorrowLecturerNotice('');
-                        setBorrowForm({ ...borrowForm, lecturer_id: e.target.value });
-                      }}
+                      onChange={(e) => { setBorrowLecturerNotice(''); setBorrowForm({ ...borrowForm, lecturer_id: e.target.value }); }}
                       disabled={lecturersLoading || !hasLecturers}
-                      className={`h-8 w-full rounded-lg border px-2 text-xs font-semibold outline-none focus:ring-1 transition-colors ${isDark ? 'bg-[#1a1a28] border-white/10 text-slate-200 focus:border-blue-500 focus:ring-blue-500/30' : 'bg-white border-slate-200 text-slate-900 focus:border-blue-400 focus:ring-blue-400/20'} ${lecturersLoading || !hasLecturers ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      className={`h-10 w-full rounded-xl border px-3 text-xs font-semibold outline-none focus:ring-1 transition-colors ${isDark ? 'bg-[#161624] border-white/10 text-slate-200 focus:border-green-500 focus:ring-green-500/20' : 'bg-white border-slate-200 text-slate-900 focus:border-green-400 focus:ring-green-400/20'} ${lecturersLoading || !hasLecturers ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       style={isDark ? { colorScheme: 'dark' } : { colorScheme: 'light' }}
                     >
                       <option value="" disabled>
-                        {lecturersLoading ? 'Loading lecturers...' : 'Select a lecturer'}
+                        {lecturersLoading ? t('loadingLecturers') : t('selectLecturer')}
                       </option>
                       {lecturers.map((lecturer) => (
                         <option key={lecturer.id} value={lecturer.id}>
-                          {lecturer.name} ({lecturer.email})
+                          {lecturer.name}
                         </option>
                       ))}
                     </select>
                     {lecturersError && (
-                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
-                        Unable to load lecturers. Please refresh and try again.
-                      </p>
+                      <p className="text-[11px] font-medium mt-1.5" style={{ color: '#ef4444' }}>{t('unableLoadLecturers')}</p>
                     )}
                     {!lecturersError && !lecturersLoading && !hasLecturers && (
-                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
-                        No lecturers are available for approval.
-                      </p>
+                      <p className="text-[11px] font-medium mt-1.5" style={{ color: '#ef4444' }}>{t('noLecturersAvailable')}</p>
                     )}
                     {borrowLecturerNotice && (
-                      <p className="text-[11px] font-medium" style={{ color: '#ef4444' }}>
-                        {borrowLecturerNotice}
-                      </p>
+                      <p className="text-[11px] font-medium mt-1.5" style={{ color: '#ef4444' }}>{borrowLecturerNotice}</p>
                     )}
                   </div>
 
-                  {/* Policy (compact) */}
-                  <div
-                    className="rounded-xl px-3 py-2"
+                  {/* ── Policy ── */}
+                  <label
+                    className="flex items-start gap-3 rounded-xl px-3.5 py-3 cursor-pointer"
                     style={{
-                      background: isDark ? 'rgba(245,158,11,0.08)' : '#fffbeb',
-                      border: isDark ? '1px solid rgba(245,158,11,0.20)' : '1px solid #fde68a',
+                      background: isDark ? 'rgba(245,158,11,0.07)' : '#fffbeb',
+                      border: isDark ? '1px solid rgba(245,158,11,0.18)' : '1px solid #fde68a',
                     }}
                   >
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border-amber-400 text-amber-500 focus:ring-amber-500"
-                        checked={borrowForm.agree_policy}
-                        onChange={(e) => setBorrowForm({ ...borrowForm, agree_policy: e.target.checked })}
-                      />
-                      <span
-                        className="text-[11px] leading-relaxed"
-                        style={{ color: isDark ? '#fcd34d' : '#92400e' }}
-                      >
-                        <span className="font-bold">Policy: </span>
-                        Damaged or lost items must be replaced by the borrower. I understand and accept this responsibility.
-                      </span>
-                    </label>
-                  </div>
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border-amber-400 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                      checked={borrowForm.agree_policy}
+                      onChange={(e) => setBorrowForm({ ...borrowForm, agree_policy: e.target.checked })}
+                    />
+                    <div className="flex-1">
+                      <p className="text-[11px] font-bold leading-none mb-1" style={{ color: isDark ? '#fbbf24' : '#92400e' }}>
+                        {t('policyLabel')}
+                      </p>
+                      <p className="text-[11px] leading-relaxed" style={{ color: isDark ? '#b45309' : '#a16207' }}>
+                        {t('policyIUnderstand')}
+                      </p>
+                    </div>
+                  </label>
+
                 </div>
 
-                {/* Footer buttons */}
+                {/* ── Footer ── */}
                 <div
-                  className="flex gap-2 px-5 py-3 flex-shrink-0"
-                  style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0' }}
+                  className="flex gap-2.5 px-5 py-3.5 flex-shrink-0"
+                  style={{
+                    borderTop: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #eef0f6',
+                    background: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(248,250,255,0.9)',
+                  }}
                 >
                   <button
                     onClick={closeBorrowDialog}
-                    className={`flex-1 h-9 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${isDark ? 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200' : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'}`}
+                    className={`flex-1 h-10 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${isDark ? 'bg-white/[0.05] border border-white/[0.08] text-slate-400 hover:bg-white/[0.09] hover:text-slate-200' : 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200'}`}
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     onClick={handleBorrowSubmit}
                     disabled={!borrowForm.purpose || !borrowForm.agree_policy || selectedAvailableQty < 1 || isBorrowQuantityInvalid || isBorrowQuantityExceeded || isBorrowDateInvalid}
-                    className={`flex-[2] h-9 rounded-lg text-white text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5 ${isDark ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.35)]' : 'bg-blue-600 hover:bg-blue-700 shadow-[0_4px_16px_rgba(37,99,235,0.35)]'}`}
+                    className="flex-[2] h-10 rounded-xl text-white text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5"
+                    style={{
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                      boxShadow: '0 4px 20px rgba(99,102,241,0.30)',
+                    }}
                   >
-                    Review &amp; Submit
+                    {t('reviewAndSubmit')}
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
               </div>
 
             </div>
@@ -740,6 +749,7 @@ export default function StudentCatalog() {
         formData={borrowForm}
         equipment={selectedEquipment}
         user={user}
+        lecturerName={lecturers.find(l => l.id === borrowForm.lecturer_id || l._id === borrowForm.lecturer_id)?.name || ''}
         isDark={isDark}
         onEdit={() => setShowPreview(false)}
         onConfirm={handleConfirmSubmit}
@@ -816,10 +826,10 @@ export default function StudentCatalog() {
               {/* text */}
               <div className="lms2-text text-center mt-2">
                 <p className={`text-lg font-bold mb-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                  Request Submitted
+                  {t('requestSubmitted')}
                 </p>
                 <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Your borrow request has been submitted and is pending lab assistant approval. Track its status on the Requests page.
+                  {t('requestSubmittedDesc')}
                 </p>
               </div>
 
@@ -831,7 +841,7 @@ export default function StudentCatalog() {
                     isDark ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-900 hover:bg-blue-700'
                   }`}
                 >
-                  Got it
+                  {t('gotIt')}
                 </Button>
               </div>
             </div>

@@ -73,6 +73,10 @@ const equipmentSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'maintenance', 'retired'],
     default: 'active'
+  },
+  isPublished: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true,

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, User, Package, Calendar, FileText, Tag, Hash, Building2, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, User, Package, Calendar, FileText, Tag, Hash, Building2, Download, Loader2, GraduationCap } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { api } from '@/api/apiClient';
+import { useLang } from '@/components/i18n/LangContext';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
@@ -61,6 +62,7 @@ export default function BorrowRequestPreviewModal({
   formData,
   equipment,
   user,
+  lecturerName = '',
   isDark = false,
   onEdit,
   onConfirm,
@@ -98,7 +100,7 @@ export default function BorrowRequestPreviewModal({
     setPdfPages([]);
 
     api.entities.BorrowRequest.previewPdf(
-      { ...formData, equipment_name: equipment?.name, serial_number: equipment?.serialNumber || formData.serial_number },
+      { ...formData, equipment_name: equipment?.name, serial_number: equipment?.serialNumber || equipment?.serial_number || formData.serial_number, lecturer_name: lecturerName },
       user
     )
       .then(async (blob) => {
@@ -136,7 +138,7 @@ export default function BorrowRequestPreviewModal({
     setPdfLoading('download');
     try {
       const blob = await api.entities.BorrowRequest.previewPdf(
-        { ...formData, equipment_name: equipment?.name, serial_number: equipment?.serialNumber || formData.serial_number },
+        { ...formData, equipment_name: equipment?.name, serial_number: equipment?.serialNumber || equipment?.serial_number || formData.serial_number, lecturer_name: lecturerName },
         user
       );
       const url = URL.createObjectURL(blob);
@@ -155,6 +157,8 @@ export default function BorrowRequestPreviewModal({
       setPdfLoading(null);
     }
   };
+
+  const { t } = useLang();
 
   if (!open || !formData || !equipment) return null;
 
@@ -192,7 +196,7 @@ export default function BorrowRequestPreviewModal({
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#3B82F6' }}>
-                Preview Request
+                {t('previewRequest')}
               </p>
               <p className="text-sm font-bold leading-tight" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
                 {equipment?.name}
@@ -204,7 +208,7 @@ export default function BorrowRequestPreviewModal({
             style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            Draft — Not Submitted
+            {t('draftNotSubmitted')}
           </div>
         </div>
 
@@ -219,24 +223,25 @@ export default function BorrowRequestPreviewModal({
             {/* Student & Equipment */}
             <div className="rounded-xl border flex flex-col gap-2 p-3" style={cardBg}>
               <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={labelClr}>
-                Student &amp; Equipment
+                {t('studentAndEquipment')}
               </p>
-              <Field icon={User}      label="Full Name"     value={user?.name}                                        accent="#3B82F6" isDark={isDark} />
-              <Field icon={Hash}      label="Student ID"    value={user?.studentId}                                   accent="#8B5CF6" isDark={isDark} />
-              <Field icon={Building2} label="Email"         value={user?.email}                                       accent="#6366F1" isDark={isDark} />
+              <Field icon={User}      label={t('fullName')}     value={user?.name}                                        accent="#3B82F6" isDark={isDark} />
+              <Field icon={Hash}      label={t('studentId')}    value={user?.studentId}                                   accent="#8B5CF6" isDark={isDark} />
+              <Field icon={Building2} label={t('email')}         value={user?.email}                                       accent="#6366F1" isDark={isDark} />
               <div className="border-t" style={divider} />
-              <Field icon={Package}   label="Equipment"     value={equipment?.name}                                   accent="#22C55E" isDark={isDark} />
-              <Field icon={Tag}       label="Serial Number" value={equipment?.serialNumber || formData.serial_number} accent="#14B8A6" isDark={isDark} />
-              <Field icon={Package}   label="Quantity"      value={String(formData.quantity || 1)}                    accent="#F59E0B" isDark={isDark} />
+              <Field icon={Package}   label={t('equipment')}     value={equipment?.name}                                                              accent="#22C55E" isDark={isDark} />
+              <Field icon={Tag}       label={t('serialNumber')} value={equipment?.serialNumber || equipment?.serial_number || formData.serial_number} accent="#14B8A6" isDark={isDark} />
+              <Field icon={Package}   label={t('quantity')}      value={String(formData.quantity || 1)}                                               accent="#F59E0B" isDark={isDark} />
             </div>
 
             {/* Borrow details */}
             <div className="rounded-xl border flex flex-col gap-2 p-3" style={cardBg}>
               <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={labelClr}>
-                Request Details
+                {t('requestDetails')}
               </p>
-              <Field icon={Calendar} label="Borrow Date" value={fmt(formData.borrow_date)} accent="#3B82F6" isDark={isDark} />
-              <Field icon={Calendar} label="Return Date"  value={fmt(formData.return_date)} accent="#EF4444" isDark={isDark} />
+              <Field icon={Calendar}      label={t('borrowDate')}       value={fmt(formData.borrow_date)} accent="#3B82F6" isDark={isDark} />
+              <Field icon={Calendar}      label={t('returnDate')}        value={fmt(formData.return_date)} accent="#EF4444" isDark={isDark} />
+              <Field icon={GraduationCap} label={t('assignedLecturer')}  value={lecturerName}              accent="#8B5CF6" isDark={isDark} />
               <div className="border-t" style={divider} />
               {/* Objective */}
               <div className="flex items-start gap-2">
@@ -244,7 +249,7 @@ export default function BorrowRequestPreviewModal({
                   <FileText className="w-3 h-3" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[8px] font-bold uppercase tracking-widest mb-0" style={labelClr}>Objective / Purpose</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest mb-0" style={labelClr}>{t('objectivePurpose')}</p>
                   <p className="text-xs leading-relaxed" style={{ color: isDark ? '#cbd5e1' : '#334155' }}>
                     {objective || <span style={{ color: isDark ? '#475569' : '#cbd5e1' }}>—</span>}
                   </p>
@@ -257,8 +262,8 @@ export default function BorrowRequestPreviewModal({
               >
                 <span className="text-amber-400 text-sm leading-none flex-shrink-0">⚠</span>
                 <p className="text-[10px] leading-relaxed" style={{ color: isDark ? '#fcd34d' : '#92400e' }}>
-                  <span className="font-bold">Policy: </span>
-                  Damaged or lost items must be replaced by the borrower.
+                  <span className="font-bold">{t('policyLabel')}</span>
+                  {t('policyWarning')}
                 </p>
               </div>
             </div>
@@ -276,7 +281,7 @@ export default function BorrowRequestPreviewModal({
                 <div className="flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#3B82F6' }} />
                   <p className="text-sm font-medium" style={{ color: isDark ? '#475569' : '#64748b' }}>
-                    Generating preview…
+                    {t('generatingPreview')}
                   </p>
                 </div>
               )}
@@ -286,8 +291,8 @@ export default function BorrowRequestPreviewModal({
               {pdfPreviewState === 'error' && (
                 <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
                   <FileText className="w-10 h-10 opacity-30" style={{ color: isDark ? '#475569' : '#94a3b8' }} />
-                  <p className="text-sm font-medium" style={{ color: isDark ? '#475569' : '#94a3b8' }}>Preview unavailable</p>
-                  <p className="text-xs" style={{ color: isDark ? '#334155' : '#cbd5e1' }}>Download the PDF below.</p>
+                  <p className="text-sm font-medium" style={{ color: isDark ? '#475569' : '#94a3b8' }}>{t('previewUnavailable')}</p>
+                  <p className="text-xs" style={{ color: isDark ? '#334155' : '#cbd5e1' }}>{t('downloadPDFBelow')}</p>
                 </div>
               )}
             </div>
@@ -301,7 +306,7 @@ export default function BorrowRequestPreviewModal({
                 style={{ background: isDark ? 'rgba(34,197,94,0.10)' : 'rgba(34,197,94,0.07)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.25)' }}
               >
                 <Download className="w-3.5 h-3.5" />
-                {pdfLoading === 'download' ? 'Generating…' : 'Download PDF'}
+                {pdfLoading === 'download' ? t('generating') : t('downloadPDF')}
               </button>
             </div>
           </div>
@@ -316,7 +321,7 @@ export default function BorrowRequestPreviewModal({
             style={{ background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', color: isDark ? '#94a3b8' : '#475569', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0' }}
           >
             <ArrowLeft className="w-4 h-4" />
-            Edit
+            {t('edit')}
           </button>
           <button
             onClick={onConfirm}
@@ -330,12 +335,12 @@ export default function BorrowRequestPreviewModal({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Submitting…
+                {t('submitting')}
               </>
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                Confirm &amp; Submit
+                {t('confirmSubmit')}
               </>
             )}
           </button>

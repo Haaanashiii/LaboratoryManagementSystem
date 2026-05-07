@@ -251,12 +251,17 @@ const generateBorrowRequestPdf = (request) => {
     ], margin, curY, contentW);
 
     // ── APPROVAL INFORMATION ─────────────────────────────────────────────
-    // Lecturer approval
-    if (request.lecturer_approved_at || request.lecturer?.name || request.lecturer_name) {
+    // Lecturer approval / assignment
+    const resolvedLecturerName = request.lecturer?.name || request.lecturer_name;
+    if (resolvedLecturerName || request.lecturer_approved_at) {
       const lecturerFields = [
-        { label: 'Lecturer',    value: request.lecturer?.name || request.lecturer_name || '—' },
-        { label: 'Approved At', value: formatDate(request.lecturer_approved_at) },
+        { label: 'Lecturer', value: resolvedLecturerName || '—' },
       ];
+      if (request.lecturer_approved_at) {
+        lecturerFields.push({ label: 'Approved At', value: formatDate(request.lecturer_approved_at) });
+      } else {
+        lecturerFields.push({ label: 'Status', value: 'Pending Approval' });
+      }
       if (request.lecturer_remarks) {
         lecturerFields.push({ label: 'Remarks', value: request.lecturer_remarks });
       }
@@ -292,7 +297,7 @@ const generateBorrowRequestPdf = (request) => {
     }
 
     // ── SIGNATURE AREA ───────────────────────────────────────────────────
-    const sigY = Math.max(curY + 10, pageH - 120);
+    const sigY = Math.max(curY + 10, pageH - 130);
     doc
       .moveTo(margin, sigY)
       .lineTo(pageW - margin, sigY)
@@ -300,44 +305,31 @@ const generateBorrowRequestPdf = (request) => {
       .lineWidth(0.5)
       .stroke();
 
-    const colW = contentW / 2 - 10;
+    const sigColW = (contentW - 20) / 3;
+    const sigGap = 10;
 
-    // Borrower signature
-    doc
-      .moveTo(margin, sigY + 50)
-      .lineTo(margin + colW, sigY + 50)
-      .strokeColor(MUTED)
-      .lineWidth(0.4)
-      .stroke();
-    doc
-      .fontSize(7.5)
-      .fillColor(MUTED)
-      .font('Helvetica')
-      .text('Borrower Signature', margin, sigY + 54, { width: colW, align: 'center' });
-    doc
-      .fontSize(8)
-      .fillColor(BRAND_DARK)
-      .font('Helvetica-Bold')
-      .text(request.borrower_name || '', margin, sigY + 64, { width: colW, align: 'center' });
+    const drawSigCol = (x, label, name) => {
+      doc
+        .moveTo(x, sigY + 52)
+        .lineTo(x + sigColW, sigY + 52)
+        .strokeColor(MUTED)
+        .lineWidth(0.4)
+        .stroke();
+      doc
+        .fontSize(7)
+        .fillColor(MUTED)
+        .font('Helvetica')
+        .text(label, x, sigY + 56, { width: sigColW, align: 'center' });
+      doc
+        .fontSize(7.5)
+        .fillColor(BRAND_DARK)
+        .font('Helvetica-Bold')
+        .text(name || '', x, sigY + 66, { width: sigColW, align: 'center' });
+    };
 
-    // Lab Assistant signature
-    const sig2X = margin + colW + 20;
-    doc
-      .moveTo(sig2X, sigY + 50)
-      .lineTo(sig2X + colW, sigY + 50)
-      .strokeColor(MUTED)
-      .lineWidth(0.4)
-      .stroke();
-    doc
-      .fontSize(7.5)
-      .fillColor(MUTED)
-      .font('Helvetica')
-      .text('Lab Assistant / Approver Signature', sig2X, sigY + 54, { width: colW, align: 'center' });
-    doc
-      .fontSize(8)
-      .fillColor(BRAND_DARK)
-      .font('Helvetica-Bold')
-      .text(request.approved_by?.name || '', sig2X, sigY + 64, { width: colW, align: 'center' });
+    drawSigCol(margin, 'Borrower Signature', request.borrower_name);
+    drawSigCol(margin + sigColW + sigGap, 'Lecturer Signature', resolvedLecturerName);
+    drawSigCol(margin + (sigColW + sigGap) * 2, 'Lab Assistant Signature', request.approved_by?.name);
 
     // Footer
     doc

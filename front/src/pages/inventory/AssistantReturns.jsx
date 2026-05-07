@@ -11,16 +11,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Package, RotateCcw, AlertTriangle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { AssistantReturnsSkeleton } from '@/skeleton-framework/assistant';
+import { useLang } from '@/components/i18n/LangContext';
 
 const PAGE_SIZE = 10;
 
 const SECTION_CONFIG = [
-  { key: 'all',     label: 'All',            color: 'bg-slate-100 text-slate-700 border-slate-300', dot: '#475569', icon: ClipboardList },
-  { key: 'overdue', label: 'Overdue',         color: 'bg-red-50 text-red-700 border-red-200',        dot: '#ef4444', icon: AlertTriangle },
-  { key: 'regular', label: 'Regular Returns', color: 'bg-blue-50 text-blue-700 border-blue-200',     dot: '#3b82f6', icon: RotateCcw },
+  { key: 'all',     labelKey: 'all',           color: 'bg-slate-100 text-slate-700 border-slate-300', dot: '#475569', icon: ClipboardList },
+  { key: 'overdue', labelKey: 'overdue',        color: 'bg-red-50 text-red-700 border-red-200',        dot: '#ef4444', icon: AlertTriangle },
+  { key: 'regular', labelKey: 'regularReturns', color: 'bg-blue-50 text-blue-700 border-blue-200',     dot: '#3b82f6', icon: RotateCcw },
 ];
 
 export default function Returns() {
+  const { t } = useLang();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [returnCondition, setReturnCondition] = useState('Good');
   const [returnRemarks, setReturnRemarks] = useState('');
@@ -196,7 +198,7 @@ export default function Returns() {
             <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
               {format(new Date(), 'EEEE, MMMM d, yyyy')}
             </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Equipment Returns</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('equipmentReturns')}</h1>
           </div>
         </div>
       </div>
@@ -222,7 +224,7 @@ export default function Returns() {
                 <CfgIcon className="h-4 w-4" style={isActive ? { color: cfg.dot } : { color: '#64748b' }} />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{cfg.label}</p>
+                <p className="truncate text-xs text-slate-500">{t(cfg.labelKey)}</p>
                 <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
               </div>
             </button>
@@ -238,7 +240,7 @@ export default function Returns() {
             {activeSection !== 'all' && (
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeConfig.dot }} />
             )}
-            <p className="text-sm font-medium text-slate-800">{activeConfig.label}</p>
+            <p className="text-sm font-medium text-slate-800">{t(activeConfig.labelKey)}</p>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
               {filtered.length}
             </span>
@@ -247,14 +249,14 @@ export default function Returns() {
                 onClick={() => handleSectionChange('all')}
                 className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
               >
-                clear
+                {t('clear')}
               </button>
             )}
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search equipment or borrower…"
+              placeholder={t('searchEquipmentOrBorrower')}
               value={search}
               onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
               className="h-8 pl-8 text-xs"
@@ -270,7 +272,7 @@ export default function Returns() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
                 <RotateCcw className="h-5 w-5 text-red-400" />
               </div>
-              <p className="text-sm font-medium text-slate-800">Unable to load borrowed items</p>
+              <p className="text-sm font-medium text-slate-800">{t('unableLoadBorrowedItems')}</p>
               <p className="max-w-xs text-center text-xs text-slate-500">
                 {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
               </p>
@@ -280,12 +282,12 @@ export default function Returns() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrower</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Qty</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Due Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-slate-500">Action</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('qty')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('dueDate')}</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-slate-500">{t('action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -296,8 +298,8 @@ export default function Returns() {
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
                             <RotateCcw className="h-4 w-4 text-slate-400" />
                           </div>
-                          <p className="text-sm text-slate-500">No pending returns</p>
-                          <p className="text-xs text-slate-400">All borrowed equipment has been returned</p>
+                          <p className="text-sm text-slate-500">{t('noPendingReturns')}</p>
+                          <p className="text-xs text-slate-400">{t('allEquipmentReturned')}</p>
                         </div>
                       </td>
                     </TableRow>
@@ -320,11 +322,11 @@ export default function Returns() {
                             {overdue ? (
                               <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
                                 <AlertTriangle className="h-3 w-3" />
-                                Overdue
+                                {t('overdue')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                                Borrowed
+                                {t('borrowed')}
                               </span>
                             )}
                           </TableCell>
@@ -336,7 +338,7 @@ export default function Returns() {
                               onClick={() => openReturnDialog(request)}
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
-                              Process Return
+                              {t('processReturn')}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -349,7 +351,7 @@ export default function Returns() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
                   <p className="text-xs text-slate-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                    {t('showing')} {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} {t('ofLabel')} {filtered.length}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button
@@ -397,7 +399,7 @@ export default function Returns() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
                 <RotateCcw className="h-4 w-4 text-blue-600" />
               </div>
-              Process Return
+              {t('processReturn')}
             </DialogTitle>
           </DialogHeader>
 
@@ -413,7 +415,7 @@ export default function Returns() {
             </p>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Equipment Condition</label>
+              <label className="text-xs font-medium text-slate-600">{t('equipmentCondition')}</label>
               <Select value={returnCondition} onValueChange={handleConditionChange}>
                 <SelectTrigger className="text-sm">
                   <SelectValue />
@@ -422,19 +424,19 @@ export default function Returns() {
                   <SelectItem value="Good">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      Good
+                      {t('good')}
                     </span>
                   </SelectItem>
                   <SelectItem value="Damaged">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      Damaged
+                      {t('damaged')}
                     </span>
                   </SelectItem>
                   <SelectItem value="Lost">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-red-500" />
-                      Lost
+                      {t('lost')}
                     </span>
                   </SelectItem>
                 </SelectContent>
@@ -445,7 +447,7 @@ export default function Returns() {
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">
-                    What is damaged? <span className="text-red-500">*</span>
+                    {t('whatIsDamaged')} <span className="text-red-500">*</span>
                   </label>
                   <Textarea
                     value={damageDetails}
@@ -456,7 +458,7 @@ export default function Returns() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-600">Damage image (optional)</label>
+                  <label className="text-xs font-medium text-slate-600">{t('damageImageOptional')}</label>
                   <label
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
@@ -477,13 +479,13 @@ export default function Returns() {
                           className="h-16 w-full rounded-md object-cover"
                         />
                         <p className="truncate text-[11px] text-slate-500 w-full text-center">{damageImage.name}</p>
-                        <span className="text-[10px] text-slate-400 underline">click to change</span>
+                        <span className="text-[10px] text-slate-400 underline">{t('clickToChange')}</span>
                       </>
                     ) : (
                       <>
                         <Package className="h-5 w-5 text-slate-400" />
                         <p className="text-[11px] text-slate-500">
-                          {dragOver ? 'Drop image here' : 'Drag & drop or click'}
+                          {dragOver ? t('dropImageHere') : t('dragDropOrClick')}
                         </p>
                       </>
                     )}
@@ -501,15 +503,15 @@ export default function Returns() {
             {returnCondition === 'Damaged' && (
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">
-                  Will the borrower replace it? <span className="text-red-500">*</span>
+                  {t('willBorrowerReplace')} <span className="text-red-500">*</span>
                 </label>
                 <Select value={studentWillReplace} onValueChange={handleStudentReplacementChange}>
                   <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Select replacement responsibility" />
+                    <SelectValue placeholder={t('willBorrowerReplace')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="yes">Yes, borrower will replace it</SelectItem>
-                    <SelectItem value="no">No, replacement is not required</SelectItem>
+                    <SelectItem value="yes">{t('yesBorrowerWillReplace')}</SelectItem>
+                    <SelectItem value="no">{t('noReplacementNotRequired')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -517,23 +519,23 @@ export default function Returns() {
 
             {returnCondition === 'Lost' && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="text-xs font-medium text-red-700">Lost item policy</p>
-                <p className="mt-0.5 text-xs text-red-600">{selectedRequest?.borrower_name} must replace this lost item.</p>
+                <p className="text-xs font-medium text-red-700">{t('lostItemPolicy')}</p>
+                <p className="mt-0.5 text-xs text-red-600">{selectedRequest?.borrower_name} {t('mustReplaceItem')}</p>
               </div>
             )}
 
             {shouldTrackReplacement && (
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">
-                  Has the replacement already been completed? <span className="text-red-500">*</span>
+                  {t('hasReplacementCompleted')} <span className="text-red-500">*</span>
                 </label>
                 <Select value={replacementCompleted} onValueChange={setReplacementCompleted}>
                   <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Select replacement status" />
+                    <SelectValue placeholder={t('hasReplacementCompleted')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="yes">Yes, already replaced</SelectItem>
-                    <SelectItem value="no">No, still pending replacement</SelectItem>
+                    <SelectItem value="yes">{t('yesAlreadyReplaced')}</SelectItem>
+                    <SelectItem value="no">{t('noStillPending')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -541,14 +543,12 @@ export default function Returns() {
 
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">
-                Remarks {returnCondition !== 'Good' && <span className="text-red-500">*</span>}
+                {t('remarks')} {returnCondition !== 'Good' && <span className="text-red-500">*</span>}
               </label>
               <Textarea
                 value={returnRemarks}
                 onChange={(e) => setReturnRemarks(e.target.value)}
-                placeholder={returnCondition !== 'Good'
-                  ? 'Please describe the damage or issue...'
-                  : 'Optional: Add any notes...'}
+                placeholder={returnCondition !== 'Good' ? t('describeIssue') : t('optionalNotes')}
                 rows={2}
                 className="resize-none text-sm"
               />
@@ -557,7 +557,7 @@ export default function Returns() {
 
           <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
             <Button variant="outline" size="sm" onClick={closeDialog} className="text-xs">
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="outline"
@@ -566,7 +566,7 @@ export default function Returns() {
               disabled={returnMutation.isPending || isFormInvalid || (selectedRequest ? isOverdue(selectedRequest.return_date) : true)}
               className="text-xs"
             >
-              Mark Returned Early
+              {t('markReturnedEarly')}
             </Button>
             <Button
               size="sm"
@@ -575,9 +575,9 @@ export default function Returns() {
               className="text-xs text-white bg-blue-600 hover:bg-blue-700"
             >
               {returnMutation.isPending ? (
-                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Processing…</>
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />{t('processing')}</>
               ) : (
-                'Confirm Return'
+                t('confirmReturn')
               )}
             </Button>
           </DialogFooter>
