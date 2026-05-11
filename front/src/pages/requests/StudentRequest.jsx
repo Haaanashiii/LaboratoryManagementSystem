@@ -235,6 +235,12 @@ export default function MyRequests() {
     },
   });
 
+  const defaultExtDate = (returnDate) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const returnMin = new Date(returnDate).toISOString().slice(0, 10);
+    return today > returnMin ? today : returnMin;
+  };
+
   const getHistoryTimestamp = (request) => {
     return (
       request.actual_return_date ||
@@ -380,19 +386,30 @@ export default function MyRequests() {
       <div className="p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            {/* Icon accent */}
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              request.status === 'rejected'
-                ? 'bg-red-500/10'
-                : request.status === 'returned'
-                ? 'bg-emerald-500/10'
-                : 'bg-blue-500/10'
+            {/* Equipment thumbnail / icon */}
+            <div className={`w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center ${
+              request.equipment_image_url
+                ? (isDark ? 'border border-white/[0.08]' : 'border border-slate-200')
+                : request.status === 'rejected'
+                  ? 'bg-red-500/10'
+                  : request.status === 'returned'
+                  ? 'bg-emerald-500/10'
+                  : 'bg-blue-500/10'
             }`}>
-              {request.status === 'rejected'
-                ? <AlertCircle className={`w-5 h-5 text-red-500`} />
+              {request.equipment_image_url ? (
+                <img
+                  src={request.equipment_image_url}
+                  alt={request.equipment_name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : request.status === 'rejected'
+                ? <AlertCircle className="w-5 h-5 text-red-500" />
                 : request.status === 'returned'
-                ? <CheckCircle className={`w-5 h-5 text-emerald-500`} />
-                : <Package className={`w-5 h-5 text-blue-500`} />
+                ? <CheckCircle className="w-5 h-5 text-emerald-500" />
+                : <Package className="w-5 h-5 text-blue-500" />
               }
             </div>
 
@@ -419,6 +436,70 @@ export default function MyRequests() {
         </div>
 
         {renderProgressTracker(request)}
+
+        {/* ── Extension shortcut (borrowed only) ── */}
+        {request.status === 'borrowed' && (() => {
+          const ext = request.extension_request;
+          const isPending  = ext?.status === 'pending'  && !!ext?.requested_date;
+          const isApproved = ext?.status === 'approved' && !!ext?.requested_date;
+
+          if (isPending) {
+            return (
+              <div
+                onClick={e => e.stopPropagation()}
+                className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-2 border ${
+                  isDark ? 'bg-yellow-950/20 border-yellow-900/30' : 'bg-yellow-50 border-yellow-100'
+                }`}
+              >
+                <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                <p className={`text-xs font-semibold ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>
+                  {t('extensionPending')}
+                </p>
+                <span className={`ml-auto text-[10px] ${isDark ? 'text-yellow-600' : 'text-yellow-500'}`}>
+                  {format(new Date(ext.requested_date), 'MMM d, yyyy')}
+                </span>
+              </div>
+            );
+          }
+
+          if (isApproved) {
+            return (
+              <div
+                onClick={e => e.stopPropagation()}
+                className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-2 border ${
+                  isDark ? 'bg-emerald-950/20 border-emerald-900/30' : 'bg-emerald-50 border-emerald-100'
+                }`}
+              >
+                <CheckCheck className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                <p className={`text-xs font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                  {t('extensionApproved')}
+                </p>
+                <span className={`ml-auto text-[10px] font-medium ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>
+                  {format(new Date(ext.requested_date), 'MMM d, yyyy')}
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setSelectedRequest(request);
+                setExtDate(defaultExtDate(request.return_date));
+                setShowExtensionForm(true);
+              }}
+              className={`mt-3 w-full py-2 rounded-xl text-xs font-semibold border transition-colors flex items-center justify-center gap-1.5 ${
+                isDark
+                  ? 'border-violet-700/50 text-violet-400 hover:bg-violet-900/20'
+                  : 'border-violet-200 text-violet-600 hover:bg-violet-50'
+              }`}
+            >
+              <CalendarPlus className="w-3.5 h-3.5" />
+              {t('requestExtensionButton')}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );
@@ -902,9 +983,9 @@ export default function MyRequests() {
                   {/* ── EXTENSION REQUEST ── */}
                   {selectedRequest.status === 'borrowed' && (() => {
                     const ext = selectedRequest.extension_request;
-                    const isPending  = ext?.status === 'pending';
-                    const isApproved = ext?.status === 'approved';
-                    const isRejected = ext?.status === 'rejected';
+                    const isPending  = ext?.status === 'pending'  && !!ext?.requested_date;
+                    const isApproved = ext?.status === 'approved' && !!ext?.requested_date;
+                    const isRejected = ext?.status === 'rejected' && !!ext?.requested_date;
 
                     return (
                       <div className={`px-5 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
@@ -949,8 +1030,18 @@ export default function MyRequests() {
                             <input
                               type="date"
                               value={extDate}
-                              min={format(new Date(selectedRequest.return_date), 'yyyy-MM-dd')}
-                              onChange={e => setExtDate(e.target.value)}
+                              min={(() => {
+                                const today = new Date().toISOString().slice(0, 10);
+                                const returnMin = format(new Date(selectedRequest.return_date), 'yyyy-MM-dd');
+                                return today > returnMin ? today : returnMin;
+                              })()}
+                              onChange={e => {
+                                const val = e.target.value;
+                                const today = new Date().toISOString().slice(0, 10);
+                                const returnMin = format(new Date(selectedRequest.return_date), 'yyyy-MM-dd');
+                                const minDate = today > returnMin ? today : returnMin;
+                                setExtDate(val < minDate ? minDate : val);
+                              }}
                               className={`w-full rounded-lg px-3 py-2 text-sm border mb-2 outline-none focus:ring-2 focus:ring-violet-500/50 ${
                                 isDark
                                   ? 'bg-[#111118] border-white/[0.10] text-slate-200'
@@ -993,7 +1084,7 @@ export default function MyRequests() {
                           </div>
                         ) : !isPending ? (
                           <button
-                            onClick={() => setShowExtensionForm(true)}
+                            onClick={() => { setExtDate(defaultExtDate(selectedRequest.return_date)); setShowExtensionForm(true); }}
                             className={`w-full py-2 rounded-xl text-xs font-semibold border transition-colors flex items-center justify-center gap-1.5 ${
                               isDark
                                 ? 'border-violet-700/50 text-violet-400 hover:bg-violet-900/20'

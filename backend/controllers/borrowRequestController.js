@@ -87,6 +87,9 @@ const reconcileLegacyStockReservations = async () => {
         }
 
         if (request.status === 'returned' && request.stock_reserved) {
+          await Equipment.findByIdAndUpdate(request.equipment, {
+            $inc: { available: request.quantity }
+          });
           request.stock_reserved = false;
           await request.save();
         }
@@ -169,7 +172,7 @@ exports.getBorrowRequest = async (req, res, next) => {
     }
 
     // Check access rights
-    if (req.user.role === 'student' && request.student.toString() !== req.user.id) {
+    if (req.user.role === 'student' && String(request.student._id) !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to view this request'
@@ -1076,11 +1079,7 @@ exports.approveBorrowRequest = async (req, res, next) => {
     }
 
     // Real-time notifications
-    notifyStudentBorrowStatus(String(request.student?._id || request.student), {
-      type: 'borrow_approved',
-      requestId: String(request._id),
-      status: 'approved'
-    });
+    await notifyStudentBorrowStatus(request);
     notifyRoleRefresh('lab_assistant', { type: 'request_approved', requestId: String(request._id) });
 
     await logAuditEvent({
@@ -1134,11 +1133,7 @@ exports.rejectBorrowRequest = async (req, res, next) => {
 
     await request.save();
 
-    notifyStudentBorrowStatus(String(request.student?._id || request.student), {
-      type: 'borrow_rejected',
-      requestId: String(request._id),
-      status: 'rejected'
-    });
+    await notifyStudentBorrowStatus(request);
     notifyRoleRefresh('lab_assistant', { type: 'request_rejected', requestId: String(request._id) });
 
     await logAuditEvent({
@@ -1233,7 +1228,7 @@ exports.requestExtension = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Extension can only be requested while the item is borrowed' });
     }
 
-    if (borrowReq.extension_request && borrowReq.extension_request.status === 'pending') {
+    if (borrowReq.extension_request && borrowReq.extension_request.status === 'pending' && borrowReq.extension_request.requested_date) {
       return res.status(409).json({ success: false, message: 'An extension request is already pending' });
     }
 
@@ -1286,7 +1281,7 @@ exports.reviewExtension = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Borrow request not found' });
     }
 
-    if (!borrowReq.extension_request || borrowReq.extension_request.status !== 'pending') {
+    if (!borrowReq.extension_request || borrowReq.extension_request.status !== 'pending' || !borrowReq.extension_request.requested_date) {
       return res.status(400).json({ success: false, message: 'No pending extension request found' });
     }
 

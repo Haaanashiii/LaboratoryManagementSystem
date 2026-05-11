@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, RotateCcw, AlertTriangle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
+import { Package, RotateCcw, AlertTriangle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList, CalendarClock, Check, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { AssistantReturnsSkeleton } from '@/skeleton-framework/assistant';
 import { useLang } from '@/components/i18n/LangContext';
@@ -34,6 +34,9 @@ export default function Returns() {
   const [search, setSearch] = useState('');
   const [activeSection, setActiveSection] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [extensionRequest, setExtensionRequest] = useState(null);
+  const [extensionNote, setExtensionNote] = useState('');
+  const [extensionAction, setExtensionAction] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -49,6 +52,16 @@ export default function Returns() {
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       closeDialog();
+    }
+  });
+
+  const extensionMutation = useMutation({
+    mutationFn: ({ id, action, note }) => api.entities.BorrowRequest.reviewExtension(id, action, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['borrowedRequests'] });
+      setExtensionRequest(null);
+      setExtensionNote('');
+      setExtensionAction(null);
     }
   });
 
@@ -176,6 +189,10 @@ export default function Returns() {
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const activeConfig = SECTION_CONFIG.find((c) => c.key === activeSection) || SECTION_CONFIG[0];
 
+  const pendingExtensions = borrowedRequests.filter(
+    (r) => r.extension_request?.status === 'pending' && r.extension_request?.requested_date
+  );
+
   const h = new Date().getHours();
   const gc =
     h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
@@ -231,6 +248,68 @@ export default function Returns() {
           );
         })}
       </div>
+
+      {/* Extension Requests Section */}
+      {pendingExtensions.length > 0 && (
+        <Card className="overflow-hidden border-amber-200 shadow-none">
+          <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3">
+            <CalendarClock className="h-4 w-4 text-amber-600" />
+            <p className="text-sm font-medium text-amber-800">{t('pendingExtensions')}</p>
+            <span className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-xs font-medium text-amber-700">
+              {pendingExtensions.length}
+            </span>
+          </div>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-amber-100 bg-amber-50/50 hover:bg-amber-50/50">
+                  <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500">{t('currentReturnDate')}</TableHead>
+                  <TableHead className="text-xs font-medium text-slate-500">{t('requestedNewDate')}</TableHead>
+                  <TableHead className="text-right text-xs font-medium text-slate-500">{t('action')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingExtensions.map((req) => (
+                  <TableRow key={`ext-${req.id}`} className="border-amber-50 hover:bg-amber-50/30">
+                    <TableCell className="text-sm font-medium text-slate-900">{req.equipment_name}</TableCell>
+                    <TableCell className="text-xs text-slate-500">{req.borrower_name}</TableCell>
+                    <TableCell className="text-xs text-slate-500">
+                      {format(new Date(req.return_date), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell className="text-xs font-medium text-amber-700">
+                      {format(new Date(req.extension_request.requested_date), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                          onClick={() => { setExtensionRequest(req); setExtensionAction('approve'); setExtensionNote(''); }}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          {t('approveExtension')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2.5 text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          onClick={() => { setExtensionRequest(req); setExtensionAction('reject'); setExtensionNote(''); }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          {t('rejectExtension')}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Table Card */}
       <Card className="overflow-hidden border-slate-200 shadow-none">
@@ -390,6 +469,67 @@ export default function Returns() {
           )}
         </CardContent>
       </Card>
+
+      {/* Extension Review Dialog */}
+      <Dialog open={!!extensionRequest} onOpenChange={() => { setExtensionRequest(null); setExtensionNote(''); setExtensionAction(null); }}>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white text-slate-900">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${extensionAction === 'approve' ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                {extensionAction === 'approve'
+                  ? <Check className="h-4 w-4 text-emerald-600" />
+                  : <X className="h-4 w-4 text-red-500" />}
+              </div>
+              {t('reviewExtensionTitle')}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-3 space-y-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 space-y-1.5 text-xs">
+              <p><span className="text-slate-500">{t('equipment')}:</span> <span className="font-medium text-slate-800">{extensionRequest?.equipment_name}</span></p>
+              <p><span className="text-slate-500">{t('borrower')}:</span> <span className="text-slate-700">{extensionRequest?.borrower_name}</span></p>
+              <p><span className="text-slate-500">{t('currentReturnDate')}:</span> <span className="text-slate-700">{extensionRequest?.return_date ? format(new Date(extensionRequest.return_date), 'MMM d, yyyy') : '—'}</span></p>
+              <p><span className="text-slate-500">{t('requestedNewDate')}:</span> <span className="font-medium text-amber-700">{extensionRequest?.extension_request?.requested_date ? format(new Date(extensionRequest.extension_request.requested_date), 'MMM d, yyyy') : '—'}</span></p>
+              {extensionRequest?.extension_request?.reason && (
+                <p><span className="text-slate-500">{t('reasonOptional')}:</span> <span className="italic text-slate-600">{extensionRequest.extension_request.reason}</span></p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">{t('extensionNote')}</label>
+              <Textarea
+                value={extensionNote}
+                onChange={(e) => setExtensionNote(e.target.value)}
+                placeholder={extensionAction === 'approve' ? 'e.g. Approved, please return by new date.' : 'e.g. Extension not allowed at this time.'}
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setExtensionRequest(null); setExtensionNote(''); setExtensionAction(null); }}
+              className="text-xs"
+              disabled={extensionMutation.isPending}
+            >
+              {t('cancel')}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => extensionMutation.mutate({ id: extensionRequest.id, action: extensionAction, note: extensionNote })}
+              disabled={extensionMutation.isPending}
+              className={`text-xs text-white ${extensionAction === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'}`}
+            >
+              {extensionMutation.isPending
+                ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />{extensionAction === 'approve' ? t('approving') : t('rejecting')}</>
+                : extensionAction === 'approve' ? t('approveExtension') : t('rejectExtension')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Return Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={closeDialog}>
