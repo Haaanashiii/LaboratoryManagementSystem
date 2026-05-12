@@ -66,6 +66,11 @@ export default function EquipmentViewModal({
     if (open) setCurrentImageIndex(0);
   }, [open, equipment]);
 
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
   if (!equipment) return null;
 
   const currentImage = allImages[currentImageIndex] ?? null;
@@ -379,26 +384,67 @@ export default function EquipmentViewModal({
             style={{ borderTop: `1px solid ${T.divider}` }}
           >
             {actionHandler && (
-              <button
-                onClick={() => { if (!hasActiveRequest) { actionHandler(equipment); onClose(); } }}
-                disabled={hasActiveRequest || (isBorrowAction && available === 0)}
-                className="flex-1 h-9 px-4 rounded-lg font-semibold text-xs transition-all"
-                style={
-                  hasActiveRequest
-                    ? { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#f59e0b', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }
-                    : isBorrowAction && available === 0
-                    ? { background: T.ctaDisBg, border: `1px solid ${T.ctaDisBor}`, color: T.ctaDisText, cursor: 'not-allowed' }
-                    : { background: '#3b82f6', color: '#fff', border: 'none', boxShadow: '0 4px 20px rgba(59,130,246,0.40)' }
-                }
-              >
-                {hasActiveRequest ? (
-                  <><span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />{effectiveBorrowState === 'borrowed' ? t('currentlyBorrowed') : t('borrowPending')}</>
-                ) : isBorrowAction && available === 0 ? t('unavailable') : actionLabel}
-              </button>
+              hasActiveRequest ? (
+                /* ── Status card: non-clickable, shows pending/borrowed state ── */
+                <div
+                  className="flex-1 h-12 sm:h-10 rounded-xl px-3.5 flex items-center justify-between gap-2"
+                  style={{
+                    background: effectiveBorrowState === 'borrowed'
+                      ? 'rgba(99,102,241,0.10)'
+                      : 'rgba(245,158,11,0.09)',
+                    border: `1px solid ${effectiveBorrowState === 'borrowed' ? 'rgba(99,102,241,0.22)' : 'rgba(245,158,11,0.22)'}`,
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className="flex-shrink-0"
+                      style={{
+                        width: 8, height: 8, borderRadius: '50%', display: 'inline-block',
+                        background: effectiveBorrowState === 'borrowed' ? '#6366f1' : '#f59e0b',
+                        boxShadow: effectiveBorrowState === 'borrowed'
+                          ? '0 0 8px rgba(99,102,241,0.55)'
+                          : '0 0 8px rgba(245,158,11,0.55)',
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                      }}
+                    />
+                    <span
+                      className="text-xs font-bold truncate"
+                      style={{ color: effectiveBorrowState === 'borrowed' ? '#818cf8' : '#fbbf24' }}
+                    >
+                      {effectiveBorrowState === 'borrowed' ? t('currentlyBorrowed') : t('borrowPending')}
+                    </span>
+                  </div>
+                  <span
+                    className="flex-shrink-0 text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded-md"
+                    style={{
+                      background: effectiveBorrowState === 'borrowed'
+                        ? 'rgba(99,102,241,0.15)'
+                        : 'rgba(245,158,11,0.15)',
+                      color: effectiveBorrowState === 'borrowed' ? '#a5b4fc' : '#fcd34d',
+                    }}
+                  >
+                    {effectiveBorrowState === 'borrowed' ? 'Active' : 'In Queue'}
+                  </span>
+                </div>
+              ) : (
+                /* ── Normal borrow / action button ── */
+                <button
+                  onClick={() => { actionHandler(equipment); onClose(); }}
+                  disabled={isBorrowAction && available === 0}
+                  className="flex-1 h-12 sm:h-10 px-4 rounded-xl font-semibold text-sm sm:text-xs transition-all flex items-center justify-center"
+                  style={
+                    isBorrowAction && available === 0
+                      ? { background: T.ctaDisBg, border: `1px solid ${T.ctaDisBor}`, color: T.ctaDisText, cursor: 'not-allowed' }
+                      : { background: '#3b82f6', color: '#fff', border: 'none', boxShadow: '0 4px 20px rgba(59,130,246,0.40)' }
+                  }
+                >
+                  {isBorrowAction && available === 0 ? t('unavailable') : actionLabel}
+                </button>
+              )
             )}
             <button
               onClick={onClose}
-              className="flex-1 sm:flex-none sm:w-auto h-9 px-4 rounded-lg font-semibold text-xs transition-all"
+              className="flex-1 sm:flex-none sm:w-auto h-12 sm:h-10 px-4 rounded-xl font-semibold text-sm sm:text-xs transition-all"
               style={{ background: T.closeBtnBg, border: `1px solid ${T.closeBtnBor}`, color: T.closeBtnText }}
             >
               {t('dismiss')}

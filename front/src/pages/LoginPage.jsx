@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Hash, Building2, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Hash, Building2, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell, Loader2, Globe, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
@@ -66,16 +66,17 @@ const getSignupPasswordStrength = (password) => {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLang();
+  const { t, lang, toggleLang } = useLang();
   const { isAuthenticated, isLoading, user, refreshSession } = useAuth();
   // Login state
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => {
-    const savedMode = localStorage.getItem('authStorageMode');
-    return savedMode !== 'session';
-  });
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('rememberEmail'));
+  const [formData, setFormData] = useState({ email: localStorage.getItem('rememberEmail') || '', password: '' });
   const [errors, setErrors] = useState({});
+  const [loginError, setLoginError] = useState('');
+  const [forgotPwOpen, setForgotPwOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [rateLimitUntil, setRateLimitUntil] = useState(null);
@@ -90,7 +91,7 @@ export default function LoginPage() {
   // Sign-up modal state
   const [showSignup, setShowSignup] = useState(false);
   const [signupStep, setSignupStep] = useState(0); // 0 = welcome, 1 = form
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '', studentId: '', department: '' });
+  const [signupForm, setSignupForm] = useState({ firstName: '', lastName: '', middleName: '', email: '', password: '', confirmPassword: '', studentId: '', department: '' });
   const [signupErrors, setSignupErrors] = useState({});
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const passwordStrength = getSignupPasswordStrength(signupForm.password);
@@ -125,6 +126,7 @@ export default function LoginPage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    if (loginError) setLoginError('');
   };
 
   useEffect(() => {
@@ -170,16 +172,29 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const namePattern = /^[a-zA-Z\s'-]+$/;
+
   const validateSignup = () => {
     const newErrors = {};
-    if (!signupForm.name) newErrors.name = t('errorNameRequired');
-    if (!signupForm.studentId) {
-      newErrors.studentId = 'Student ID is required';
-    } else if (/\D/.test(signupForm.studentId)) {
-      newErrors.studentId = 'Student ID must contain numbers only';
-    }
+
+    if (!signupForm.lastName.trim()) newErrors.lastName = t('errorLastNameRequired');
+    else if (!namePattern.test(signupForm.lastName.trim())) newErrors.lastName = t('errorNameInvalid');
+
+    if (!signupForm.firstName.trim()) newErrors.firstName = t('errorFirstNameRequired');
+    else if (!namePattern.test(signupForm.firstName.trim())) newErrors.firstName = t('errorNameInvalid');
+
+    if (signupForm.middleName.trim() && !namePattern.test(signupForm.middleName.trim()))
+      newErrors.middleName = t('errorNameInvalid');
+
+    if (!signupForm.studentId) newErrors.studentId = t('errorStudentIdRequired');
+    else if (/\D/.test(signupForm.studentId)) newErrors.studentId = t('errorStudentIdNumbers');
+
+    if (!signupForm.department.trim()) newErrors.department = t('errorDepartmentRequired');
+
     if (!signupForm.email) newErrors.email = t('errorEmailRequired');
     else if (!/\S+@\S+\.\S+/.test(signupForm.email)) newErrors.email = t('errorEmailInvalid');
+    else if (!signupForm.email.toLowerCase().endsWith('@student.its.ac.id')) newErrors.email = t('errorStudentDomainOnly');
+
     if (!signupForm.password) newErrors.password = t('errorPasswordRequired');
     else if (signupForm.password.length < MIN_SIGNUP_PASSWORD_LENGTH) {
       newErrors.password = `Password must be at least ${MIN_SIGNUP_PASSWORD_LENGTH} characters.`;
@@ -188,8 +203,10 @@ export default function LoginPage() {
     } else if (countUniqueChars(signupForm.password) < MIN_SIGNUP_UNIQUE_CHARS) {
       newErrors.password = `Password must include at least ${MIN_SIGNUP_UNIQUE_CHARS} unique characters.`;
     }
+
     if (!signupForm.confirmPassword) newErrors.confirmPassword = t('errorConfirmPassword');
     else if (signupForm.password !== signupForm.confirmPassword) newErrors.confirmPassword = t('errorPasswordMismatch');
+
     setSignupErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -199,26 +216,27 @@ export default function LoginPage() {
 
     if (rateLimitUntil && Date.now() >= rateLimitUntil) {
       setRateLimitUntil(null);
-      setErrors((prev) => {
-        const next = { ...prev };
-        if (next.email && next.email.toLowerCase().includes('too many failed login attempts')) {
-          delete next.email;
-        }
-        return next;
-      });
+      setLoginError('');
     }
 
     if (rateLimitUntil && Date.now() < rateLimitUntil) {
-      setErrors({ email: `Too many failed login attempts. Try again in ${countdownLabel || '00:00'}.` });
+      setLoginError(`Too many failed login attempts. Try again in ${countdownLabel || '00:00'}.`);
       return;
     }
 
     if (!validateLogin()) return;
+    setLoginError('');
     setIsLoggingIn(true);
     try {
       await api.auth.login(formData.email, formData.password, { rememberMe });
       const user = await refreshSession();
-      console.log('Login successful:', user);
+
+      // Remember Me: persist email only for students
+      if (rememberMe && (user?.role || '').toLowerCase() === 'student') {
+        localStorage.setItem('rememberEmail', formData.email);
+      } else {
+        localStorage.removeItem('rememberEmail');
+      }
 
       if (location.state?.from?.pathname) {
         navigateWithTransition(location.state.from.pathname);
@@ -232,7 +250,6 @@ export default function LoginPage() {
       navigateWithTransition(defaultDestination);
     } catch (error) {
       setIsLoggingIn(false);
-      console.error('Login failed:', error);
       if (error?.status === 429) {
         const defaultRetryMs = 30 * 60 * 1000;
         const retryMs = Number.isFinite(error?.retryAfterMs) ? error.retryAfterMs : defaultRetryMs;
@@ -243,32 +260,52 @@ export default function LoginPage() {
         const initialMinutes = Math.floor(initialSeconds / 60);
         const initialRemainder = initialSeconds % 60;
         const initialLabel = `${String(initialMinutes).padStart(2, '0')}:${String(initialRemainder).padStart(2, '0')}`;
-        setErrors({ email: `Too many failed login attempts. Try again in ${initialLabel}.` });
+        setLoginError(`Too many failed login attempts. Try again in ${initialLabel}.`);
         return;
       }
 
-      setErrors({ email: error.message || t('errorInvalidCredentials') });
+      setLoginError(t('errorInvalidCredentials'));
     }
+  };
+
+  const handleForgotSubmit = (e) => {
+    e.preventDefault();
+    setForgotSent(true);
   };
 
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     if (!validateSignup()) return;
     setIsSigningUp(true);
+
+    const fullName = [signupForm.lastName.trim(), signupForm.firstName.trim(), signupForm.middleName.trim()]
+      .filter(Boolean).join(' ');
+
     try {
       await api.auth.register({
-        name: signupForm.name,
+        name: fullName,
         email: signupForm.email,
         password: signupForm.password,
         studentId: signupForm.studentId,
-        department: signupForm.department || undefined,
+        department: signupForm.department.trim(),
       });
-      toast.success('Account created successfully! Welcome aboard.');
-      navigate('/dashboard', { replace: true });
+      toast.success('Account created! Welcome to Equimon.', {
+        description: 'Your student account is ready to use.',
+      });
+      closeSignupModal();
+      setTimeout(() => navigate('/dashboard', { replace: true }), 300);
     } catch (error) {
       setIsSigningUp(false);
-      console.error('Registration failed:', error);
-      setSignupErrors({ email: error.message || t('errorRegistrationFailed') });
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('email') && (msg.includes('exist') || msg.includes('taken') || msg.includes('registered') || msg.includes('duplicate'))) {
+        setSignupErrors({ email: t('errorEmailAlreadyRegistered') });
+      } else if ((msg.includes('student') && msg.includes('id')) || (msg.includes('nrp'))) {
+        setSignupErrors({ studentId: t('errorStudentIdAlreadyRegistered') });
+      } else if (msg.includes('name') && (msg.includes('exist') || msg.includes('taken'))) {
+        setSignupErrors({ lastName: t('errorRegistrationFailed') });
+      } else {
+        setSignupErrors({ email: error.message || t('errorRegistrationFailed') });
+      }
     }
   };
 
@@ -361,17 +398,17 @@ export default function LoginPage() {
         }
         .lp-feature-row:last-child { border-bottom: none; }
         .su-input {
-          background: #13131c;
-          border: 1px solid rgba(71,85,105,0.3);
+          background: #1E1E2E;
+          border: 1px solid rgba(100,116,139,0.45);
           color: #E2E8F0;
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .su-input:focus {
           outline: none;
           border-color: #3B82F6;
-          box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+          box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
         }
-        .su-input::placeholder { color: #334155; }
+        .su-input::placeholder { color: #4B5563; }
         .su-input-err { border-color: #EF4444 !important; }
         @keyframes su-fadeInUp {
           from { opacity: 0; transform: translateY(14px); }
@@ -473,16 +510,29 @@ export default function LoginPage() {
       {/* ── Right Form Panel ── */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative z-10">
 
-        {/* Back to Home */}
-        <button
-          onClick={() => navigate('/')}
-          className="absolute top-6 right-6 flex items-center gap-1.5 text-sm font-medium transition-colors"
-          style={{ color: '#475569' }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#94A3B8'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#475569'; }}
-        >
-          ← {t('backToHome')}
-        </button>
+        {/* Top-right actions: language toggle + back to home */}
+        <div className="absolute top-6 right-6 flex items-center gap-2">
+          <button
+            onClick={toggleLang}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
+            style={{ color: '#64748B', border: '1px solid rgba(71,85,105,0.35)', background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.5)'; e.currentTarget.style.color = '#3B82F6'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(71,85,105,0.35)'; e.currentTarget.style.color = '#64748B'; }}
+            aria-label={lang === 'en' ? t('switchToIndonesian') : t('switchToEnglish')}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>{lang === 'en' ? 'ID' : 'EN'}</span>
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+            style={{ color: '#475569' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#94A3B8'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#475569'; }}
+          >
+            ← {t('backToHome')}
+          </button>
+        </div>
 
         {/* Glass card */}
         <div
@@ -526,9 +576,6 @@ export default function LoginPage() {
                 />
               </div>
               {errors.email && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{errors.email}</p>}
-              {rateLimitUntil && countdownLabel && (
-                <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>Try again in {countdownLabel}</p>
-              )}
             </div>
 
             {/* Password */}
@@ -577,6 +624,7 @@ export default function LoginPage() {
               </label>
               <button
                 type="button"
+                onClick={() => setForgotPwOpen(true)}
                 className="text-sm font-medium transition-colors"
                 style={{ color: '#3B82F6' }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#93C5FD'; }}
@@ -585,6 +633,33 @@ export default function LoginPage() {
                 {t('forgotPassword')}
               </button>
             </div>
+
+            {/* Auth error card */}
+            {loginError && (
+              <div
+                className="flex items-start gap-3 rounded-xl px-4 py-3"
+                style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}
+              >
+                <div
+                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-0.5"
+                  style={{ background: 'rgba(239,68,68,0.13)' }}
+                >
+                  <AlertCircle className="w-4 h-4" style={{ color: '#F87171' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold" style={{ color: '#FCA5A5' }}>Sign-in failed</p>
+                  <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#F87171' }}>{loginError}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLoginError('')}
+                  className="flex-shrink-0 transition-opacity opacity-50 hover:opacity-100 mt-0.5"
+                  style={{ color: '#F87171' }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Submit */}
             <button
@@ -626,6 +701,97 @@ export default function LoginPage() {
         onClick={closeSignupModal}
       />
 
+      {/* ── Forgot Password overlay ── */}
+      {forgotPwOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+            onClick={() => { setForgotPwOpen(false); setForgotSent(false); setForgotEmail(''); }}
+          />
+          <div
+            className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm rounded-2xl p-7"
+            style={{
+              background: 'rgba(13,13,20,0.97)',
+              border: '1px solid rgba(59,130,246,0.15)',
+              backdropFilter: 'blur(24px)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+              margin: '0 1.5rem',
+            }}
+          >
+            <button
+              onClick={() => { setForgotPwOpen(false); setForgotSent(false); setForgotEmail(''); }}
+              className="absolute top-4 right-4 p-1.5 rounded-lg transition-all"
+              style={{ color: '#475569', background: 'transparent' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; e.currentTarget.style.color = '#94A3B8'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569'; }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {!forgotSent ? (
+              <>
+                <div className="mb-6">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                    style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)' }}
+                  >
+                    <Mail className="w-5 h-5" style={{ color: '#60A5FA' }} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-1">{t('forgotPasswordTitle')}</h3>
+                  <p className="text-sm" style={{ color: '#64748B' }}>{t('forgotPasswordSubtitle')}</p>
+                </div>
+                <form onSubmit={handleForgotSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                      {t('emailAddress')}
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={e => setForgotEmail(e.target.value)}
+                        placeholder={t('placeholderEmail')}
+                        className="lp-input w-full pl-10 pr-4 py-3 rounded-xl text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="lp-btn-primary w-full py-3 h-11 rounded-xl font-semibold text-white text-sm">
+                    {t('forgotPasswordSend')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotPwOpen(false); setForgotEmail(''); }}
+                    className="lp-btn-ghost w-full py-3 h-11 rounded-xl font-semibold text-sm"
+                  >
+                    {t('forgotPasswordBack')}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="text-center py-2">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                  style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.2)' }}
+                >
+                  <CheckCircle className="w-7 h-7" style={{ color: '#34D399' }} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Check your inbox</h3>
+                <p className="text-sm mb-6" style={{ color: '#64748B' }}>{t('forgotPasswordSent')}</p>
+                <button
+                  onClick={() => { setForgotPwOpen(false); setForgotSent(false); setForgotEmail(''); }}
+                  className="lp-btn-primary w-full py-3 h-11 rounded-xl font-semibold text-white text-sm"
+                >
+                  {t('forgotPasswordBack')}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Drawer */}
       <div
         className={`fixed top-0 right-0 h-full w-full lg:w-[480px] z-50 shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
@@ -652,55 +818,76 @@ export default function LoginPage() {
           {/* ── STEP 0: Welcome ── */}
           <div
             key={showSignup ? 'open' : 'closed'}
-            className={`absolute inset-0 flex flex-col items-center justify-center px-8 pb-10 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`absolute inset-0 flex flex-col justify-center px-8 pb-10 pt-16 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               signupStep === 0 ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 -translate-x-full pointer-events-none'
             }`}
           >
-            <div className="w-full max-w-sm text-center">
+            <div className="w-full max-w-sm" style={{ animation: 'su-fadeInUp 0.5s ease 0.05s both' }}>
+
+              {/* Badge */}
               <div
-                className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-8"
-                style={{
-                  background: '#111118',
-                  border: '1px solid rgba(59,130,246,0.2)',
-                  animation: 'su-fadeInUp 0.5s ease 0.05s both',
-                }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-7"
+                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.18)' }}
               >
-                <img src={itsLogo} alt="ITS Logo" className="w-12 h-12 object-contain" />
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                <span className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: '#60A5FA' }}>
+                  Student Portal — ITS
+                </span>
               </div>
-              <h1
-                className="text-3xl font-bold text-white mb-3"
-                style={{ animation: 'su-fadeInUp 0.5s ease 0.15s both' }}
-              >
-                {t('welcomeToEquimon')}
-              </h1>
-              <p
-                className="text-sm leading-relaxed max-w-xs mx-auto mb-10"
-                style={{ color: '#64748B', animation: 'su-fadeInUp 0.5s ease 0.25s both' }}
-              >
-                Borrow smarter, manage better — your lab, your rules.
+
+              {/* Logo + title */}
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: '#111118', border: '1px solid rgba(59,130,246,0.2)' }}
+                >
+                  <img src={itsLogo} alt="ITS Logo" className="w-8 h-8 object-contain" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold tracking-[0.18em] uppercase" style={{ color: '#3B82F6' }}>Equimon</p>
+                  <h1 className="text-2xl font-bold text-white leading-tight">Create Your Account</h1>
+                </div>
+              </div>
+
+              <p className="text-sm mb-8 leading-relaxed" style={{ color: '#475569' }}>
+                {t('equimonHelps')}
               </p>
-              <div
-                className="h-px mb-10"
-                style={{
-                  background: 'linear-gradient(to right, transparent, rgba(59,130,246,0.25), transparent)',
-                  animation: 'su-fadeInUp 0.5s ease 0.3s both',
-                }}
-              />
+
+              {/* Feature list */}
+              <div className="mb-8">
+                {featureItems.map(({ icon: Icon, label }, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 py-2.5"
+                    style={{ borderBottom: i < featureItems.length - 1 ? '1px solid rgba(30,41,59,0.5)' : 'none' }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.14)' }}
+                    >
+                      <Icon className="w-4 h-4" style={{ color: '#60A5FA' }} />
+                    </div>
+                    <span className="text-sm" style={{ color: '#94A3B8' }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Divider */}
+              <div className="h-px mb-7" style={{ background: 'linear-gradient(to right, transparent, rgba(59,130,246,0.22), transparent)' }} />
+
               <button
                 type="button"
                 onClick={() => setSignupStep(1)}
-                className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm"
-                style={{ animation: 'su-fadeInUp 0.5s ease 0.38s both' }}
+                className="lp-btn-primary w-full h-12 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2"
               >
-                Get Started →
+                Get Started <span>→</span>
               </button>
               <button
                 type="button"
                 onClick={closeSignupModal}
-                className="lp-btn-ghost w-full mt-3 py-3 h-12 rounded-xl font-semibold text-sm"
-                style={{ animation: 'su-fadeInUp 0.5s ease 0.45s both' }}
+                className="lp-btn-ghost w-full mt-3 h-12 rounded-xl font-semibold text-sm"
               >
-                {t('Back to Login')}
+                {t('forgotPasswordBack')}
               </button>
             </div>
           </div>
@@ -729,25 +916,72 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleSignupSubmit} className="space-y-5" autoComplete="off">
-                {/* Name */}
-                <div>
-                  <label htmlFor="signup-name" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
-                    {t('fullName')}
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
-                    <input
-                      type="text"
-                      id="signup-name"
-                      name="name"
-                      value={signupForm.name}
-                      onChange={handleSignupChange}
-                      placeholder={t('placeholderFullName')}
-                      autoComplete="off"
-                      className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.name ? 'su-input-err' : ''}`}
-                    />
+                {/* Name — Last / First in a 2-col grid, Middle Name full-width below */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Last Name */}
+                    <div>
+                      <label htmlFor="signup-lastName" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                        {t('lastName')}
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                        <input
+                          type="text"
+                          id="signup-lastName"
+                          name="lastName"
+                          value={signupForm.lastName}
+                          onChange={handleSignupChange}
+                          placeholder={t('placeholderLastName')}
+                          autoComplete="off"
+                          className={`su-input w-full pl-10 pr-3 py-3 rounded-xl text-sm ${signupErrors.lastName ? 'su-input-err' : ''}`}
+                        />
+                      </div>
+                      {signupErrors.lastName && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.lastName}</p>}
+                    </div>
+
+                    {/* First Name */}
+                    <div>
+                      <label htmlFor="signup-firstName" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                        {t('firstName')}
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                        <input
+                          type="text"
+                          id="signup-firstName"
+                          name="firstName"
+                          value={signupForm.firstName}
+                          onChange={handleSignupChange}
+                          placeholder={t('placeholderFirstName')}
+                          autoComplete="off"
+                          className={`su-input w-full pl-10 pr-3 py-3 rounded-xl text-sm ${signupErrors.firstName ? 'su-input-err' : ''}`}
+                        />
+                      </div>
+                      {signupErrors.firstName && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.firstName}</p>}
+                    </div>
                   </div>
-                  {signupErrors.name && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.name}</p>}
+
+                  {/* Middle Name */}
+                  <div>
+                    <label htmlFor="signup-middleName" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                      {t('middleNameOptional')}
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                      <input
+                        type="text"
+                        id="signup-middleName"
+                        name="middleName"
+                        value={signupForm.middleName}
+                        onChange={handleSignupChange}
+                        placeholder={t('placeholderMiddleName')}
+                        autoComplete="off"
+                        className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.middleName ? 'su-input-err' : ''}`}
+                      />
+                    </div>
+                    {signupErrors.middleName && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.middleName}</p>}
+                  </div>
                 </div>
 
                 {/* Student ID */}
@@ -763,7 +997,7 @@ export default function LoginPage() {
                       name="studentId"
                       value={signupForm.studentId}
                       onChange={handleSignupChange}
-                      placeholder="Enter your student ID"
+                      placeholder={t('placeholderStudentId')}
                       inputMode="numeric"
                       pattern="[0-9]*"
                       autoComplete="off"
@@ -786,11 +1020,12 @@ export default function LoginPage() {
                       name="department"
                       value={signupForm.department}
                       onChange={handleSignupChange}
-                      placeholder="e.g. Informatics Engineering"
+                      placeholder={t('placeholderDepartment')}
                       autoComplete="off"
-                      className="su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm"
+                      className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.department ? 'su-input-err' : ''}`}
                     />
                   </div>
+                  {signupErrors.department && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.department}</p>}
                 </div>
 
                 {/* Email */}
@@ -811,7 +1046,10 @@ export default function LoginPage() {
                       className={`su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm ${signupErrors.email ? 'su-input-err' : ''}`}
                     />
                   </div>
-                  {signupErrors.email && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.email}</p>}
+                  {signupErrors.email
+                    ? <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.email}</p>
+                    : <p className="mt-1.5 text-xs" style={{ color: '#334155' }}>Must end with @student.its.ac.id</p>
+                  }
                 </div>
 
                 {/* Password */}
@@ -911,7 +1149,7 @@ export default function LoginPage() {
                   onClick={closeSignupModal}
                   className="lp-btn-ghost w-full py-3 h-12 rounded-xl font-semibold text-sm"
                 >
-                  {t('Back to Login')}
+                  {t('forgotPasswordBack')}
                 </button>
               </form>
             </div>{/* /max-w-sm */}
