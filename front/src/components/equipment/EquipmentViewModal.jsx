@@ -103,8 +103,8 @@ export default function EquipmentViewModal({
   const T = isDark ? {
     modalBg:       '#0e0e16',
     heroBg:        'linear-gradient(160deg,#0d1117 0%,#0e0e16 100%)',
-    heroOverlay:   'linear-gradient(to top, rgba(14,14,22,0.92) 0%, transparent 55%)',
-    detailBg:      '#111118',
+    heroOverlay:   'linear-gradient(to top, rgba(14,14,22,0.55) 0%, transparent 52%)',
+    detailBg:      'rgba(14,14,22,0.82)', 
     divider:       'rgba(255,255,255,0.07)',
     cardBg:        'rgba(255,255,255,0.04)',
     cardBorder:    'rgba(255,255,255,0.08)',
@@ -134,8 +134,8 @@ export default function EquipmentViewModal({
   } : {
     modalBg:       '#ffffff',
     heroBg:        'linear-gradient(160deg,#f0f4ff 0%,#f8fafc 100%)',
-    heroOverlay:   'linear-gradient(to top, rgba(248,250,252,0.92) 0%, transparent 55%)',
-    detailBg:      '#ffffff',
+    heroOverlay:   'linear-gradient(to top, rgba(15,23,42,0.28) 0%, transparent 52%)',
+    detailBg:      'rgba(255,255,255,0.82)',
     divider:       '#e2e8f0',
     cardBg:        '#f8fafc',
     cardBorder:    '#e2e8f0',
@@ -174,20 +174,20 @@ export default function EquipmentViewModal({
       `}</style>
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
-        className="w-[96vw] sm:w-[88vw] max-w-[520px] gap-0 p-0 overflow-hidden"
+        className="w-[98vw] sm:w-[90vw] max-w-[620px] gap-0 p-0 overflow-hidden"
         style={{
           background: T.modalBg,
           border: `1px solid ${T.modalBorder}`,
-          borderRadius: '18px',
+          borderRadius: '16px',
           boxShadow: T.shadow,
-          maxHeight: '86vh',
+          maxHeight: 'min(92dvh, 92vh)',
           animation: 'evm-enter 0.28s cubic-bezier(0.16,1,0.3,1) both',
         }}
       >
         {/* ── Hero image ─────────────────────────────────────── */}
         <div
           className="relative w-full overflow-hidden"
-          style={{ height: 'clamp(140px, 24vh, 200px)', background: T.heroBg }}
+          style={{ height: 'clamp(180px, 38vh, 420px)', background: T.heroBg }}
         >
           {currentImage ? (
             <img
@@ -265,17 +265,21 @@ export default function EquipmentViewModal({
 
         {/* ── Detail panel ────────────────────────────────────── */}
         <div
-          className="overflow-y-auto"
+          className="overflow-y-auto relative -mt-8 sm:-mt-10 rounded-t-2xl"
           style={{
             background: T.detailBg,
-            maxHeight: 'calc(86vh - clamp(140px, 24vh, 200px))',
+            backdropFilter: 'blur(22px)',
+            WebkitBackdropFilter: 'blur(22px)',
+            border: `1px solid ${T.modalBorder}`,
+            borderBottom: 'none',
+            maxHeight: 'calc(min(92dvh, 92vh) - clamp(120px, 26vh, 310px))',
           }}
         >
           {/* name + stock status */}
-          <div className="px-4 pt-3.5 pb-3" style={{ borderBottom: `1px solid ${T.divider}` }}>
-            <div className="flex items-start justify-between gap-4">
+          <div className="px-3 sm:px-5 pt-3 sm:pt-4 pb-3" style={{ borderBottom: `1px solid ${T.divider}` }}>
+            <div className="flex items-start justify-between gap-3">
               <h2
-                className="text-base sm:text-lg font-bold leading-snug"
+                className="text-sm sm:text-lg font-bold leading-snug"
                 style={{ color: T.value, letterSpacing: '-0.02em' }}
               >
                 {equipment.name}
@@ -304,7 +308,7 @@ export default function EquipmentViewModal({
               { label: t('availableLabel'), value: available, accent: true },
               { label: t('inUse'), value: total - available },
             ].map(({ label, value, accent }) => (
-              <div key={label} className="flex flex-col items-center py-2.5 gap-0.5" style={{ borderRight: `1px solid ${T.divider}` }}>
+              <div key={label} className="flex flex-col items-center py-2 sm:py-2.5 gap-0.5" style={{ borderRight: `1px solid ${T.divider}` }}>
                 <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: T.label }}>{label}</span>
                 <span
                   className="text-lg font-bold tabular-nums"
@@ -317,7 +321,7 @@ export default function EquipmentViewModal({
           </div>
 
           {/* meta fields */}
-          <div className="px-4 py-3 space-y-3">
+          <div className="px-3 sm:px-5 py-3 space-y-3">
             {(equipment.location || equipment.condition) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {equipment.location && (
@@ -371,7 +375,7 @@ export default function EquipmentViewModal({
 
           {/* action footer */}
           <div
-            className="px-4 pb-4 pt-2 flex flex-col sm:flex-row gap-2"
+            className="px-3 sm:px-5 pb-4 sm:pb-5 pt-2 sm:pt-3 flex flex-col sm:flex-row gap-2"
             style={{ borderTop: `1px solid ${T.divider}` }}
           >
             {actionHandler && (
