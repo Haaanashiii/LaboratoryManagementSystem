@@ -20,7 +20,7 @@ import { useTheme } from '@/components/hooks/ThemeContext';
 import { useLang } from '@/components/i18n/LangContext';
 
 const getDefaultBorrowForm = () => ({
-  quantity: '1',
+  quantity: '',
   purpose: '',
   objective: '',
   borrow_date: format(new Date(), 'yyyy-MM-dd'),
@@ -121,6 +121,11 @@ export default function StudentCatalog() {
       return;
     }
 
+    if (parsedQuantity > 10000) {
+      setBorrowQuantityNotice('Maximum quantity is 10,000 units.');
+      return;
+    }
+
     if (parsedQuantity > availableQty) {
       setBorrowQuantityNotice(t('quantityExceededShort'));
       return;
@@ -191,7 +196,7 @@ export default function StudentCatalog() {
   const selectedAvailableQty = Number(selectedEquipment?.available_quantity ?? 0);
   const parsedBorrowQuantity = Number.parseInt(String(borrowForm.quantity), 10);
   const isBorrowQuantityInvalid = !Number.isFinite(parsedBorrowQuantity) || parsedBorrowQuantity < 1;
-  const isBorrowQuantityExceeded = Number.isFinite(parsedBorrowQuantity) && parsedBorrowQuantity > selectedAvailableQty;
+  const isBorrowQuantityExceeded = Number.isFinite(parsedBorrowQuantity) && (parsedBorrowQuantity > selectedAvailableQty || parsedBorrowQuantity > 10000);
   const isBorrowDateInvalid = (() => {
     if (!borrowForm.borrow_date || !borrowForm.return_date) return true;
 
@@ -208,6 +213,13 @@ export default function StudentCatalog() {
   const todayIso = format(new Date(), 'yyyy-MM-dd');
   const hasLecturers = lecturers.length > 0;
   const isLecturerInvalid = !borrowForm.lecturer_id || !hasLecturers;
+
+  // Lock body scroll whenever any modal is open
+  useEffect(() => {
+    const isOpen = !!selectedEquipment || showPreview;
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [selectedEquipment, showPreview]);
 
   // Auto-advance image carousel in borrow dialog
   useEffect(() => {
@@ -352,19 +364,20 @@ export default function StudentCatalog() {
           <DialogContent
             className={`p-0 gap-0 overflow-hidden rounded-2xl border ${isDark ? 'bg-[#0e0e16] border-white/[0.07]' : 'bg-white border-slate-200/80'}`}
             style={{
-              width: '92vw',
-              maxWidth: 472,
-              maxHeight: 'min(92dvh, 740px)',
+              width: 'min(96vw, 820px)',
+              maxWidth: '96vw',
+              height: 'min(92dvh, 640px)',
+              maxHeight: 'min(92dvh, 640px)',
               padding: 0,
               boxShadow: isDark
                 ? '0 40px 100px rgba(0,0,0,0.90), 0 0 0 1px rgba(255,255,255,0.04)'
                 : '0 24px 72px rgba(0,0,0,0.18)',
             }}
           >
-            <div className="borrow-enter flex flex-col" style={{ overflow: 'hidden', maxHeight: 'min(92dvh, 740px)' }}>
+            <div className="borrow-enter flex flex-col md:flex-row" style={{ overflow: 'hidden', height: '100%' }}>
 
-              {/* ── IMAGE PANEL ─────────────────────────────────────────── */}
-              <div className="relative flex-shrink-0 overflow-hidden h-[175px]">
+              {/* ── IMAGE PANEL — top on mobile, full-height left column on desktop ── */}
+              <div className="relative flex-shrink-0 overflow-hidden h-[175px] md:h-full md:w-[38%]">
                 {(() => {
                   const allImgs = selectedEquipment?.images_urls?.length > 0
                     ? selectedEquipment.images_urls
@@ -504,8 +517,8 @@ export default function StudentCatalog() {
                 </div>
               </div>
 
-              {/* ── FORM PANEL ──────────────────────────────────────────── */}
-              <div className="flex flex-col min-h-0" style={{ background: isDark ? '#0f0f1a' : '#fafbff' }}>
+              {/* ── FORM PANEL — right column on desktop, below image on mobile ── */}
+              <div className="flex flex-col min-h-0 flex-1" style={{ background: isDark ? '#0f0f1a' : '#fafbff' }}>
 
                 {/* Header strip with left accent bar */}
                 <div
@@ -553,14 +566,17 @@ export default function StudentCatalog() {
                     <Input
                       type="number"
                       min="1"
+                      max={Math.min(Number(selectedEquipment?.available_quantity ?? 0), 10000)}
                       inputMode="numeric"
+                      placeholder="--"
                       value={borrowForm.quantity}
                       onChange={(e) => {
                         const nextQuantity = e.target.value;
                         setBorrowForm({ ...borrowForm, quantity: nextQuantity });
                         const parsedQuantity = Number.parseInt(nextQuantity, 10);
-                        if (nextQuantity === '') { setBorrowQuantityNotice(t('pleaseEnterQuantity')); return; }
+                        if (nextQuantity === '') { setBorrowQuantityNotice(''); return; }
                         if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) { setBorrowQuantityNotice(t('pleaseEnterValidQuantity')); return; }
+                        if (parsedQuantity > 10000) { setBorrowQuantityNotice('Maximum quantity is 10,000 units.'); return; }
                         if (parsedQuantity > Number(selectedEquipment?.available_quantity ?? 0)) { setBorrowQuantityNotice(t('quantityExceededShort')); return; }
                         setBorrowQuantityNotice('');
                       }}
@@ -587,8 +603,8 @@ export default function StudentCatalog() {
                         {t('borrowDate')} — {t('returnDate')}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
                         <p className="text-[9px] font-semibold mb-1.5 pl-0.5" style={{ color: isDark ? '#475569' : '#94a3b8' }}>
                           {t('borrowDate')}
                         </p>
@@ -601,7 +617,13 @@ export default function StudentCatalog() {
                           style={isDark ? { color: '#e2e8f0', colorScheme: 'dark' } : { colorScheme: 'light' }}
                         />
                       </div>
-                      <div>
+                      <div
+                        className="flex-shrink-0 mb-0.5 w-7 h-10 rounded-lg flex items-center justify-center"
+                        style={{ background: isDark ? 'rgba(59,130,246,0.10)' : 'rgba(59,130,246,0.08)' }}
+                      >
+                        <ArrowRight className="w-3 h-3" style={{ color: '#3b82f6' }} />
+                      </div>
+                      <div className="flex-1">
                         <p className="text-[9px] font-semibold mb-1.5 pl-0.5" style={{ color: isDark ? '#475569' : '#94a3b8' }}>
                           {t('returnDate')}
                         </p>

@@ -215,9 +215,9 @@ export default function BorrowRequestPreviewModal({
         {/* ── TWO-COLUMN BODY ─────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
-          {/* LEFT — request details summary */}
+          {/* LEFT — request details summary (50% height on mobile, 60% width on desktop) */}
           <div
-            className="md:w-[60%] flex-shrink-0 flex flex-col gap-2 p-3 border-b md:border-b-0 md:border-r overflow-y-auto"
+            className="min-h-0 flex-1 md:flex-none md:w-[60%] flex flex-col gap-2 p-3 border-b md:border-b-0 md:border-r overflow-y-auto"
             style={{ ...border, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {/* Student & Equipment */}
@@ -269,8 +269,8 @@ export default function BorrowRequestPreviewModal({
             </div>
           </div>
 
-          {/* RIGHT — PDF fills the entire column, no gaps */}
-          <div className="md:w-[40%] flex-shrink-0 flex flex-col min-h-0 min-w-0">
+          {/* RIGHT — PDF preview (50% height on mobile, 40% width on desktop) */}
+          <div className="min-h-0 flex-1 md:flex-none md:w-[40%] flex flex-col min-w-0">
             {/* PDF area — canvas pages, no browser PDF chrome */}
             <div
               ref={scrollRef}
