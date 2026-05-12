@@ -29,6 +29,9 @@ import autoTable from 'jspdf-autotable';
 import { format, startOfWeek, endOfWeek, parseISO } from 'date-fns';
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
+import { useAuth } from '@/components/hooks/useAuth.js';
+import { useRef, useEffect } from 'react';
+import itsLogoUrl from '@/assets/images/logo-its-l-min.jpg';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -262,22 +265,108 @@ function exportCsvWeekly(weeklySummary) {
   );
 }
 
-function exportPdfAll(records, summary, startDate, endDate) {
+// ─── PDF shared helpers ───────────────────────────────────────────────────────
+
+function addDocHeader(doc, logoDataUrl, title, metaLines = []) {
+  const pageW = doc.internal.pageSize.getWidth();
+
+  if (logoDataUrl) {
+    try { doc.addImage(logoDataUrl, 'JPEG', 14, 8, 20, 20); } catch (_) {}
+  }
+
+  const textX = logoDataUrl ? 38 : 14;
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('INSTITUT TEKNOLOGI SEPULUH NOPEMBER', textX, 14);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('Laboratory Management System', textX, 19.5);
+
+  doc.setFontSize(7.5);
+  doc.text('Jl. Arief Rahman Hakim No.100, Sukolilo, Surabaya 60111', textX, 24);
+
+  // Double rule
+  doc.setLineWidth(0.8);
+  doc.setDrawColor(15, 23, 42);
+  doc.line(14, 31, pageW - 14, 31);
+  doc.setLineWidth(0.3);
+  doc.line(14, 32.5, pageW - 14, 32.5);
+
+  // Title band
+  doc.setFillColor(239, 246, 255);
+  doc.roundedRect(14, 34.5, pageW - 28, 10, 2, 2, 'F');
+  doc.setDrawColor(191, 219, 254);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, 34.5, pageW - 28, 10, 2, 2, 'S');
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(37, 99, 235);
+  doc.text(title, pageW / 2, 41, { align: 'center' });
+
+  let y = 49;
+  if (metaLines.length > 0) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    metaLines.forEach((line) => {
+      doc.text(line, 14, y);
+      y += 5;
+    });
+  }
+
+  return y + 2;
+}
+
+function addDocFooter(doc, printedBy) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(203, 213, 225);
+  doc.line(14, pageH - 16, pageW - 14, pageH - 16);
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+
+  if (printedBy) {
+    const roleLabel = (printedBy.role || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    doc.text(
+      `Printed by: ${printedBy.name || '—'} (${roleLabel}) — ${printedBy.email || '—'}`,
+      14, pageH - 11
+    );
+  }
+
+  doc.text(
+    `Printed on: ${new Date().toLocaleString()}`,
+    pageW - 14, pageH - 11,
+    { align: 'right' }
+  );
+
+  doc.text(
+    'This document is system-generated — Institut Teknologi Sepuluh Nopember. Unauthorized alteration is prohibited.',
+    pageW / 2, pageH - 6,
+    { align: 'center' }
+  );
+}
+
+function exportPdfAll(records, summary, startDate, endDate, logoDataUrl, printedBy) {
   const doc = new jsPDF({ orientation: 'landscape' });
   const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
 
-  doc.setFontSize(16);
-  doc.text('Equipment Release Report – By Lecturer', 14, 16);
-  doc.setFontSize(10);
-  doc.text(`Date Range: ${range}`, 14, 24);
-  doc.text(`Total Releases: ${summary.totalReleases}   Total Quantity: ${summary.totalQuantity}   Lecturers: ${summary.totalLecturers}`, 14, 31);
+  const startY = addDocHeader(doc, logoDataUrl, 'EQUIPMENT RELEASE REPORT – BY LECTURER', [
+    `Date Range: ${range}`,
+    `Total Releases: ${summary.totalReleases}   Total Quantity: ${summary.totalQuantity}   Lecturers: ${summary.totalLecturers}`,
+  ]);
 
   autoTable(doc, {
-    startY: 36,
-    head: [[
-      'Lecturer', 'Student', 'Student ID',
-      'Equipment', 'Qty', 'Released At', 'Status',
-    ]],
+    startY,
+    head: [['Lecturer', 'Student', 'Student ID', 'Equipment', 'Qty', 'Released At', 'Status']],
     body: records.map((r) => [
       r.lecturerName,
       r.studentName,
@@ -292,17 +381,17 @@ function exportPdfAll(records, summary, startDate, endDate) {
     alternateRowStyles: { fillColor: [248, 250, 252] },
   });
 
+  addDocFooter(doc, printedBy);
   doc.save(`lecturer-releases-${dateTag()}.pdf`);
 }
 
-function exportPdfWeekly(weeklySummary, summary, startDate, endDate) {
+function exportPdfWeekly(weeklySummary, summary, startDate, endDate, logoDataUrl, printedBy) {
   const doc = new jsPDF({ orientation: 'portrait' });
   const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
 
-  doc.setFontSize(16);
-  doc.text('Weekly Equipment Release Summary – By Lecturer', 14, 16);
-  doc.setFontSize(10);
-  doc.text(`Date Range: ${range}`, 14, 24);
+  const startY = addDocHeader(doc, logoDataUrl, 'WEEKLY EQUIPMENT RELEASE SUMMARY – BY LECTURER', [
+    `Date Range: ${range}`,
+  ]);
 
   const body = [];
   weeklySummary.forEach((wk) => {
@@ -323,13 +412,12 @@ function exportPdfWeekly(weeklySummary, summary, startDate, endDate) {
   });
 
   autoTable(doc, {
-    startY: 30,
+    startY,
     head:   [['Week Start', 'Lecturer', 'Releases', 'Total Qty']],
     body,
     styles:     { fontSize: 9 },
     headStyles: { fillColor: [5, 150, 105] },
     didParseCell: (data) => {
-      // Bold "Week Total" rows
       if (data.row.raw[1] === 'Week Total') {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [241, 245, 249];
@@ -337,6 +425,7 @@ function exportPdfWeekly(weeklySummary, summary, startDate, endDate) {
     },
   });
 
+  addDocFooter(doc, printedBy);
   doc.save(`weekly-lecturer-summary-${dateTag()}.pdf`);
 }
 
@@ -357,21 +446,17 @@ function exportCsvInventory(records) {
   );
 }
 
-function exportPdfInventory(records, summary, startDate, endDate) {
+function exportPdfInventory(records, summary, startDate, endDate, logoDataUrl, printedBy) {
   const doc = new jsPDF({ orientation: 'landscape' });
   const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
 
-  doc.setFontSize(16);
-  doc.text('Equipment Inventory Changes Report', 14, 16);
-  doc.setFontSize(10);
-  doc.text(`Date Range: ${range}`, 14, 24);
-  doc.text(
+  const startY = addDocHeader(doc, logoDataUrl, 'EQUIPMENT INVENTORY CHANGES REPORT', [
+    `Date Range: ${range}`,
     `Added: ${summary.totalAdded}   Deleted: ${summary.totalDeleted}   Qty Changes: ${summary.totalQuantityChanges}`,
-    14, 31
-  );
+  ]);
 
   autoTable(doc, {
-    startY: 36,
+    startY,
     head: [['Date & Time', 'Equipment', 'Category', 'Action', 'Details', 'Done By']],
     body: records.map((r) => [
       formatDateTime(r.createdAt),
@@ -386,6 +471,7 @@ function exportPdfInventory(records, summary, startDate, endDate) {
     alternateRowStyles: { fillColor: [255, 251, 235] },
   });
 
+  addDocFooter(doc, printedBy);
   doc.save(`inventory-changes-${dateTag()}.pdf`);
 }
 
@@ -393,6 +479,20 @@ function exportPdfInventory(records, summary, startDate, endDate) {
 
 export default function Reports() {
   const { t } = useLang();
+  const { user } = useAuth();
+  const logoRef = useRef(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      logoRef.current = canvas.toDataURL('image/jpeg');
+    };
+    img.src = itsLogoUrl;
+  }, []);
   const [activeTab, setActiveTab]       = useState('lecturer'); // 'lecturer' | 'weekly' | 'borrow'
   const [type, setType]                 = useState('monthly');
   const [startDate, setStartDate]       = useState('');
@@ -697,7 +797,7 @@ export default function Reports() {
                 <Button
                   size="sm"
                   className="h-7 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
-                  onClick={() => exportPdfAll(allRecords, summary, startDate, endDate)}
+                  onClick={() => exportPdfAll(allRecords, summary, startDate, endDate, logoRef.current, user)}
                   disabled={isFetching || allRecords.length === 0}
                 >
                   <FileText className="h-3.5 w-3.5" /> PDF
@@ -722,7 +822,7 @@ export default function Reports() {
                 <Button
                   size="sm"
                   className="h-7 gap-1.5 bg-emerald-600 text-xs hover:bg-emerald-700"
-                  onClick={() => exportPdfWeekly(weeklySummary, summary, startDate, endDate)}
+                  onClick={() => exportPdfWeekly(weeklySummary, summary, startDate, endDate, logoRef.current, user)}
                   disabled={isFetching || weeklySummary.length === 0}
                 >
                   <FileText className="h-3.5 w-3.5" /> PDF
@@ -752,7 +852,7 @@ export default function Reports() {
                 <Button
                   size="sm"
                   className="h-7 gap-1.5 bg-amber-500 text-xs hover:bg-amber-600"
-                  onClick={() => exportPdfInventory(inventoryRecords, inventorySummary, startDate, endDate)}
+                  onClick={() => exportPdfInventory(inventoryRecords, inventorySummary, startDate, endDate, logoRef.current, user)}
                   disabled={inventoryLoading || inventoryRecords.length === 0}
                 >
                   <FileText className="h-3.5 w-3.5" /> PDF
@@ -1134,13 +1234,11 @@ export default function Reports() {
                 className="h-8 gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 shrink-0"
                 onClick={() => {
                   const doc = new jsPDF({ orientation: 'landscape' });
-                  doc.setFontSize(14);
-                  doc.text('Borrow Request Report', 14, 16);
-                  doc.setFontSize(9);
-                  doc.setTextColor(120);
-                  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+                  const startY = addDocHeader(doc, logoRef.current, 'BORROW REQUEST REPORT', [
+                    `Generated: ${new Date().toLocaleString()}   Total Records: ${filteredBorrowRequests.length}`,
+                  ]);
                   autoTable(doc, {
-                    startY: 26,
+                    startY,
                     head: [['Borrower', 'Student ID', 'Equipment', 'Serial No.', 'Borrow Date', 'Return Date', 'Status', 'Submitted']],
                     body: filteredBorrowRequests.map((r) => [
                       r.borrower_name || '—',
@@ -1156,6 +1254,7 @@ export default function Reports() {
                     bodyStyles: { fontSize: 8 },
                     alternateRowStyles: { fillColor: [245, 243, 255] },
                   });
+                  addDocFooter(doc, user);
                   doc.save(`borrow-requests-${dateTag()}.pdf`);
                 }}
                 disabled={filteredBorrowRequests.length === 0}
@@ -1292,7 +1391,7 @@ export default function Reports() {
               <Button
                 size="sm"
                 className="h-8 gap-1.5 text-xs bg-amber-500 hover:bg-amber-600"
-                onClick={() => exportPdfInventory(inventoryRecords, inventorySummary, startDate, endDate)}
+                onClick={() => exportPdfInventory(inventoryRecords, inventorySummary, startDate, endDate, logoRef.current, user)}
                 disabled={inventoryRecords.length === 0}
               >
                 <FileText className="h-3.5 w-3.5" /> PDF
