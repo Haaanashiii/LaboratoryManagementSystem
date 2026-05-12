@@ -10,7 +10,7 @@ const fs = require('fs');
 const BRAND_BLUE = '#2563EB';
 const BRAND_DARK = '#0F172A';
 const MUTED = '#64748B';
-const BORDER = '#E2E8F0';
+const BORDER = '#CBD5E1';
 const BG_SECTION = '#F8FAFC';
 const BADGE_PENDING_BG = '#FEF9C3';
 const BADGE_APPROVED_BG = '#DCFCE7';
@@ -18,6 +18,8 @@ const BADGE_REJECTED_BG = '#FEE2E2';
 const BADGE_PENDING_FG = '#854D0E';
 const BADGE_APPROVED_FG = '#166534';
 const BADGE_REJECTED_FG = '#991B1B';
+
+const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logo-its.jpg');
 
 const STATUS_LABELS = {
   pending: 'Pending',
@@ -113,10 +115,11 @@ const drawSection = (doc, title, fields, x, y, w) => {
 /**
  * Generate a PDF buffer for a borrow request.
  *
- * @param {object} request  - Mongoose BorrowRequest document (lean or plain)
+ * @param {object} request    - Mongoose BorrowRequest document (lean or plain)
+ * @param {object} printedBy  - { name, email, role } of the user generating the PDF
  * @returns {Promise<Buffer>}
  */
-const generateBorrowRequestPdf = (request) => {
+const generateBorrowRequestPdf = (request, printedBy = null) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true });
     const buffers = [];
@@ -130,63 +133,127 @@ const generateBorrowRequestPdf = (request) => {
     const margin = 40;
     const contentW = pageW - margin * 2;
 
-    // ── HEADER ──────────────────────────────────────────────────────────
-    doc
-      .rect(0, 0, pageW, 72)
-      .fillColor(BRAND_BLUE)
-      .fill();
+    // ── INSTITUTIONAL HEADER ─────────────────────────────────────────────
+    const logoSize = 64;
+    const logoX = margin;
+    const logoY = margin - 8;
+
+    // Try to draw logo; silently skip if missing
+    try {
+      if (fs.existsSync(LOGO_PATH)) {
+        doc.image(LOGO_PATH, logoX, logoY, { width: logoSize, height: logoSize });
+      }
+    } catch (_) {}
+
+    const textX = logoX + logoSize + 14;
+    const textW = contentW - logoSize - 14;
 
     doc
-      .fontSize(16)
-      .fillColor('#FFFFFF')
+      .fontSize(13)
+      .fillColor(BRAND_DARK)
       .font('Helvetica-Bold')
-      .text('Laboratory Management System', margin, 18, { width: contentW });
+      .text('INSTITUT TEKNOLOGI SEPULUH NOPEMBER', textX, logoY + 4, { width: textW });
 
     doc
       .fontSize(9)
-      .fillColor('rgba(255,255,255,0.75)')
+      .fillColor(MUTED)
       .font('Helvetica')
-      .text('Equipment Borrow Request Form', margin, 40, { width: contentW });
+      .text('Laboratory Management System', textX, logoY + 22, { width: textW });
 
-    // Status badge (top-right)
+    doc
+      .fontSize(8)
+      .fillColor(MUTED)
+      .text('Jl. Arief Rahman Hakim No.100, Sukolilo, Surabaya 60111', textX, logoY + 36, { width: textW });
+
+    doc
+      .fontSize(8)
+      .fillColor(MUTED)
+      .text('Telp. (031) 5994251  |  www.its.ac.id', textX, logoY + 48, { width: textW });
+
+    // Thick rule under header
+    const ruleY = logoY + logoSize + 8;
+    doc
+      .moveTo(margin, ruleY)
+      .lineTo(pageW - margin, ruleY)
+      .strokeColor(BRAND_DARK)
+      .lineWidth(2)
+      .stroke();
+
+    doc
+      .moveTo(margin, ruleY + 3.5)
+      .lineTo(pageW - margin, ruleY + 3.5)
+      .strokeColor(BRAND_DARK)
+      .lineWidth(0.5)
+      .stroke();
+
+    // ── DOCUMENT TITLE BAND ───────────────────────────────────────────────
+    const titleBandY = ruleY + 10;
+    const titleBandH = 26;
+
+    doc
+      .rect(margin, titleBandY, contentW, titleBandH)
+      .fillColor('#EFF6FF')
+      .fill();
+
+    roundRect(doc, margin, titleBandY, contentW, titleBandH, 4);
+    doc.strokeColor('#BFDBFE').lineWidth(0.5).stroke();
+
+    doc
+      .fontSize(11)
+      .fillColor(BRAND_BLUE)
+      .font('Helvetica-Bold')
+      .text('EQUIPMENT BORROWING REQUEST FORM', margin, titleBandY + 8, {
+        width: contentW,
+        align: 'center',
+      });
+
+    // ── STATUS BADGE + META ROW ───────────────────────────────────────────
+    let curY = titleBandY + titleBandH + 10;
+
     const statusLabel = STATUS_LABELS[request.status] || request.status || 'Pending';
     const badgeBg =
-      request.status === 'approved' ? BADGE_APPROVED_BG :
+      request.status === 'approved' || request.status === 'head_approved' ? BADGE_APPROVED_BG :
       request.status === 'rejected' ? BADGE_REJECTED_BG :
       BADGE_PENDING_BG;
     const badgeFg =
-      request.status === 'approved' ? BADGE_APPROVED_FG :
+      request.status === 'approved' || request.status === 'head_approved' ? BADGE_APPROVED_FG :
       request.status === 'rejected' ? BADGE_REJECTED_FG :
       BADGE_PENDING_FG;
 
-    const badgeW = 90;
-    const badgeX = pageW - margin - badgeW;
-    roundRect(doc, badgeX, 22, badgeW, 22, 5);
-    doc.fillColor(badgeBg).fill();
+    // Meta left: Request ID
     doc
-      .fontSize(8)
-      .fillColor(badgeFg)
-      .font('Helvetica-Bold')
-      .text(statusLabel, badgeX, 30, { width: badgeW, align: 'center' });
-
-    // ── META ROW ──────────────────────────────────────────────────────────
-    let curY = 88;
-
-    doc
-      .fontSize(7)
+      .fontSize(7.5)
       .fillColor(MUTED)
       .font('Helvetica')
-      .text(`Request ID: ${request._id || request.id || '—'}`, margin, curY, { width: contentW / 2 });
+      .text('Request No.', margin, curY, { continued: true })
+      .fillColor(BRAND_DARK)
+      .font('Helvetica-Bold')
+      .text(`  ${request._id || request.id || '—'}`, { lineBreak: false });
 
+    // Status badge right-aligned
+    const badgeW = 100;
+    const badgeX = pageW - margin - badgeW;
+    roundRect(doc, badgeX, curY - 2, badgeW, 16, 4);
+    doc.fillColor(badgeBg).fill();
     doc
+      .fontSize(7.5)
+      .fillColor(badgeFg)
+      .font('Helvetica-Bold')
+      .text(`Status: ${statusLabel}`, badgeX, curY + 2, { width: badgeW, align: 'center' });
+
+    curY += 14;
+
+    // Generated date
+    doc
+      .fontSize(7.5)
+      .fillColor(MUTED)
+      .font('Helvetica')
       .text(
         `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
-        margin + contentW / 2,
-        curY,
-        { width: contentW / 2, align: 'right' }
+        margin, curY, { width: contentW }
       );
 
-    curY += 18;
+    curY += 16;
 
     // Divider
     doc
@@ -196,7 +263,7 @@ const generateBorrowRequestPdf = (request) => {
       .lineWidth(0.5)
       .stroke();
 
-    curY += 14;
+    curY += 12;
 
     // ── EQUIPMENT IMAGE ──────────────────────────────────────────────────
     const imgPath = (() => {
@@ -331,15 +398,49 @@ const generateBorrowRequestPdf = (request) => {
     drawSigCol(margin + sigColW + sigGap, 'Lecturer Signature', resolvedLecturerName);
     drawSigCol(margin + (sigColW + sigGap) * 2, 'Lab Assistant Signature', request.approved_by?.name);
 
-    // Footer
+    // Footer rule
+    doc
+      .moveTo(margin, pageH - 46)
+      .lineTo(pageW - margin, pageH - 46)
+      .strokeColor(BORDER)
+      .lineWidth(0.5)
+      .stroke();
+
+    // Printed by — left side
+    if (printedBy) {
+      const roleLabel = (printedBy.role || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      doc
+        .fontSize(7)
+        .fillColor(MUTED)
+        .font('Helvetica')
+        .text(
+          `Printed by: ${printedBy.name || '—'}  (${roleLabel})  —  ${printedBy.email || '—'}`,
+          margin,
+          pageH - 38,
+          { width: contentW / 2 }
+        );
+    }
+
+    // Timestamp — right side
     doc
       .fontSize(7)
       .fillColor(MUTED)
       .font('Helvetica')
       .text(
-        'This document is system-generated from the Laboratory Management System.',
+        `Printed on: ${new Date().toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+        margin + contentW / 2,
+        pageH - 38,
+        { width: contentW / 2, align: 'right' }
+      );
+
+    doc
+      .fontSize(7)
+      .fillColor(MUTED)
+      .font('Helvetica')
+      .text(
+        'This document is system-generated — Institut Teknologi Sepuluh Nopember. Unauthorized alteration is prohibited.',
         margin,
-        pageH - 28,
+        pageH - 26,
         { width: contentW, align: 'center' }
       );
 
@@ -350,7 +451,7 @@ const generateBorrowRequestPdf = (request) => {
 /**
  * Save PDF to uploads/pdf/ and return the relative path.
  */
-const saveBorrowRequestPdf = async (request) => {
+const saveBorrowRequestPdf = async (request, printedBy = null) => {
   const uploadDir = path.join(__dirname, '..', 'uploads', 'pdf');
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -358,7 +459,7 @@ const saveBorrowRequestPdf = async (request) => {
 
   const filename = `borrow-request-${request._id || request.id}-${Date.now()}.pdf`;
   const filePath = path.join(uploadDir, filename);
-  const buffer = await generateBorrowRequestPdf(request);
+  const buffer = await generateBorrowRequestPdf(request, printedBy);
   fs.writeFileSync(filePath, buffer);
   return `/uploads/pdf/${filename}`;
 };
