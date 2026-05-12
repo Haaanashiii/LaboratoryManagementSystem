@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Hash, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell } from 'lucide-react';
+import { Mail, Lock, User, Hash, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
@@ -76,6 +76,8 @@ export default function LoginPage() {
   });
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isSigningUp, setIsSigningUp] = useState(false);
   const [rateLimitUntil, setRateLimitUntil] = useState(null);
   const [countdownNow, setCountdownNow] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
@@ -212,6 +214,7 @@ export default function LoginPage() {
     }
 
     if (!validateLogin()) return;
+    setIsLoggingIn(true);
     try {
       await api.auth.login(formData.email, formData.password, { rememberMe });
       const user = await refreshSession();
@@ -228,6 +231,7 @@ export default function LoginPage() {
         : '/dashboard';
       navigateWithTransition(defaultDestination);
     } catch (error) {
+      setIsLoggingIn(false);
       console.error('Login failed:', error);
       if (error?.status === 429) {
         const defaultRetryMs = 30 * 60 * 1000;
@@ -250,6 +254,7 @@ export default function LoginPage() {
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     if (!validateSignup()) return;
+    setIsSigningUp(true);
     try {
       await api.auth.register({
         name: signupForm.name,
@@ -260,6 +265,7 @@ export default function LoginPage() {
       toast.success('Account created successfully! Welcome aboard.');
       navigate('/dashboard', { replace: true });
     } catch (error) {
+      setIsSigningUp(false);
       console.error('Registration failed:', error);
       setSignupErrors({ email: error.message || t('errorRegistrationFailed') });
     }
@@ -582,9 +588,11 @@ export default function LoginPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm lp-a5"
+              disabled={isLoggingIn}
+              className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm lp-a5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {t('Login Now!')}
+              {isLoggingIn && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isLoggingIn ? t('signingIn') : t('Login Now!')}
             </button>
 
             {/* Divider */}
@@ -869,9 +877,11 @@ export default function LoginPage() {
                 {/* Submit */}
                 <button
                   type="submit"
-                  className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm"
+                  disabled={isSigningUp}
+                  className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {t('createAccount')}
+                  {isSigningUp && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSigningUp ? t('creatingAccount') : t('createAccount')}
                 </button>
 
                 {/* Back to login */}
