@@ -2,5 +2,10 @@
 CLAUDE.md
 .claude/
 
-# Environment files
+# Environment files — never commit secrets
+.env
+.env.*
 backend/.env
+backend/.env.*
+front/.env
+front/.env.*
