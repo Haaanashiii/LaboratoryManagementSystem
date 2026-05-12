@@ -429,7 +429,7 @@ export default function LoginPage() {
               className="text-xs font-semibold tracking-[0.2em] uppercase"
               style={{ color: '#3B82F6' }}
             >
-              Intitut Teknologi Sepuluh Nopember
+              Institut Teknologi Sepuluh Nopember
             </span>
           </div>
 

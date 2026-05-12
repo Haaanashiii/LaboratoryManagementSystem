@@ -652,8 +652,6 @@ const translations = {
     approveExtension: 'Approve',
     rejectExtension: 'Reject',
     extensionNote: 'Note (optional)',
-    approving: 'Approving...',
-    rejecting: 'Rejecting...',
     close: 'Close',
     failedToSubmit: 'Failed to submit',
     // Journey step labels
@@ -1332,7 +1330,6 @@ const translations = {
     approving: 'Menyetujui…',
     deleting: 'Menghapus...',
     generating: 'Membuat…',
-    Exporting: 'Mengekspor...',
     preview: 'Pratinjau',
     good: 'Baik',
     damaged: 'Rusak',
@@ -1465,8 +1462,6 @@ const translations = {
     approveExtension: 'Setujui',
     rejectExtension: 'Tolak',
     extensionNote: 'Catatan (opsional)',
-    approving: 'Menyetujui...',
-    rejecting: 'Menolak...',
     close: 'Tutup',
     failedToSubmit: 'Gagal mengirim',
     // Journey step labels
