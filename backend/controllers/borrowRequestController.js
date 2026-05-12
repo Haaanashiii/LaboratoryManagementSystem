@@ -1071,7 +1071,7 @@ exports.approveBorrowRequest = async (req, res, next) => {
     // Generate PDF
     let pdfPath = null;
     try {
-      pdfPath = await saveBorrowRequestPdf(request.toObject ? request.toObject() : request);
+      pdfPath = await saveBorrowRequestPdf(request.toObject ? request.toObject() : request, { name: req.user.name, email: req.user.email, role: req.user.role });
       request.pdf_url = pdfPath;
       await request.save();
     } catch (pdfErr) {
@@ -1178,7 +1178,7 @@ exports.downloadBorrowPdf = async (req, res, next) => {
 
     // Always regenerate so the PDF reflects the latest approval state
     const { generateBorrowRequestPdf } = require('../utils/pdfGenerator');
-    const buffer = await generateBorrowRequestPdf(request.toObject ? request.toObject() : request);
+    const buffer = await generateBorrowRequestPdf(request.toObject ? request.toObject() : request, { name: req.user.name, email: req.user.email, role: req.user.role });
 
     const inline = req.query.inline === 'true';
     const borrowerName = (request.borrower_name || 'Student').replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -1353,7 +1353,7 @@ exports.previewBorrowPdf = async (req, res, next) => {
     };
 
     const { generateBorrowRequestPdf } = require('../utils/pdfGenerator');
-    const buffer = await generateBorrowRequestPdf(previewRequest);
+    const buffer = await generateBorrowRequestPdf(previewRequest, { name: req.user.name, email: req.user.email, role: req.user.role });
 
     const inline = req.query.inline === 'true';
     const safeStudentName = (previewRequest.borrower_name || 'Student').replace(/[^a-zA-Z0-9_\-]/g, '_');
