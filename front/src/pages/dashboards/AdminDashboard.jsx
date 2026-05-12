@@ -932,7 +932,7 @@ export default function AdminDashboard() {
                     )}
                     {item.damage_image_url && (
                       <a
-                        href={`http://localhost:3000${item.damage_image_url}`}
+                        href={item.damage_image_url}
                         target="_blank"
                         rel="noreferrer"
                         className="mt-1 inline-block text-xs font-medium text-blue-600 hover:underline"

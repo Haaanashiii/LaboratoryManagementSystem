@@ -1,0 +1,32 @@
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    volumes:
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    build: ./front
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  uploads_data:
+
+networks:
+  app-network:
