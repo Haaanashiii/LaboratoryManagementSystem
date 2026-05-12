@@ -901,6 +901,15 @@ export default function Users() {
                     />
                   </div>
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-600">Department</Label>
+                  <Input
+                    value={editForm.department}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, department: e.target.value }))}
+                    placeholder="e.g. Informatics Engineering"
+                    className="h-9 text-sm bg-white"
+                  />
+                </div>
               </div>
             )}
 

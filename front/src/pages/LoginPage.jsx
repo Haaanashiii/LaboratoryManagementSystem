@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Hash, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Hash, Building2, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
@@ -90,7 +90,7 @@ export default function LoginPage() {
   // Sign-up modal state
   const [showSignup, setShowSignup] = useState(false);
   const [signupStep, setSignupStep] = useState(0); // 0 = welcome, 1 = form
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '', studentId: '' });
+  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '', studentId: '', department: '' });
   const [signupErrors, setSignupErrors] = useState({});
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const passwordStrength = getSignupPasswordStrength(signupForm.password);
@@ -261,6 +261,7 @@ export default function LoginPage() {
         email: signupForm.email,
         password: signupForm.password,
         studentId: signupForm.studentId,
+        department: signupForm.department || undefined,
       });
       toast.success('Account created successfully! Welcome aboard.');
       navigate('/dashboard', { replace: true });
@@ -770,6 +771,26 @@ export default function LoginPage() {
                     />
                   </div>
                   {signupErrors.studentId && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }}>{signupErrors.studentId}</p>}
+                </div>
+
+                {/* Department */}
+                <div>
+                  <label htmlFor="signup-department" className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748B' }}>
+                    {t('department')}
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#334155' }} />
+                    <input
+                      type="text"
+                      id="signup-department"
+                      name="department"
+                      value={signupForm.department}
+                      onChange={handleSignupChange}
+                      placeholder="e.g. Informatics Engineering"
+                      autoComplete="off"
+                      className="su-input w-full pl-10 pr-4 py-3 rounded-xl text-sm"
+                    />
+                  </div>
                 </div>
 
                 {/* Email */}
