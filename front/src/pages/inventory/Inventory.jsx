@@ -3,43 +3,42 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { toast } from 'sonner';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Search, Pencil, Trash2, Package, Cpu, Monitor, Network, Mouse, HardDrive, Cable, Wrench, Boxes, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import {
+  Plus, Search, Pencil, Trash2, Package, Cpu, Monitor, Network,
+  Mouse, HardDrive, Cable, Wrench, Boxes, ChevronLeft, ChevronRight, Loader2,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { InventorySkeleton } from '@/skeleton-framework/admin';
+import '@/styles/equimon-admin.css';
 
 const PAGE_SIZE = 10;
 
 const categoryConfig = [
-  { value: 'Electronics',  label: 'Electronics',  color: 'bg-blue-50 text-blue-700 border-blue-200',     dot: '#3b82f6', icon: Cpu },
-  { value: 'Computing',    label: 'Computing',    color: 'bg-violet-50 text-violet-700 border-violet-200', dot: '#8b5cf6', icon: Monitor },
-  { value: 'Networking',   label: 'Networking',   color: 'bg-cyan-50 text-cyan-700 border-cyan-200',     dot: '#06b6d4', icon: Network },
-  { value: 'Peripherals',  label: 'Peripherals',  color: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: '#6366f1', icon: Mouse },
-  { value: 'Storage',      label: 'Storage',      color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: HardDrive },
-  { value: 'Cables',       label: 'Cables',       color: 'bg-orange-50 text-orange-700 border-orange-200', dot: '#f97316', icon: Cable },
-  { value: 'Tools',        label: 'Tools',        color: 'bg-amber-50 text-amber-700 border-amber-200',   dot: '#f59e0b', icon: Wrench },
-  { value: 'Other',        label: 'Other',        color: 'bg-slate-50 text-slate-700 border-slate-200',   dot: '#64748b', icon: Boxes },
+  { value: 'Electronics',  label: 'Electronics',  icon: Cpu       },
+  { value: 'Computing',    label: 'Computing',    icon: Monitor   },
+  { value: 'Networking',   label: 'Networking',   icon: Network   },
+  { value: 'Peripherals',  label: 'Peripherals',  icon: Mouse     },
+  { value: 'Storage',      label: 'Storage',      icon: HardDrive },
+  { value: 'Cables',       label: 'Cables',       icon: Cable     },
+  { value: 'Tools',        label: 'Tools',        icon: Wrench    },
+  { value: 'Other',        label: 'Other',        icon: Boxes     },
 ];
 
-const conditions = ['Excellent', 'Good', 'Fair', 'Poor', 'Damaged'];
-
-const conditionStyle = (condition) => {
-  if (condition === 'Excellent') return 'bg-blue-50 text-blue-700 border-blue-200';
-  if (condition === 'Good')      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (condition === 'Fair')      return 'bg-amber-50 text-amber-700 border-amber-200';
-  return 'bg-red-50 text-red-700 border-red-200';
+const conditionPill = (condition) => {
+  if (condition === 'Excellent')         return 'p-info';
+  if (condition === 'Good')              return 'p-ok';
+  if (condition === 'Fair')              return 'p-warn';
+  return 'p-bad';
 };
 
 export default function Inventory() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const [search, setSearch]             = useState('');
   const [activeCategory, setActiveCategory] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [deleteItem, setDeleteItem] = useState(null);
+  const [currentPage, setCurrentPage]   = useState(1);
+  const [deleteItem, setDeleteItem]     = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -62,12 +61,9 @@ export default function Inventory() {
     mutationFn: (id) => api.entities.Equipment.togglePublish(id),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      const label = data?.isPublished === false ? 'Hidden from students' : 'Visible to students';
-      toast.success(label);
+      toast.success(data?.isPublished === false ? 'Hidden from students' : 'Visible to students');
     },
-    onError: (err) => {
-      toast.error(err?.message || 'Failed to update visibility');
-    },
+    onError: (err) => toast.error(err?.message || 'Failed to update visibility'),
   });
 
   React.useEffect(() => { setCurrentPage(1); }, [search, activeCategory]);
@@ -79,7 +75,7 @@ export default function Inventory() {
   );
 
   const equipmentByCategory = categoryConfig.reduce((acc, cat) => {
-    acc[cat.value] = equipment.filter(item => (item.category || 'Other') === cat.value);
+    acc[cat.value] = equipment.filter(item => (item.category || 'Other') === cat.value).length;
     return acc;
   }, {});
 
@@ -87,312 +83,244 @@ export default function Inventory() {
     ? filteredEquipment.filter(item => (item.category || 'Other') === activeCategory)
     : filteredEquipment;
 
-  const totalPages = Math.max(1, Math.ceil(displayedEquipment.length / PAGE_SIZE));
+  const totalPages        = Math.max(1, Math.ceil(displayedEquipment.length / PAGE_SIZE));
   const paginatedEquipment = displayedEquipment.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const activeCategoryConfig = activeCategory ? categoryConfig.find(c => c.value === activeCategory) : null;
-  const canEdit = user?.role === 'admin' || user?.role === 'head_of_lab' || user?.role === 'lab_assistant' || user?.role === 'lecturer';
-
-
-
-  const h = new Date().getHours();
-  const gc =
-    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
-    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
-             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
+  const activeCatConfig   = activeCategory ? categoryConfig.find(c => c.value === activeCategory) : null;
+  const canEdit = ['admin','head_of_lab','lab_assistant','lecturer'].includes(user?.role);
 
   if (isLoading) return <InventorySkeleton />;
 
   return (
-    <div className="w-full space-y-4 px-2 py-2">
+    <div className="eq-admin" style={{ padding: '24px 28px', minHeight: '100%' }}>
 
-      {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <Package className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Inventory</h1>
-          </div>
+      {/* ── Title Strip ── */}
+      <div className="a-titlestrip">
+        <div>
+          <div className="a-eyebrow">Platform · Inventory</div>
+          <h1>Inventory</h1>
+          <div className="a-deck">Manage laboratory equipment, availability, and visibility</div>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-              <Package className="h-3.5 w-3.5 text-blue-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-base font-bold leading-none tabular-nums text-blue-700">{equipment.length}</p>
-              <p className="mt-0.5 text-[10px] font-medium text-blue-500">total item{equipment.length !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-              <Package className="h-3.5 w-3.5 text-emerald-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-base font-bold leading-none tabular-nums text-emerald-700">{equipment.filter(e => (e.available ?? e.available_quantity ?? 0) > 0).length}</p>
-              <p className="mt-0.5 text-[10px] font-medium text-emerald-500">available</p>
-            </div>
-          </div>
+        <div className="a-right">
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--a-mute)' }}>
+            {equipment.length} items · {equipment.filter(e => (e.available_quantity ?? 0) > 0).length} available
+          </span>
           {canEdit && (
-            <Button size="sm" className="h-8 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700" onClick={() => navigate('/inventory/add-equipment')}>
-              <Plus className="h-3.5 w-3.5" />
+            <button className="a-btn primary" onClick={() => navigate('/inventory/add-equipment')}>
+              <Plus style={{ width: 13, height: 13 }} />
               Add Equipment
-            </Button>
+            </button>
           )}
         </div>
       </div>
 
-      {/* ── Category stat pills ── */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
-        {categoryConfig.map((cat) => {
-          const count = equipmentByCategory[cat.value]?.length || 0;
+      {/* ── Category KPI Tabs ── */}
+      <div className="a-tabs" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {categoryConfig.map(cat => {
           const isActive = activeCategory === cat.value;
           const CatIcon = cat.icon;
           return (
             <button
               key={cat.value}
-              type="button"
-              onClick={() => setActiveCategory(activeCategory === cat.value ? '' : cat.value)}
-              className={`flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all ${
-                isActive
-                  ? `${cat.color} shadow-sm`
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-              }`}
+              className={`a-tab${isActive ? ' active' : ''}`}
+              onClick={() => { setCurrentPage(1); setActiveCategory(activeCategory === cat.value ? '' : cat.value); }}
             >
-              <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
-                <CatIcon className="h-4 w-4" style={isActive ? { color: cat.dot } : { color: '#64748b' }} />
+              <div className="t-label">
+                <CatIcon style={{ width: 13, height: 13 }} />
+                {cat.label.toUpperCase()}
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{cat.label}</p>
-                <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
-              </div>
+              <div className="t-val">{equipmentByCategory[cat.value] || 0}</div>
             </button>
           );
         })}
       </div>
 
-      {/* ── Search + Table Card ── */}
-      <Card className="overflow-hidden border-slate-200 shadow-none">
-        {/* Toolbar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            {activeCategoryConfig && (
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeCategoryConfig.dot }} />
-            )}
-            <p className="text-sm font-medium text-slate-800">
-              {activeCategoryConfig ? activeCategoryConfig.label : 'All Equipment'}
-            </p>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {displayedEquipment.length}
-            </span>
-            {activeCategory && (
-              <button
-                onClick={() => setActiveCategory('')}
-                className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <Input
+      {/* ── Panel + Table ── */}
+      <div className="a-panel">
+        <div className="p-head">
+          <h2>{activeCatConfig ? activeCatConfig.label : 'All Equipment'}</h2>
+          <span className="count">{displayedEquipment.length}</span>
+          {activeCategory && (
+            <button
+              onClick={() => setActiveCategory('')}
+              style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--a-mute)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Clear
+            </button>
+          )}
+          <div className="spacer" />
+          <div className="a-search" style={{ minWidth: 200 }}>
+            <Search style={{ width: 14, height: 14, color: 'var(--a-mute)', flexShrink: 0 }} />
+            <input
               placeholder="Search equipment..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 pl-8 text-xs"
+              onChange={e => setSearch(e.target.value)}
             />
           </div>
         </div>
 
-        <CardContent className="p-0">
-          {isError ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
-                <Package className="h-5 w-5 text-red-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-800">Unable to load equipment</p>
-              <p className="max-w-xs text-center text-xs text-slate-500">
-                {error?.message || 'Failed to connect to the server.'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Category</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Location</TableHead>
-                    <TableHead className="text-center text-xs font-medium text-slate-500">Total</TableHead>
-                    <TableHead className="text-center text-xs font-medium text-slate-500">Available</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Condition</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Visibility</TableHead>
-                    {canEdit && <TableHead className="text-right text-xs font-medium text-slate-500">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedEquipment.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={canEdit ? 8 : 7} className="py-14 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                            <Package className="h-4 w-4 text-slate-400" />
-                          </div>
-                          <p className="text-sm text-slate-500">
-                            {activeCategoryConfig ? `No ${activeCategoryConfig.label.toLowerCase()} equipment found` : 'No equipment found'}
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedEquipment.map((item) => {
-                      const catConfig = categoryConfig.find(c => c.value === (item.category || 'Other')) || categoryConfig[categoryConfig.length - 1];
-                      return (
-                        <TableRow key={item.id} className="border-slate-50 hover:bg-slate-50/50">
-                          <TableCell>
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                                {item.image_url ? (
-                                  <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                                ) : (
-                                  <Package className="h-4 w-4 text-slate-400" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-slate-900">{item.name}</p>
-                                {item.description && (
-                                  <p className="max-w-[200px] truncate text-xs text-slate-400">{item.description}</p>
-                                )}
-                              </div>
+        {isError ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '64px 24px', gap: 8 }}>
+            <Package style={{ width: 32, height: 32, color: 'var(--a-mute-2)' }} />
+            <p style={{ fontFamily: 'var(--serif)', color: 'var(--a-ink)', margin: 0 }}>Unable to load equipment</p>
+            <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', color: 'var(--a-mute)', margin: 0, fontSize: 12 }}>
+              {error?.message || 'Failed to connect to the server.'}
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="a-table">
+              <thead>
+                <tr>
+                  <th>Equipment</th>
+                  <th>Category</th>
+                  <th>Location</th>
+                  <th className="num">Total</th>
+                  <th className="num">Available</th>
+                  <th>Condition</th>
+                  <th>Visibility</th>
+                  {canEdit && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {displayedEquipment.length === 0 ? (
+                  <tr>
+                    <td colSpan={canEdit ? 8 : 7} style={{ textAlign: 'center', padding: '48px 24px' }}>
+                      <Package style={{ width: 28, height: 28, color: 'var(--a-mute-2)', margin: '0 auto 8px' }} />
+                      <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', color: 'var(--a-mute)', margin: 0 }}>
+                        {activeCatConfig ? `No ${activeCatConfig.label.toLowerCase()} equipment found` : 'No equipment found'}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedEquipment.map(item => {
+                    const condPill = conditionPill(item.condition);
+                    return (
+                      <tr key={item.id}>
+                        {/* Equipment name + image */}
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 36, height: 36, border: '1px solid var(--a-rule)', background: 'var(--a-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                              ) : (
+                                <Package style={{ width: 16, height: 16, color: 'var(--a-mute-2)' }} />
+                              )}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${catConfig.color}`}>
-                              {item.category || 'Other'}
+                            <div>
+                              <div className="primary">{item.name}</div>
+                              {item.description && (
+                                <div className="muted" style={{ fontSize: 11, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="a-pill p-mute">
+                            {item.category || 'Other'}
+                          </span>
+                        </td>
+                        <td className="muted">{item.location || '—'}</td>
+                        <td className="num">{item.total_quantity}</td>
+                        <td className="num" style={{ color: item.available_quantity > 0 ? 'var(--a-ok)' : 'var(--a-bad)', fontWeight: 600 }}>
+                          {item.available_quantity}
+                        </td>
+                        <td>
+                          <span className={`a-pill ${condPill}`}>
+                            <span className="dot" style={{ background: 'currentColor' }} />
+                            {item.condition || 'Good'}
+                          </span>
+                        </td>
+                        <td>
+                          {item.isPublished === false ? (
+                            <span className="a-pill p-mute">Hidden</span>
+                          ) : (
+                            <span className="a-pill p-ok">
+                              <span className="dot" style={{ background: 'currentColor' }} />
+                              Published
                             </span>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500">{item.location || '—'}</TableCell>
-                          <TableCell className="text-center text-sm font-medium text-slate-700">{item.total_quantity}</TableCell>
-                          <TableCell className="text-center">
-                            <span className={`text-sm font-semibold ${item.available_quantity > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {item.available_quantity}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${conditionStyle(item.condition)}`}>
-                              {item.condition || 'Good'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {item.isPublished === false ? (
-                              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-400">
-                                Hidden
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                                Published
-                              </span>
-                            )}
-                          </TableCell>
-                          {canEdit && (
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {user?.role === 'admin' && (
-                                  <button
-                                    type="button"
-                                    title={item.isPublished === false ? 'Publish (show to students)' : 'Unpublish (hide from students)'}
-                                    onClick={() => publishMutation.mutate(item.id)}
-                                    disabled={publishMutation.isPending}
-                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
-                                      item.isPublished === false ? 'bg-slate-200' : 'bg-emerald-500'
-                                    }`}
-                                  >
-                                    <span
-                                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                                        item.isPublished === false ? 'translate-x-0' : 'translate-x-4'
-                                      }`}
-                                    />
-                                  </button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-md text-slate-400 hover:text-slate-700"
-                                  onClick={() => navigate(`/inventory/edit-equipment/${item.id}`)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-md text-slate-300 hover:text-red-500"
-                                  onClick={() => setDeleteItem(item)}
-                                  disabled={deleteMutation.isPending}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </TableCell>
                           )}
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                        </td>
+                        {canEdit && (
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              {user?.role === 'admin' && (
+                                <button
+                                  type="button"
+                                  title={item.isPublished === false ? 'Publish' : 'Unpublish'}
+                                  onClick={() => publishMutation.mutate(item.id)}
+                                  disabled={publishMutation.isPending}
+                                  style={{
+                                    position: 'relative', display: 'inline-flex', width: 36, height: 20,
+                                    borderRadius: 10, border: 'none', cursor: 'pointer', transition: 'background 0.2s',
+                                    background: item.isPublished === false ? 'var(--a-rule)' : 'var(--a-ok)',
+                                    flexShrink: 0,
+                                  }}
+                                  disabled={publishMutation.isPending}
+                                >
+                                  <span style={{
+                                    position: 'absolute', top: 2, width: 16, height: 16, borderRadius: '50%',
+                                    background: '#fff', transition: 'left 0.2s',
+                                    left: item.isPublished === false ? 2 : 18,
+                                  }} />
+                                </button>
+                              )}
+                              <button
+                                className="a-btn"
+                                style={{ padding: '5px 8px' }}
+                                onClick={() => navigate(`/inventory/edit-equipment/${item.id}`)}
+                                title="Edit"
+                              >
+                                <Pencil style={{ width: 13, height: 13 }} />
+                              </button>
+                              <button
+                                className="a-btn danger"
+                                style={{ padding: '5px 8px' }}
+                                onClick={() => setDeleteItem(item)}
+                                disabled={deleteMutation.isPending}
+                                title="Delete"
+                              >
+                                <Trash2 style={{ width: 13, height: 13 }} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
 
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-                  <p className="text-xs text-slate-500">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedEquipment.length)} of {displayedEquipment.length} items
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
+            {totalPages > 1 && (
+              <div className="a-pagination">
+                <span className="info">
+                  Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedEquipment.length)} of {displayedEquipment.length}
+                </span>
+                <div className="pages">
+                  <button className="a-btn" style={{ padding: '6px 10px' }} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                    <ChevronLeft style={{ width: 14, height: 14 }} />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      className={`a-btn${currentPage === page ? ' primary' : ''}`}
+                      style={{ padding: '6px 10px', minWidth: 32 }}
+                      onClick={() => setCurrentPage(page)}
                     >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="icon"
-                        className={`h-7 w-7 text-xs ${currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    ))}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                      {page}
+                    </button>
+                  ))}
+                  <button className="a-btn" style={{ padding: '6px 10px' }} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                    <ChevronRight style={{ width: 14, height: 14 }} />
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-      {/* ── Delete Confirmation ── */}
+      {/* ── Delete Confirmation Dialog ── */}
       <Dialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
         <DialogContent className="sm:max-w-md rounded-2xl bg-white text-slate-900">
           <DialogHeader className="border-b border-slate-100 pb-4">
@@ -403,35 +331,26 @@ export default function Inventory() {
               Delete Equipment
             </DialogTitle>
           </DialogHeader>
-
-          <div className="py-4 space-y-4">
+          <div className="py-4">
             <p className="text-sm text-slate-500 leading-relaxed">
               You're about to permanently delete{' '}
-              <span className="font-medium text-slate-700">"{deleteItem?.name}"</span>.
-              {' '}This action <span className="font-medium text-slate-700">cannot be undone</span> and will remove all associated data.
+              <span className="font-medium text-slate-700">"{deleteItem?.name}"</span>.{' '}
+              This action <span className="font-medium text-slate-700">cannot be undone</span>.
             </p>
           </div>
-
           <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
-            <Button variant="outline" size="sm" onClick={() => setDeleteItem(null)} className="text-xs">
-              Cancel
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => setDeleteItem(null)} className="text-xs">Cancel</Button>
             <Button
               size="sm"
               onClick={() => deleteMutation.mutate(deleteItem.id)}
               disabled={deleteMutation.isPending}
               className="text-xs text-white bg-red-500 hover:bg-red-600"
             >
-              {deleteMutation.isPending ? (
-                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Deleting...</>
-              ) : (
-                'Delete Equipment'
-              )}
+              {deleteMutation.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Deleting...</> : 'Delete Equipment'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
