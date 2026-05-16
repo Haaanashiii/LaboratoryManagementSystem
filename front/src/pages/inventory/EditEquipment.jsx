@@ -12,6 +12,7 @@ import {
   MapPin, Tag, Package, CheckCircle2, ImagePlus, Link2, AlertCircle,
 } from 'lucide-react';
 import { EditEquipmentSkeleton } from '@/skeleton-framework/admin';
+import '@/styles/equimon-admin.css';
 
 /* ─── Static config ─────────────────────────────────────────── */
 
@@ -37,17 +38,17 @@ const conditionConfig = [
 
 function Section({ icon: Icon, title, description, children }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white">
-      <div className="flex items-start gap-4 border-b border-slate-100 px-8 py-6">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-          <Icon className="h-5 w-5 text-slate-500" />
+    <div className="a-panel" style={{ marginBottom: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, borderBottom: '1px solid var(--a-rule)', padding: '18px 22px' }}>
+        <div style={{ width: 36, height: 36, background: 'var(--a-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon style={{ width: 16, height: 16, color: 'var(--a-gold)' }} />
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-900">{title}</p>
-          <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+          <p style={{ fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 15, color: 'var(--a-navy)', margin: 0 }}>{title}</p>
+          <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--a-mute)', margin: '3px 0 0' }}>{description}</p>
         </div>
       </div>
-      <div className="px-8 py-7">{children}</div>
+      <div style={{ padding: '22px 24px' }}>{children}</div>
     </div>
   );
 }
@@ -195,14 +196,14 @@ export default function EditEquipmentPage() {
 
   if (isError || (!isLoading && !equipment)) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
-          <AlertCircle className="h-6 w-6 text-red-500" />
+      <div className="eq-admin" style={{ padding: '24px 28px', minHeight: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, gap: 12 }}>
+          <AlertCircle style={{ width: 32, height: 32, color: 'var(--a-bad)' }} />
+          <p style={{ fontFamily: 'var(--serif)', fontWeight: 600, color: 'var(--a-navy)', fontSize: 16 }}>Equipment not found</p>
+          <button className="a-btn" onClick={() => navigate('/inventory')}>
+            <ArrowLeft style={{ width: 13, height: 13 }} /> Back to Inventory
+          </button>
         </div>
-        <p className="text-sm font-medium text-slate-800">Equipment not found</p>
-        <Button variant="outline" size="sm" onClick={() => navigate('/inventory')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Inventory
-        </Button>
       </div>
     );
   }
@@ -210,32 +211,30 @@ export default function EditEquipmentPage() {
   if (!formData) return null;
 
   return (
-    <div className="w-full space-y-8 px-1 py-2">
+    <div className="eq-admin" style={{ padding: '24px 28px', minHeight: '100%' }}>
 
-      {/* ── Page Header ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          type="button"
-          className="h-9 w-9 shrink-0 rounded-xl border border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
-          onClick={() => navigate('/inventory')}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Edit Equipment</h1>
-          <p className="mt-1 text-sm text-slate-500">Update the details for <span className="font-medium text-slate-700">{equipment.name}</span>.</p>
+      {/* ── Title Strip ── */}
+      <div className="a-titlestrip">
+        <div>
+          <div className="a-eyebrow">Inventory · Edit</div>
+          <h1>Edit Equipment</h1>
+          <div className="a-deck">Update the details for <strong style={{ color: 'var(--a-navy)' }}>{equipment.name}</strong></div>
+        </div>
+        <div className="a-right">
+          <button type="button" className="a-btn" onClick={() => navigate('/inventory')}>
+            <ArrowLeft style={{ width: 13, height: 13 }} />
+            Back to Inventory
+          </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* ── Two-column layout ─────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        {/* ── Two-column layout ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
 
-          {/* Left column — main fields (2/3 width) */}
-          <div className="space-y-6 xl:col-span-2">
+          {/* Left column — main fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
             {/* § Basic Information */}
             <Section icon={Package} title="Basic Information" description="The primary details shown across the inventory.">
@@ -412,9 +411,9 @@ export default function EditEquipmentPage() {
 
           </div>{/* /left column */}
 
-          {/* Right column — images (1/3 width) */}
-          <div className="xl:col-span-1">
-            <div className="sticky top-4 space-y-4">
+          {/* Right column — images */}
+          <div>
+            <div style={{ position: 'sticky', top: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <Section icon={ImagePlus} title="Images" description="Add or replace photos for this equipment.">
                 <div className="space-y-4">
 
@@ -510,69 +509,31 @@ export default function EditEquipmentPage() {
                 </div>
               </Section>
 
-              {/* Sticky action buttons */}
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 text-sm"
-                  onClick={() => navigate('/inventory')}
-                  disabled={isSubmitting}
-                >
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button type="button" className="a-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={() => navigate('/inventory')} disabled={isSubmitting}>
                   Cancel
-                </Button>
-                <Button
-                  type="button"
-                  disabled={!formData.name.trim() || isSubmitting}
-                  className="flex-1 gap-2 bg-amber-600 text-sm font-medium hover:bg-amber-700"
-                  onClick={handleSubmit}
-                >
-                  {uploading ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
-                  ) : updateMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
-                  ) : (
-                    <><Pencil className="h-4 w-4" /> Save Changes</>
-                  )}
-                </Button>
+                </button>
+                <button type="button" className="a-btn primary" style={{ flex: 1, justifyContent: 'center' }} disabled={!formData.name.trim() || isSubmitting} onClick={handleSubmit}>
+                  {uploading ? <><Loader2 style={{ width: 14, height: 14 }} /> Uploading...</>
+                    : updateMutation.isPending ? <><Loader2 style={{ width: 14, height: 14 }} /> Saving...</>
+                    : <><Pencil style={{ width: 14, height: 14 }} /> Save Changes</>}
+                </button>
               </div>
             </div>
           </div>
 
         </div>{/* /two-column */}
 
-        {/* ── Error ───────────────────────────────────────────────── */}
+        {/* ── Error ── */}
         {(formError || updateMutation.isError) && (
-          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
-            <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100">
-              <span className="text-xs font-bold text-red-600">!</span>
-            </div>
-            <p className="text-sm text-red-700">
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, border: '1px solid var(--a-bad)', background: 'var(--a-bad-bg)', padding: '14px 18px' }}>
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--a-bad)', flexShrink: 0, marginTop: 1 }}>!</span>
+            <p style={{ fontFamily: 'var(--serif)', fontSize: 13, color: 'var(--a-bad)', margin: 0, lineHeight: 1.5 }}>
               {formError || updateMutation.error?.message || 'Something went wrong. Please try again.'}
             </p>
           </div>
         )}
-
-        {/* ── Footer actions (mobile) ──────────────────────────────── */}
-        <div className="flex items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-5 sm:hidden">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1 text-sm"
-            onClick={() => navigate('/inventory')}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={!formData.name.trim() || isSubmitting}
-            className="flex-1 gap-2 bg-amber-600 text-sm font-medium hover:bg-amber-700"
-          >
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
-            {uploading ? 'Uploading...' : updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
 
       </form>
     </div>
