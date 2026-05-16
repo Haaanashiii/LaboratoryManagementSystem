@@ -8,18 +8,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, RotateCcw, AlertTriangle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList, CalendarClock, Check, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { Package, RotateCcw, AlertTriangle, Loader2, Search, ChevronLeft, ChevronRight, ClipboardList, CalendarClock, Check, X, Clock, Bell, Printer, CheckCircle } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
 import { AssistantReturnsSkeleton } from '@/skeleton-framework/assistant';
 import { useLang } from '@/components/i18n/LangContext';
+import EquimonPageHeader from '@/components/ui/equimon/EquimonPageHeader';
+import { printItsReceipt } from '@/utils/printItsReceipt';
 
 const PAGE_SIZE = 10;
 
 const SECTION_CONFIG = [
-  { key: 'all',     labelKey: 'all',           color: 'bg-slate-100 text-slate-700 border-slate-300', dot: '#475569', icon: ClipboardList },
-  { key: 'overdue', labelKey: 'overdue',        color: 'bg-red-50 text-red-700 border-red-200',        dot: '#ef4444', icon: AlertTriangle },
-  { key: 'regular', labelKey: 'regularReturns', color: 'bg-blue-50 text-blue-700 border-blue-200',     dot: '#3b82f6', icon: RotateCcw },
+  { key: 'all',      label: 'ALL',             color: '#475569', icon: ClipboardList },
+  { key: 'overdue',  label: 'OVERDUE',          color: '#ef4444', icon: AlertTriangle },
+  { key: 'due_soon', label: 'DUE SOON',         color: '#f59e0b', icon: Clock },
+  { key: 'regular',  label: 'REGULAR RETURNS',  color: '#22c55e', icon: RotateCcw },
 ];
+
+const CATEGORY_COLORS = { Measurement: '#f97316', Microcontroller: '#3b82f6', Tools: '#ef4444', Power: '#8b5cf6', Optics: '#22c55e' };
+const getCatColor = (cat) => CATEGORY_COLORS[cat] || '#64748b';
 
 export default function Returns() {
   const { t } = useLang();
@@ -151,28 +157,31 @@ export default function Returns() {
     (shouldRequireReplacementDecision && studentWillReplace === '') ||
     (shouldTrackReplacement && replacementCompleted === '');
 
-  const isOverdue = (returnDate) => new Date(returnDate) < new Date();
+  const isOverdue  = (d) => new Date(d) < new Date();
+  const isDueSoon  = (d) => { const days = differenceInDays(new Date(d), new Date()); return days >= 0 && days <= 3; };
 
   const handleSectionChange = (key) => { setActiveSection(key); setCurrentPage(1); };
 
   const allRequests = [
     ...borrowedRequests
       .filter((r) => isOverdue(r.return_date))
-      .sort((a, b) => new Date(a.return_date).getTime() - new Date(b.return_date).getTime())
+      .sort((a, b) => new Date(a.return_date) - new Date(b.return_date))
       .map((r) => ({ ...r, _section: 'overdue' })),
     ...borrowedRequests
-      .filter((r) => !isOverdue(r.return_date))
-      .sort((a, b) => {
-        const ts = (req) => new Date(req?.released_at || req?.borrow_date || req?.created_date || req?.createdAt || 0).getTime();
-        return ts(a) - ts(b);
-      })
+      .filter((r) => !isOverdue(r.return_date) && isDueSoon(r.return_date))
+      .sort((a, b) => new Date(a.return_date) - new Date(b.return_date))
+      .map((r) => ({ ...r, _section: 'due_soon' })),
+    ...borrowedRequests
+      .filter((r) => !isOverdue(r.return_date) && !isDueSoon(r.return_date))
+      .sort((a, b) => new Date(a.return_date) - new Date(b.return_date))
       .map((r) => ({ ...r, _section: 'regular' })),
   ];
 
   const sectionCounts = {
-    all: allRequests.length,
-    overdue: allRequests.filter((r) => r._section === 'overdue').length,
-    regular: allRequests.filter((r) => r._section === 'regular').length,
+    all:      allRequests.length,
+    overdue:  allRequests.filter((r) => r._section === 'overdue').length,
+    due_soon: allRequests.filter((r) => r._section === 'due_soon').length,
+    regular:  allRequests.filter((r) => r._section === 'regular').length,
   };
 
   const sectionFiltered = activeSection === 'all'
@@ -187,41 +196,25 @@ export default function Returns() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const activeConfig = SECTION_CONFIG.find((c) => c.key === activeSection) || SECTION_CONFIG[0];
-
   const pendingExtensions = borrowedRequests.filter(
     (r) => r.extension_request?.status === 'pending' && r.extension_request?.requested_date
   );
 
-  const h = new Date().getHours();
-  const gc =
-    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
-    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
-             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
-
   return (
-    <div className="w-full space-y-4 px-2 py-2">
+    <div className="w-full space-y-5 px-2 py-3">
 
       {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <RotateCcw className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('equipmentReturns')}</h1>
-          </div>
-        </div>
-      </div>
+      <EquimonPageHeader
+        accent="#7c3aed"
+        icon={RotateCcw}
+        title={t('equipmentReturns') || 'Equipment Returns'}
+        badgeCount={sectionCounts.all}
+        badge="items"
+        sub="Track borrowed equipment and process returns"
+      />
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {/* ── Stat Filter Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {SECTION_CONFIG.map((cfg) => {
           const count = sectionCounts[cfg.key] ?? 0;
           const isActive = activeSection === cfg.key;
@@ -229,21 +222,17 @@ export default function Returns() {
           return (
             <button
               key={cfg.key}
-              type="button"
               onClick={() => handleSectionChange(cfg.key)}
-              className={`flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all ${
-                isActive
-                  ? `${cfg.color} shadow-sm`
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+              className={`relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                isActive ? 'border-slate-300 bg-white shadow-md' : 'border-slate-200/70 bg-white shadow-sm'
               }`}
             >
-              <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
-                <CfgIcon className="h-4 w-4" style={isActive ? { color: cfg.dot } : { color: '#64748b' }} />
+              {isActive && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-slate-900" />}
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `${cfg.color}15` }}>
+                <CfgIcon className="w-5 h-5" style={{ color: cfg.color }} />
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{t(cfg.labelKey)}</p>
-                <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
-              </div>
+              <div className="text-[10px] font-bold tracking-[1.5px] uppercase text-slate-400 mb-1">{cfg.label}</div>
+              <div className="text-[32px] font-extrabold leading-none" style={{ color: isActive ? cfg.color : '#0f172a' }}>{count}</div>
             </button>
           );
         })}
@@ -311,36 +300,22 @@ export default function Returns() {
         </Card>
       )}
 
-      {/* Table Card */}
-      <Card className="overflow-hidden border-slate-200 shadow-none">
+      {/* ── Card List ── */}
+      <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            {activeSection !== 'all' && (
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeConfig.dot }} />
-            )}
-            <p className="text-sm font-medium text-slate-800">{t(activeConfig.labelKey)}</p>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {filtered.length}
-            </span>
-            {activeSection !== 'all' && (
-              <button
-                onClick={() => handleSectionChange('all')}
-                className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
-              >
-                {t('clear')}
-              </button>
-            )}
-          </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder={t('searchEquipmentOrBorrower')}
+              placeholder={t('searchEquipmentOrBorrower') || 'Search equipment or borrower...'}
               value={search}
               onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
-              className="h-8 pl-8 text-xs"
+              className="pl-9 h-9 rounded-xl text-sm"
             />
           </div>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-[13px] font-medium transition-colors shrink-0">
+            <Printer className="w-4 h-4" /> Print list
+          </button>
         </div>
 
         <CardContent className="p-0">
@@ -353,93 +328,148 @@ export default function Returns() {
               </div>
               <p className="text-sm font-medium text-slate-800">{t('unableLoadBorrowedItems')}</p>
               <p className="max-w-xs text-center text-xs text-slate-500">
-                {error?.message || 'Failed to connect to the server. Please check your connection and try again.'}
+                {error?.message || 'Failed to connect to the server.'}
               </p>
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-16">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                <RotateCcw className="h-5 w-5 text-slate-400" />
+              </div>
+              <p className="text-sm font-medium text-slate-500">{t('noPendingReturns') || 'No pending returns'}</p>
+              <p className="text-xs text-slate-400">{t('allEquipmentReturned') || 'All equipment has been returned'}</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('qty')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('dueDate')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-slate-500">{t('action')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <td colSpan={6} className="py-14 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                            <RotateCcw className="h-4 w-4 text-slate-400" />
-                          </div>
-                          <p className="text-sm text-slate-500">{t('noPendingReturns')}</p>
-                          <p className="text-xs text-slate-400">{t('allEquipmentReturned')}</p>
+            <>
+              <div className="divide-y divide-slate-100">
+                {paginated.map((request) => {
+                  const overdue  = request._section === 'overdue';
+                  const dueSoon  = request._section === 'due_soon';
+                  const overdueDays = overdue  ? differenceInDays(new Date(), new Date(request.return_date)) : 0;
+                  const dueSoonDays = dueSoon  ? differenceInDays(new Date(request.return_date), new Date()) : 0;
+                  const borrowedDate = request.borrow_date || request.released_at || request.created_date;
+                  const loanDays = borrowedDate
+                    ? Math.abs(differenceInDays(new Date(request.return_date), new Date(borrowedDate)))
+                    : null;
+                  const catColor = getCatColor(request.category || request.equipment_category);
+                  const reqId = `REQ-${new Date().getFullYear()}-${String(request.id).padStart(4, '0')}`;
+                  const initials = (request.borrower_name || request.student_email || 'U')[0].toUpperCase();
+                  const equipImgUrl = request.equipment_image_url
+                    || request.equipment?.image_url
+                    || request.equipment?.image
+                    || '';
+
+                  return (
+                    <div key={request.id} className="relative flex gap-5 px-5 py-5 hover:bg-slate-50/60 transition-colors">
+                      {/* Left border stripe */}
+                      {(overdue || dueSoon) && (
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r-sm"
+                          style={{ background: overdue ? '#ef4444' : '#f59e0b' }}
+                        />
+                      )}
+
+                      {/* Equipment image / icon tile */}
+                      {equipImgUrl ? (
+                        <img src={equipImgUrl} alt={request.equipment_name} className="shrink-0 w-16 h-16 rounded-2xl object-cover border border-slate-100" />
+                      ) : (
+                        <div className="shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `${catColor}15` }}>
+                          <Package className="w-7 h-7" style={{ color: catColor }} />
                         </div>
-                      </td>
-                    </TableRow>
-                  ) : (
-                    paginated.map((request) => {
-                      const overdue = request._section === 'overdue';
-                      return (
-                        <TableRow key={request.id} className="border-slate-50 hover:bg-slate-50/50">
-                          <TableCell>
-                            <span className="text-sm font-medium text-slate-900">{request.equipment_name}</span>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500">{request.borrower_name}</TableCell>
-                          <TableCell className="text-xs text-slate-500">{request.quantity}</TableCell>
-                          <TableCell className="text-xs">
-                            <span className={overdue ? 'font-medium text-red-600' : 'text-slate-500'}>
-                              {format(new Date(request.return_date), 'MMM d, yyyy')}
+                      )}
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Badge row */}
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          {overdue && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold">
+                              <AlertTriangle className="w-3 h-3" /> Overdue by {overdueDays} day{overdueDays !== 1 ? 's' : ''}
                             </span>
-                          </TableCell>
-                          <TableCell>
-                            {overdue ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                                <AlertTriangle className="h-3 w-3" />
-                                {t('overdue')}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                                {t('borrowed')}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 gap-1.5 px-2.5 text-xs font-medium text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
-                              onClick={() => openReturnDialog(request)}
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              {t('processReturn')}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                          )}
+                          {dueSoon && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">
+                              <Clock className="w-3 h-3" /> Due in {dueSoonDays} day{dueSoonDays !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {(request.category || request.equipment_category) && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium">
+                              {request.category || request.equipment_category}
+                            </span>
+                          )}
+                          <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-400 text-[11px] font-mono">{reqId}</span>
+                        </div>
+
+                        {/* Name + qty */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <h3 className="text-[15px] font-bold text-slate-900 truncate">{request.equipment_name}</h3>
+                          <span className="shrink-0 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px] font-semibold">×{request.quantity}</span>
+                        </div>
+
+                        {/* Info grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div>
+                            <p className="text-[9px] font-bold tracking-[1.5px] uppercase text-slate-400 mb-1.5">Borrower</p>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[12px] font-semibold text-slate-800 truncate">{request.borrower_name || '—'}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{request.student_email || '—'}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold tracking-[1.5px] uppercase text-slate-400 mb-1.5">Borrowed</p>
+                            <p className="text-[12px] font-semibold text-slate-700">
+                              {borrowedDate ? format(new Date(borrowedDate), 'MMM dd, yyyy') : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold tracking-[1.5px] uppercase text-slate-400 mb-1.5">Due Back</p>
+                            <p className={`text-[12px] font-semibold ${overdue ? 'text-red-600' : 'text-slate-700'}`}>
+                              {format(new Date(request.return_date), 'MMM dd, yyyy')}
+                            </p>
+                            {overdue && <p className="text-[10px] text-red-500 font-medium mt-0.5">{overdueDays} day(s) late</p>}
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold tracking-[1.5px] uppercase text-slate-400 mb-1.5">Loan Duration</p>
+                            <p className="text-[12px] font-semibold text-slate-700">{loanDays != null ? `${loanDays} days` : '—'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="shrink-0 flex flex-col gap-2 justify-start">
+                        <button
+                          onClick={() => openReturnDialog(request)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-bold transition-colors whitespace-nowrap"
+                        >
+                          <CheckCircle className="w-4 h-4" /> Mark Returned
+                        </button>
+                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-[12px] font-bold transition-colors whitespace-nowrap">
+                          <Bell className="w-4 h-4" /> Send Reminder
+                        </button>
+                        <button
+                          onClick={() => printItsReceipt(request)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-[12px] font-bold transition-colors whitespace-nowrap"
+                        >
+                          <Printer className="w-4 h-4" /> Print receipt
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
                   <p className="text-xs text-slate-500">
-                    {t('showing')} {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} {t('ofLabel')} {filtered.length}
+                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
                   </p>
                   <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
                       <ChevronLeft className="h-3.5 w-3.5" />
                     </Button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -447,25 +477,19 @@ export default function Returns() {
                         key={page}
                         variant={currentPage === page ? 'default' : 'outline'}
                         size="icon"
-                        className={`h-7 w-7 text-xs ${currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
+                        className={`h-7 w-7 text-xs ${currentPage === page ? 'bg-orange-500 text-white hover:bg-orange-600' : ''}`}
                         onClick={() => setCurrentPage(page)}
                       >
                         {page}
                       </Button>
                     ))}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </CardContent>
       </Card>

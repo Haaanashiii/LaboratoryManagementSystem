@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, clearStoredAuth, getStoredToken, isTokenExpired } from '@/api/apiClient';
+import { api, clearStoredAuth, getStoredToken, getStoredUser, isTokenExpired } from '@/api/apiClient';
 import { AuthContext } from './authContext';
 
 const PUBLIC_PATHS = new Set(['/', '/login', '/maintenance', '/admin-login', '/secure-admin-portal-9f3Xk']);
@@ -27,10 +27,27 @@ export function AuthProvider({ children }) {
       setUser(currentUser);
       setIsAuthenticated(!!currentUser);
       return currentUser;
-    } catch {
-      clearStoredAuth();
-      setUser(null);
-      setIsAuthenticated(false);
+    } catch (err) {
+      if (err?.status === 401) {
+        // Server explicitly rejected the session — clear everything and force re-login.
+        clearStoredAuth();
+        setUser(null);
+        setIsAuthenticated(false);
+      } else {
+        // Network error, 429, 500, etc. — don't wipe the token; fall back to cached user data
+        // so the user isn't logged out just because the backend was momentarily unreachable.
+        const raw = getStoredUser();
+        if (raw) {
+          try {
+            const cached = JSON.parse(raw);
+            setUser(cached);
+            setIsAuthenticated(true);
+          } catch {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        }
+      }
       return null;
     } finally {
       setIsLoading(false);
@@ -38,20 +55,16 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    setIsLoading(true);
-
     try {
       await api.auth.logout();
     } catch {
-      // Client auth state should still be cleared if backend logout fails.
+      // Clear client state even if backend logout fails.
     }
 
     clearStoredAuth();
     setUser(null);
     setIsAuthenticated(false);
-
-    // Full reload prevents bfcache/history from exposing stale protected UI.
-    window.location.replace('/login');
+    // ProtectedRoute will redirect to /login via React Router — no page reload needed.
   }, []);
 
   useEffect(() => {

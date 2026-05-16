@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Hash, Building2, Eye, EyeOff, X, ClipboardList, RotateCcw, Bell, Loader2, Globe, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,7 @@ export default function LoginPage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [rateLimitUntil, setRateLimitUntil] = useState(null);
+  const loginInFlightRef = useRef(false);
   const [countdownNow, setCountdownNow] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -214,19 +215,23 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Synchronous guard — prevents rapid double-clicks from firing multiple login requests
+    if (loginInFlightRef.current) return;
+
     if (rateLimitUntil && Date.now() >= rateLimitUntil) {
       setRateLimitUntil(null);
       setLoginError('');
     }
 
     if (rateLimitUntil && Date.now() < rateLimitUntil) {
-      setLoginError(`Too many failed login attempts. Try again in ${countdownLabel || '00:00'}.`);
+      setLoginError(`Too many failed login attempts. ${countdownLabel ? `Try again in ${countdownLabel}.` : 'Please wait before trying again.'}`);
       return;
     }
 
     if (!validateLogin()) return;
     setLoginError('');
     setIsLoggingIn(true);
+    loginInFlightRef.current = true;
     try {
       await api.auth.login(formData.email, formData.password, { rememberMe });
       const user = await refreshSession();
@@ -251,20 +256,19 @@ export default function LoginPage() {
     } catch (error) {
       setIsLoggingIn(false);
       if (error?.status === 429) {
-        const defaultRetryMs = 30 * 60 * 1000;
+        const defaultRetryMs = 5 * 60 * 1000;
         const retryMs = Number.isFinite(error?.retryAfterMs) ? error.retryAfterMs : defaultRetryMs;
         const until = Date.now() + retryMs;
         setRateLimitUntil(until);
         setCountdownNow(Date.now());
-        const initialSeconds = Math.ceil(retryMs / 1000);
-        const initialMinutes = Math.floor(initialSeconds / 60);
-        const initialRemainder = initialSeconds % 60;
-        const initialLabel = `${String(initialMinutes).padStart(2, '0')}:${String(initialRemainder).padStart(2, '0')}`;
-        setLoginError(`Too many failed login attempts. Try again in ${initialLabel}.`);
+        // Show the backend message verbatim — it already says "Try again in X seconds"
+        setLoginError(error.message || 'Too many failed login attempts. Please wait before trying again.');
         return;
       }
 
       setLoginError(t('errorInvalidCredentials'));
+    } finally {
+      loginInFlightRef.current = false;
     }
   };
 
@@ -664,11 +668,15 @@ export default function LoginPage() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={isLoggingIn}
+              disabled={isLoggingIn || (!!rateLimitUntil && countdownNow < rateLimitUntil)}
               className="lp-btn-primary w-full py-3 h-12 rounded-xl font-semibold text-white text-sm lp-a5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoggingIn && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isLoggingIn ? t('signingIn') : t('Login Now!')}
+              {isLoggingIn
+                ? t('signingIn')
+                : (rateLimitUntil && countdownNow < rateLimitUntil && countdownLabel)
+                  ? `Try again in ${countdownLabel}`
+                  : t('Login Now!')}
             </button>
 
             {/* Divider */}

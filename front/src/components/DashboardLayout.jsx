@@ -387,6 +387,7 @@ export default function DashboardLayout() {
 
   const handleLogout = async () => {
     await logout();
+    queryClient.clear();
   };
 
   // Use authUser (from context, already loaded by ProtectedRoute) for role-based

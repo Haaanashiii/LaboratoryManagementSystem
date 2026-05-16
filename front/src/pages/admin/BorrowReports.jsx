@@ -1,4 +1,35 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { api } from '@/api/apiClient';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import LoanSlip from '@/components/ui/LoanSlip';
+import {
+  Search, Printer, FileText,
+  Layers, Clock3, CheckCircle2, RotateCcw, XCircle,
+} from 'lucide-react';
+import { useLang } from '@/components/i18n/LangContext';
+import '@/styles/equimon-admin.css';
+
+const STATUS_TABS = [
+  { key: 'all',      labelKey: 'all',      statuses: null,                                           icon: Layers       },
+  { key: 'pending',  labelKey: 'pending',  statuses: ['pending_lecturer', 'pending_head'],           icon: Clock3       },
+  { key: 'active',   labelKey: 'active',   statuses: ['head_approved', 'ready_pickup', 'borrowed'],  icon: CheckCircle2 },
+  { key: 'returned', labelKey: 'returned', statuses: ['returned'],                                   icon: RotateCcw    },
+  { key: 'rejected', labelKey: 'rejected', statuses: ['rejected'],                                   icon: XCircle      },
+];
+
+const STATUS_PILL = {
+  pending_lecturer: 'p-warn',
+  pending_head:     'p-warn',
+  head_approved:    'p-gold',
+  ready_pickup:     'p-info',
+  borrowed:         'p-info',
+  returned:         'p-ok',
+  rejected:         'p-bad',
+};
+
+const PAGE_SIZE = 15;
 
 const getPaginationRange = (current, total, delta = 2) => {
   const left = Math.max(2, current - delta);
@@ -10,278 +41,249 @@ const getPaginationRange = (current, total, delta = 2) => {
   if (total > 1) range.push(total);
   return range;
 };
-import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { api } from '@/api/apiClient';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import StatusBadge from '@/components/ui/StatusBadge';
-import BorrowRequestReportModal from '@/components/BorrowRequestReportModal';
-import {
-  Search, Printer, FileText,
-  ChevronLeft, ChevronRight,
-  Layers, Clock3, CheckCircle2, RotateCcw, XCircle, FileDown,
-} from 'lucide-react';
-import { useLang } from '@/components/i18n/LangContext';
 
-const STATUS_TABS = [
-  { key: 'all',      labelKey: 'all',      statuses: null,                                           icon: Layers,       dot: '#475569', color: 'bg-slate-100 text-slate-700 border-slate-300' },
-  { key: 'pending',  labelKey: 'pending',  statuses: ['pending_lecturer', 'pending_head'],           icon: Clock3,       dot: '#d97706', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  { key: 'active',   labelKey: 'active',   statuses: ['head_approved', 'ready_pickup', 'borrowed'],  icon: CheckCircle2, dot: '#2563eb', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { key: 'returned', labelKey: 'returned', statuses: ['returned'],                                   icon: RotateCcw,    dot: '#059669', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { key: 'rejected', labelKey: 'rejected', statuses: ['rejected'],                                   icon: XCircle,      dot: '#dc2626', color: 'bg-red-50 text-red-700 border-red-200' },
-];
+const btnBase = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  minWidth: 28, height: 28, padding: '0 6px', borderRadius: 6,
+  border: '1px solid var(--a-rule)', background: 'var(--a-surface)',
+  fontSize: 12, color: 'var(--a-ink)', cursor: 'pointer',
+};
+const btnActive = { ...btnBase, background: 'var(--a-navy)', color: '#fff', borderColor: 'var(--a-navy)' };
 
-const PAGE_SIZE = 15;
+function Pager({ page, total, onPage }) {
+  if (total <= 1) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <button style={btnBase} onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}>Prev</button>
+      {getPaginationRange(page, total).map((item, idx) =>
+        item === '...' ? (
+          <span key={`e-${idx}`} style={{ padding: '0 4px', fontSize: 12, color: 'var(--a-mute)' }}>…</span>
+        ) : (
+          <button key={item} style={page === item ? btnActive : btnBase} onClick={() => onPage(item)}>{item}</button>
+        )
+      )}
+      <button style={btnBase} onClick={() => onPage(Math.min(total, page + 1))} disabled={page === total}>Next</button>
+    </div>
+  );
+}
 
 export default function BorrowReports() {
   const { t } = useLang();
-  const [search, setSearch] = useState('');
+  const [search, setSearch]             = useState('');
   const [activeStatus, setActiveStatus] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [reportRequestId, setReportRequestId] = useState(null);
+  const [currentPage, setCurrentPage]   = useState(1);
+  const [reportRequest, setReportRequest] = useState(null);
 
   const { data: requests = [], isLoading, isError } = useQuery({
     queryKey: ['allRequests'],
     queryFn: () => api.entities.BorrowRequest.list(),
   });
 
+  const { data: allEquipment = [] } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: () => api.entities.Equipment.list(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const equipmentMap = React.useMemo(() => {
+    const map = {};
+    allEquipment.forEach(eq => { map[eq.id] = eq; map[eq._id] = eq; });
+    return map;
+  }, [allEquipment]);
+
+  const getEquipmentImage = (request) => {
+    const eqId = request?.equipment?._id || request?.equipment?.id || request?.equipment;
+    return eqId ? (equipmentMap[eqId]?.image_url || null) : null;
+  };
+
   React.useEffect(() => { setCurrentPage(1); }, [search, activeStatus]);
 
-  const selectedTab = STATUS_TABS.find((tab) => tab.key === activeStatus) || STATUS_TABS[0];
+  const selectedTab = STATUS_TABS.find(tab => tab.key === activeStatus) || STATUS_TABS[0];
 
   const statusCounts = STATUS_TABS.reduce((acc, tab) => {
     acc[tab.key] = tab.statuses
-      ? requests.filter((r) => tab.statuses.includes(r.status)).length
+      ? requests.filter(r => tab.statuses.includes(r.status)).length
       : requests.length;
     return acc;
   }, {});
 
-  const filtered = requests.filter((r) => {
+  const filtered = requests.filter(r => {
     const matchStatus = !selectedTab.statuses || selectedTab.statuses.includes(r.status);
     const q = search.trim().toLowerCase();
     const matchSearch = !q ||
       (r.equipment_name || '').toLowerCase().includes(q) ||
-      (r.borrower_name || '').toLowerCase().includes(q) ||
-      (r.student_email || '').toLowerCase().includes(q);
+      (r.borrower_name  || '').toLowerCase().includes(q) ||
+      (r.student_email  || '').toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const paginated  = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <>
-      <div className="w-full space-y-4 px-2 py-2">
+      <div className="eq-admin" style={{ paddingBottom: 40 }}>
 
-        {/* ── Hero ── */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-blue-50">
-              <FileDown className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-                {format(new Date(), 'EEEE, MMMM d, yyyy')}
-              </p>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('borrowRequestReports')}</h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {t('generatePdfReportsDesc')}
-              </p>
-            </div>
+        {/* Title Strip */}
+        <div className="a-titlestrip">
+          <div style={{ flex: 1 }}>
+            <div className="a-eyebrow">Inventory &amp; Lending · Reports</div>
+            <h1>{t('borrowRequestReports')}</h1>
+            <p className="a-deck">{t('generatePdfReportsDesc')}</p>
           </div>
         </div>
 
-        {/* ── Status Tabs ── */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {STATUS_TABS.map((tab) => {
-            const isActive = activeStatus === tab.key;
-            const TabIcon = tab.icon;
-            return (
+        <div style={{ padding: '0 24px' }}>
+
+          {/* KPI Tab Strip */}
+          <div className="a-tabs" style={{ marginTop: 20, gridTemplateColumns: `repeat(${STATUS_TABS.length}, 1fr)` }}>
+            {STATUS_TABS.map(({ key, labelKey, icon: Icon }) => (
               <button
-                key={tab.key}
+                key={key}
                 type="button"
-                onClick={() => setActiveStatus(activeStatus === tab.key && tab.key !== 'all' ? 'all' : tab.key)}
-                className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                  isActive
-                    ? `${tab.color} shadow-sm`
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                }`}
+                className={`a-tab${activeStatus === key ? ' active' : ''}`}
+                onClick={() => { setActiveStatus(activeStatus === key && key !== 'all' ? 'all' : key); setCurrentPage(1); }}
+                style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4, padding: '12px 16px', minWidth: 120 }}
               >
-                <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
-                  <TabIcon className="h-4 w-4" style={isActive ? { color: tab.dot } : { color: '#64748b' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon style={{ width: 13, height: 13 }} />
+                  <span style={{ fontSize: 11, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t(labelKey)}</span>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate text-xs text-slate-500">{t(tab.labelKey)}</p>
-                  <p className="text-lg font-semibold leading-tight text-slate-900">{statusCounts[tab.key] || 0}</p>
-                </div>
+                <span style={{ fontSize: 24, fontFamily: 'var(--serif)', fontWeight: 700, lineHeight: 1, marginTop: 2 }}>
+                  {(statusCounts[key] || 0).toLocaleString()}
+                </span>
               </button>
-            );
-          })}
-        </div>
-
-        {/* ── Table Card ── */}
-        <Card className="overflow-hidden border-slate-200 shadow-none">
-          {/* Toolbar */}
-          <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              {selectedTab.key !== 'all' && (
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: selectedTab.dot }} />
-              )}
-              <p className="text-sm font-medium text-slate-800">{t(selectedTab.labelKey)}</p>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {filtered.length}
-              </span>
-              {activeStatus !== 'all' && (
-                <button
-                  onClick={() => setActiveStatus('all')}
-                  className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
-                >
-                  {t('clear')}
-                </button>
-              )}
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder={t('searchEquipmentOrBorrower')}
-                value={search}
-                onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
-                className="h-8 pl-8 text-xs"
-              />
-            </div>
+            ))}
           </div>
 
-          <CardContent className="p-0">
+          {/* Table Panel */}
+          <div className="a-panel" style={{ marginTop: 16 }}>
+
+            {/* Toolbar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--a-rule)', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>{t(selectedTab.labelKey)}</span>
+                <span className="a-pill p-mute">{filtered.length.toLocaleString()}</span>
+                {activeStatus !== 'all' && (
+                  <button
+                    onClick={() => { setActiveStatus('all'); setCurrentPage(1); }}
+                    style={{ fontSize: 11, color: 'var(--a-mute)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    {t('clear')}
+                  </button>
+                )}
+              </div>
+              <div className="a-search" style={{ width: 240 }}>
+                <Search style={{ width: 14, height: 14 }} />
+                <input
+                  placeholder={t('searchEquipmentOrBorrower')}
+                  value={search}
+                  onChange={e => { setCurrentPage(1); setSearch(e.target.value); }}
+                />
+              </div>
+            </div>
+
             {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 80 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--a-rule)', borderTopColor: 'var(--a-navy)', animation: 'spin 0.8s linear infinite' }} />
               </div>
             ) : isError ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-16">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
-                  <FileText className="h-5 w-5 text-red-400" />
-                </div>
-                <p className="text-sm text-slate-800">{t('unableLoadRequests')}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 64, color: 'var(--a-mute)' }}>
+                <FileText style={{ width: 32, height: 32 }} />
+                <p style={{ fontSize: 13 }}>{t('unableLoadRequests')}</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                      <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
-                      <TableHead className="text-xs font-medium text-slate-500">{t('borrower')}</TableHead>
-                      <TableHead className="text-xs font-medium text-slate-500">{t('borrowDate')}</TableHead>
-                      <TableHead className="text-xs font-medium text-slate-500">{t('returnDate')}</TableHead>
-                      <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
-                      <TableHead className="text-xs font-medium text-slate-500">{t('submitted')}</TableHead>
-                      <TableHead className="text-xs font-medium text-slate-500 text-center">{t('pdfReport')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="a-table">
+                  <thead>
+                    <tr>
+                      <th>{t('equipment')}</th>
+                      <th>{t('borrower')}</th>
+                      <th>{t('borrowDate')}</th>
+                      <th>{t('returnDate')}</th>
+                      <th>{t('status')}</th>
+                      <th>{t('submitted')}</th>
+                      <th style={{ textAlign: 'center' }}>{t('pdfReport')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {paginated.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="py-16 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                              <FileText className="h-4 w-4 text-slate-400" />
-                            </div>
-                            <p className="text-sm text-slate-500">{t('noRequestsFound')}</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: 56, color: 'var(--a-mute)', fontSize: 13 }}>
+                          {t('noRequestsFound')}
+                        </td>
+                      </tr>
                     ) : (
-                      paginated.map((request) => (
-                        <TableRow key={request.id} className="border-slate-50 hover:bg-slate-50/50">
-                          <TableCell>
-                            <p className="text-sm font-medium text-slate-900">{request.equipment_name}</p>
-                            <p className="text-xs text-slate-400">{t('qty')}: {request.quantity}</p>
-                          </TableCell>
-                          <TableCell>
-                            <p className="text-sm font-medium text-slate-900">{request.borrower_name}</p>
-                            <p className="text-xs text-slate-400">{request.student_email || request.borrower_email}</p>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500">
-                            {request.borrow_date && format(new Date(request.borrow_date), 'MMM d, yyyy')}
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500">
-                            {request.return_date && format(new Date(request.return_date), 'MMM d, yyyy')}
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={request.status} />
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-400">
-                            {request.created_date && format(new Date(request.created_date), 'MMM d, yyyy')}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 gap-1.5 border-blue-200 bg-blue-50 px-2.5 text-xs text-blue-700 hover:bg-blue-100 hover:border-blue-300"
-                              onClick={() => setReportRequestId(request.id)}
-                            >
-                              <Printer className="h-3.5 w-3.5" />
-                              {t('report')}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      paginated.map(request => {
+                        const pillClass = STATUS_PILL[request.status] || 'p-mute';
+                        return (
+                          <tr key={request.id}>
+                            <td>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>{request.equipment_name}</div>
+                              <div style={{ fontSize: 11, color: 'var(--a-mute)' }}>{t('qty')}: {request.quantity}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>{request.borrower_name}</div>
+                              <div style={{ fontSize: 11, color: 'var(--a-mute)' }}>{request.student_email || request.borrower_email}</div>
+                            </td>
+                            <td style={{ fontSize: 12, color: 'var(--a-ink-2)', whiteSpace: 'nowrap' }}>
+                              {request.borrow_date && format(new Date(request.borrow_date), 'MMM d, yyyy')}
+                            </td>
+                            <td style={{ fontSize: 12, color: 'var(--a-ink-2)', whiteSpace: 'nowrap' }}>
+                              {request.return_date && format(new Date(request.return_date), 'MMM d, yyyy')}
+                            </td>
+                            <td>
+                              <span className={`a-pill ${pillClass}`} style={{ whiteSpace: 'nowrap' }}>
+                                {request.status}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: 12, color: 'var(--a-mute)', whiteSpace: 'nowrap' }}>
+                              {request.created_date && format(new Date(request.created_date), 'MMM d, yyyy')}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                className="a-btn"
+                                onClick={() => setReportRequest(request)}
+                                style={{ gap: 5 }}
+                              >
+                                <Printer style={{ width: 13, height: 13 }} />
+                                {t('report')}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-                    <p className="text-xs text-slate-500">
-                      {t('showing')} {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} {t('ofLabel')} {filtered.length} {t('requestsLabel')}
-                    </p>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline" size="icon" className="h-7 w-7"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                      </Button>
-                      {getPaginationRange(currentPage, totalPages).map((item, idx) =>
-                        item === '...' ? (
-                          <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400">…</span>
-                        ) : (
-                          <Button
-                            key={item}
-                            variant={currentPage === item ? 'default' : 'outline'}
-                            size="icon"
-                            className={`h-7 w-7 text-xs ${currentPage === item ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
-                            onClick={() => setCurrentPage(item)}
-                          >
-                            {item}
-                          </Button>
-                        )
-                      )}
-                      <Button
-                        variant="outline" size="icon" className="h-7 w-7"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                {filtered.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: '1px solid var(--a-rule)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--a-mute)' }}>
+                      {t('showing')} {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} {t('ofLabel')} {filtered.length} {t('requestsLabel')}
+                    </span>
+                    <Pager page={currentPage} total={totalPages} onPage={setCurrentPage} />
                   </div>
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+
+        </div>
       </div>
 
-      {reportRequestId && (
-        <BorrowRequestReportModal
-          requestId={reportRequestId}
-          onClose={() => setReportRequestId(null)}
-        />
-      )}
+      {/* Loan Slip Modal — kept as-is */}
+      <Dialog open={!!reportRequest} onOpenChange={() => setReportRequest(null)}>
+        <DialogContent className="sm:max-w-[560px] rounded-2xl bg-white p-5 max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Loan Slip</DialogTitle>
+          {reportRequest && (
+            <LoanSlip
+              request={reportRequest}
+              imageUrl={getEquipmentImage(reportRequest)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

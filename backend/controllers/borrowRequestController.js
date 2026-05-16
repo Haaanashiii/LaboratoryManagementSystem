@@ -138,6 +138,9 @@ exports.getBorrowRequests = async (req, res, next) => {
       .populate('student', 'name email')
       .populate('equipment', 'name category')
       .populate('lecturer', 'name email')
+      .populate('head_of_lab', 'name email')
+      .populate('prepared_by', 'name email')
+      .populate('released_by', 'name email')
       .sort('-createdAt');
 
     res.json({

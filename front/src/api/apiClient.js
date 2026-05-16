@@ -215,14 +215,18 @@ const request = async (endpoint, options = {}) => {
 
     if (res.status === 401) {
       clearAuthStorage();
-      if ((data.message || '').toLowerCase().includes('expired')) {
-        throw new Error('Your session has expired. Please log in again.');
-      }
-      throw new Error(data.message || 'Your session is not authenticated. Please log in again.');
+      const msg = (data.message || '').toLowerCase().includes('expired')
+        ? 'Your session has expired. Please log in again.'
+        : (data.message || 'Your session is not authenticated. Please log in again.');
+      const authError = new Error(msg);
+      authError.status = 401;
+      throw authError;
     }
 
     if (res.status === 403) {
-      throw new Error(data.message || 'You do not have permission to access this resource with the current account.');
+      const forbiddenError = new Error(data.message || 'You do not have permission to access this resource with the current account.');
+      forbiddenError.status = 403;
+      throw forbiddenError;
     }
     const error = new Error(data.message || `Request failed with status ${res.status}`);
     error.status = res.status;

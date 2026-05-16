@@ -1,31 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Send, User, Package, Calendar, FileText, Tag, Hash, Building2, Download, Loader2, GraduationCap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Send, User, Package, Calendar, FileText, Tag, Hash, Building2, Printer, GraduationCap } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+import { buildItsReceiptHtml, printItsReceipt } from '@/utils/printItsReceipt';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-
-/** Displays a PDF page as a sharp image (data-URL from off-screen canvas) */
-function PdfPage({ src, cssWidth, cssHeight }) {
-  return (
-    <img
-      src={src}
-      style={{
-        display: 'block',
-        maxWidth: '100%',
-        maxHeight: '100%',
-        width: 'auto',
-        height: 'auto',
-        objectFit: 'contain',
-      }}
-      alt="PDF preview"
-    />
-  );
-}
 
 const fmt = (v) => {
   if (!v) return '—';
@@ -68,94 +47,45 @@ export default function BorrowRequestPreviewModal({
   onConfirm,
   isSubmitting = false,
 }) {
-  const [pdfLoading, setPdfLoading]           = useState(null); // 'download' | null
-  const [pdfPreviewState, setPdfPreviewState] = useState('idle'); // 'idle' | 'loading' | 'ready' | 'error'
-  const [pdfPages, setPdfPages]               = useState([]); // array of { canvas, key }
-  const blobUrlRef   = useRef(null);
-  const pdfDocRef    = useRef(null);
-  const scrollRef    = useRef(null);
+  const [iframeSrc, setIframeSrc] = useState('');
+  const iframeUrlRef = useRef(null);
 
   const objective = formData?.objective || formData?.purpose || '';
 
-  // Render page 1 at a fixed high-DPI scale; CSS handles the fit
-  const renderPages = useCallback(async (pdfDoc) => {
-    const dpr      = window.devicePixelRatio || 1;
-    const page     = await pdfDoc.getPage(1);
-    // Render at 1.5× base scale * DPR for crisp output on all screens
-    const viewport = page.getViewport({ scale: 1.5 * dpr });
-    const canvas   = document.createElement('canvas');
-    canvas.width   = viewport.width;
-    canvas.height  = viewport.height;
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-    const src = canvas.toDataURL('image/png');
-    return [{ src, key: 1 }];
-  }, []);
+  const buildSyntheticRequest = () => ({
+    id: null,
+    equipment_name: equipment?.name,
+    category: equipment?.category,
+    quantity: formData?.quantity,
+    borrower_name: user?.name,
+    student_email: user?.email,
+    department: user?.department,
+    lecturer_name: lecturerName,
+    purpose: objective,
+    created_date: new Date().toISOString(),
+    borrow_date: formData?.borrow_date,
+    return_date: formData?.return_date,
+    status: 'pending_lecturer',
+    lecturer_approved_at: null,
+    head_approved_at: null,
+  });
 
-  // Auto-generate PDF preview when modal opens
   useEffect(() => {
     if (!open || !formData || !equipment) return;
-
-    let cancelled = false;
-    setPdfPreviewState('loading');
-    setPdfPages([]);
-
-    api.entities.BorrowRequest.previewPdf(
-      { ...formData, equipment_name: equipment?.name, serial_number: equipment?.serialNumber || equipment?.serial_number || formData.serial_number, lecturer_name: lecturerName },
-      user
-    )
-      .then(async (blob) => {
-        const url = URL.createObjectURL(blob);
-        blobUrlRef.current = url;
-        const arrayBuffer = await blob.arrayBuffer();
-        if (cancelled) return;
-        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        if (cancelled) return;
-        pdfDocRef.current = pdfDoc;
-        const pages = await renderPages(pdfDoc);
-        if (cancelled) return;
-        setPdfPages(pages);
-        setPdfPreviewState('ready');
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error('PDF preview failed:', err);
-          setPdfPreviewState('error');
-        }
-      });
-
+    const html = buildItsReceiptHtml(buildSyntheticRequest());
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    iframeUrlRef.current = url;
+    setIframeSrc(url);
     return () => {
-      cancelled = true;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-      setPdfPages([]);
-      setPdfPreviewState('idle');
+      URL.revokeObjectURL(url);
+      iframeUrlRef.current = null;
+      setIframeSrc('');
     };
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDownload = async () => {
-    setPdfLoading('download');
-    try {
-      const blob = await api.entities.BorrowRequest.previewPdf(
-        { ...formData, equipment_name: equipment?.name, serial_number: equipment?.serialNumber || equipment?.serial_number || formData.serial_number, lecturer_name: lecturerName },
-        user
-      );
-      const url = URL.createObjectURL(blob);
-      const safeStudentName = (user?.name || 'Student').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `BorrowRequest_${safeStudentName}_${dateStr}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-    } catch (err) {
-      console.error('PDF download failed:', err);
-    } finally {
-      setPdfLoading(null);
-    }
+  const handlePrint = () => {
+    printItsReceipt(buildSyntheticRequest());
   };
 
   const { t } = useLang();
@@ -269,44 +199,32 @@ export default function BorrowRequestPreviewModal({
             </div>
           </div>
 
-          {/* RIGHT — PDF preview (50% height on mobile, 40% width on desktop) */}
+          {/* RIGHT — Receipt preview */}
           <div className="min-h-0 flex-1 md:flex-none md:w-[40%] flex flex-col min-w-0">
-            {/* PDF area — canvas pages, no browser PDF chrome */}
-            <div
-              ref={scrollRef}
-              className="flex-1 overflow-hidden flex items-center justify-center"
-              style={{ background: isDark ? '#1a1a24' : '#e8ecf0', padding: 0 }}
-            >
-              {pdfPreviewState === 'loading' && (
-                <div className="flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#3B82F6' }} />
-                  <p className="text-sm font-medium" style={{ color: isDark ? '#475569' : '#64748b' }}>
-                    {t('generatingPreview')}
-                  </p>
-                </div>
-              )}
-              {pdfPreviewState === 'ready' && pdfPages.map(({ src, cssWidth, cssHeight, key }) => (
-                <PdfPage key={key} src={src} cssWidth={cssWidth} cssHeight={cssHeight} />
-              ))}
-              {pdfPreviewState === 'error' && (
-                <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
-                  <FileText className="w-10 h-10 opacity-30" style={{ color: isDark ? '#475569' : '#94a3b8' }} />
-                  <p className="text-sm font-medium" style={{ color: isDark ? '#475569' : '#94a3b8' }}>{t('previewUnavailable')}</p>
-                  <p className="text-xs" style={{ color: isDark ? '#334155' : '#cbd5e1' }}>{t('downloadPDFBelow')}</p>
+            <div className="flex-1 overflow-hidden" style={{ background: isDark ? '#1a1a24' : '#e8ecf0' }}>
+              {iframeSrc ? (
+                <iframe
+                  src={iframeSrc}
+                  title="Loan Receipt Preview"
+                  style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <FileText className="w-10 h-10 opacity-20" style={{ color: isDark ? '#475569' : '#94a3b8' }} />
                 </div>
               )}
             </div>
 
-            {/* Download PDF — pinned below the iframe */}
+            {/* Print receipt — pinned below the preview */}
             <div className="flex-shrink-0 px-4 py-3 border-t" style={border}>
               <button
-                onClick={handleDownload}
-                disabled={isSubmitting || !!pdfLoading}
+                onClick={handlePrint}
+                disabled={isSubmitting}
                 className="flex items-center justify-center gap-2 w-full h-9 rounded-xl text-[12px] font-semibold cursor-pointer transition-colors disabled:opacity-40"
                 style={{ background: isDark ? 'rgba(34,197,94,0.10)' : 'rgba(34,197,94,0.07)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.25)' }}
               >
-                <Download className="w-3.5 h-3.5" />
-                {pdfLoading === 'download' ? t('generating') : t('downloadPDF')}
+                <Printer className="w-3.5 h-3.5" />
+                Print Receipt
               </button>
             </div>
           </div>

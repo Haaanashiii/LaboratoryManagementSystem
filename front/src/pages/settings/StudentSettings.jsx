@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import {
   Bell,
@@ -64,6 +64,7 @@ export default function Settings() {
   const { t, lang, toggleLang } = useLang();
   const { isDark, toggle: toggleTheme } = useTheme();
   const { logout } = useAuth();
+  const queryClient = useQueryClient();
 
   React.useEffect(() => {
     const el = document.querySelector('main');
@@ -298,7 +299,7 @@ export default function Settings() {
           isDark ? 'bg-[#0d0d14] border-white/[0.08]' : 'bg-white border-slate-200'
         }`}>
           <button
-            onClick={async () => { await logout(); }}
+            onClick={async () => { await logout(); queryClient.clear(); }}
             className={`w-full flex items-center gap-3 px-6 py-4 text-sm font-medium transition-colors ${
               isDark ? 'text-red-400 hover:bg-red-950/30' : 'text-red-600 hover:bg-red-50'
             }`}
