@@ -1,45 +1,29 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { format, parseISO, isValid } from 'date-fns';
 import { api } from '@/api/apiClient';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   CheckCircle, Package, Clock, History,
-  FileText, ArrowRight,
-  Sun, Sunset, Moon, BarChart2,
+  ChevronRight,
 } from 'lucide-react';
-import { useLang } from '@/components/i18n/LangContext';
-import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 import { AssistantDashboardSkeleton } from '@/skeleton-framework/assistant';
-import EquimonStatCard from '@/components/ui/equimon/EquimonStatCard';
-import EquimonGreetingHeader from '@/components/ui/equimon/EquimonGreetingHeader';
-import EquimonActionPanel from '@/components/ui/equimon/EquimonActionPanel';
+import '@/styles/equimon-admin.css';
 
-
-// ─── helpers ──────────────────────────────────────────────────────────────────
-function EmptyState({ icon: Icon = BarChart2, message, sub }) {
-  return (
-    <div className="flex h-[180px] flex-col items-center justify-center gap-2 text-slate-400">
-      <Icon className="h-8 w-8 opacity-30" />
-      <p className="text-sm font-medium text-slate-500">{message}</p>
-      {sub && <p className="text-xs text-slate-400">{sub}</p>}
-    </div>
-  );
+function fmtDate(raw) {
+  try {
+    const d = typeof raw === 'string' ? parseISO(raw) : new Date(raw);
+    return isValid(d) ? format(d, 'EEE, MMM d · HH:mm') : '—';
+  } catch { return '—'; }
 }
 
-// ─── main component ───────────────────────────────────────────────────────────
+const CATEGORY_COLORS = ['#C8A246', '#0F2A4A', '#22c55e', '#3b82f6', '#f97316', '#8b5cf6', '#06b6d4'];
+
 export default function LabAssistantDashboard() {
   const navigate = useNavigate();
-  const { t } = useLang();
-  const catalogRoute = CATALOG_ROUTES_BY_ROLE.lab_assistant;
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => api.auth.me(),
-  });
+  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => api.auth.me() });
 
   const { data: allRequests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['allRequests'],
@@ -51,16 +35,13 @@ export default function LabAssistantDashboard() {
     queryFn: () => api.entities.Equipment.list(),
   });
 
-  // ── derived data ──
   const readyForPrep   = allRequests.filter(r => r.status === 'head_approved');
   const readyForPickup = allRequests.filter(r => r.status === 'ready_pickup');
   const borrowed       = allRequests.filter(r => r.status === 'borrowed');
 
-  const CATEGORY_COLORS = ['#f97316', '#3b82f6', '#ef4444', '#8b5cf6', '#22c55e', '#f59e0b', '#06b6d4'];
-
   const equipmentByCategory = React.useMemo(() => {
     const map = {};
-    equipment.forEach((item) => {
+    equipment.forEach(item => {
       const cat = item.category || 'Other';
       const qty = Number(item.quantity ?? item.total_quantity ?? 1);
       map[cat] = (map[cat] || 0) + qty;
@@ -70,382 +51,268 @@ export default function LabAssistantDashboard() {
 
   const totalUnits = equipmentByCategory.reduce((s, c) => s + c.value, 0);
 
-  const availableCount    = equipment.filter(e => e.status === 'available'    || !e.status).length;
-  const maintenanceCount  = equipment.filter(e => e.status === 'maintenance').length;
-  const outCount          = equipment.length - availableCount - maintenanceCount;
+  const topBorrowers = React.useMemo(() => {
+    const counts = {};
+    allRequests.forEach(r => {
+      const name = r.borrower_name || r.student_name || r.student_email?.split('@')[0] || 'Unknown';
+      counts[name] = (counts[name] || 0) + 1;
+    });
+    return Object.entries(counts).sort(([, a], [, b]) => b - a).slice(0, 5).map(([name, count]) => ({ name, count }));
+  }, [allRequests]);
+
+  const h = new Date().getHours();
+  const greetingText = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+  const firstName = (user?.full_name || user?.name || 'Assistant').split(' ')[0];
+
+  const kpiCards = [
+    { label: 'READY FOR PREP', value: readyForPrep.length, sub: 'Awaiting preparation', icon: Package, color: '#f59e0b', onClick: () => navigate('/equipment-prep') },
+    { label: 'READY FOR PICKUP', value: readyForPickup.length, sub: 'Prepared and waiting', icon: CheckCircle, color: '#22c55e', onClick: () => navigate('/equipment-prep') },
+    { label: 'CURRENTLY BORROWED', value: borrowed.length, sub: 'Active loans out', icon: Clock, color: '#2563eb', onClick: () => navigate('/returns') },
+    { label: 'PENDING RETURNS', value: borrowed.length, sub: 'Awaiting return', icon: History, color: '#7c3aed', onClick: () => navigate('/returns') },
+  ];
 
   if (requestsLoading || equipmentLoading) return <AssistantDashboardSkeleton />;
 
-  // ── greeting ──
-  const h = new Date().getHours();
-  const greetingText = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
-  const greetingIcon = h < 12 ? Sun : h < 18 ? Sunset : Moon;
-
-  // ── action panel items ──
-  const actionItems = [
-    ...readyForPrep.slice(0, 2).map(r => ({
-      icon: Package, color: '#f59e0b',
-      title: 'Prepare equipment',
-      desc: `${r.equipment_name} ×${r.quantity} — ${r.borrower_name || r.student_email}`,
-      onClick: () => navigate('/equipment-prep'),
-    })),
-    ...borrowed.slice(0, 2).map(r => ({
-      icon: History, color: '#7c3aed',
-      title: 'Awaiting return',
-      desc: `${r.equipment_name} — ${r.borrower_name || r.student_email}`,
-      onClick: () => navigate('/returns'),
-    })),
-  ];
-
-  // ── render ──
   return (
-    <div className="w-full space-y-5 px-2 py-3">
+    <div className="eq-admin" style={{ padding: '24px 28px', minHeight: '100%' }}>
 
-      {/* ── Hero Banner → EquimonGreetingHeader ── */}
-      <EquimonGreetingHeader
-        accent="#0d9488"
-        name={user?.full_name || user?.name || 'Assistant'}
-        greeting={greetingText}
-        icon={greetingIcon}
-      />
+      {/* ── Greeting Strip ── */}
+      <div className="a-titlestrip">
+        <div>
+          <div className="a-eyebrow">Lab Assistant · Dashboard</div>
+          <h1 style={{ margin: '4px 0 6px', fontSize: 26 }}>
+            {greetingText}, <span style={{ color: 'var(--a-gold)' }}>{firstName}</span>
+          </h1>
+          <div className="a-deck">{format(new Date(), 'EEEE, MMMM d, yyyy')} · here's what's happening across the lab today.</div>
+        </div>
+        <div className="a-right">
+          <div style={{ border: '1px solid var(--a-rule)', padding: '10px 18px', background: 'var(--a-surface)', textAlign: 'right' }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--a-mute)' }}>In Inventory</div>
+            <div style={{ fontFamily: 'var(--serif)', fontWeight: 700, fontSize: 24, color: 'var(--a-navy)', lineHeight: 1.1, marginTop: 2 }}>{equipment.length}</div>
+          </div>
+        </div>
+      </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <EquimonStatCard
-          tint="#f0fdfa"
-          fg="#0d9488"
-          icon={Package}
-          label="Ready for Prep"
-          value={readyForPrep.length}
-          sub="Awaiting preparation"
-          onClick={() => navigate('/equipment-prep')}
-        />
-        <EquimonStatCard
-          tint="#eff6ff"
-          fg="#2563eb"
-          icon={CheckCircle}
-          label="Ready for Pickup"
-          value={readyForPickup.length}
-          sub="Prepared and waiting"
-          onClick={() => navigate('/equipment-prep')}
-        />
-        <EquimonStatCard
-          tint="#ecfdf5"
-          fg="#059669"
-          icon={Clock}
-          label="Currently Borrowed"
-          value={borrowed.length}
-          sub="Active loans out"
-          onClick={() => navigate('/returns')}
-        />
-        <EquimonStatCard
-          tint="#faf5ff"
-          fg="#7c3aed"
-          icon={History}
-          label="Pending Returns"
-          value={borrowed.length}
-          sub="Awaiting return"
-          onClick={() => navigate('/returns')}
-        />
+      <div className="a-cards" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {kpiCards.map(({ label, value, sub, icon: Icon, color, onClick }) => (
+          <button key={label} className="a-card" onClick={onClick}
+            style={{ textAlign: 'left', cursor: 'pointer', width: '100%' }}>
+            <div className="c-label">{label}</div>
+            <div className="c-val" style={{ color }}>{value}</div>
+            <div className="c-sub">{sub}</div>
+            <div className="c-ico"><Icon style={{ width: 20, height: 20, color }} /></div>
+          </button>
+        ))}
       </div>
 
-      {/* ── Action Panel + Equipment Status ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <EquimonActionPanel accent="#0d9488" items={actionItems} />
-
-        {/* Equipment Status Donut */}
-        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
-          <CardHeader className="px-6 pt-5 pb-3">
-            <CardTitle className="text-[16px] font-extrabold text-slate-900">Equipment Status</CardTitle>
-            <CardDescription className="text-[12px] text-slate-500">Inventory across all categories</CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-5">
-            <div className="flex items-center gap-6">
-              {/* Donut */}
-              <div className="relative shrink-0">
-                <ResponsiveContainer width={160} height={160}>
-                  <PieChart>
-                    <Pie
-                      data={equipmentByCategory.length ? equipmentByCategory : [{ name: 'No data', value: 1 }]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={48}
-                      outerRadius={74}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {equipmentByCategory.map((_, i) => (
-                        <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(v, n) => [v, n]}
-                      contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #e2e8f0' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-[26px] font-extrabold text-slate-900 leading-none">{totalUnits}</span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mt-1">Total</span>
+      {/* ── Today's Action Items ── */}
+      {readyForPrep.length > 0 && (
+        <div className="a-panel" style={{ marginBottom: 0 }}>
+          <div className="p-head">
+            <h2>Today's Action Items</h2>
+            <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--a-mute)' }}>Sorted by priority — handle these first.</span>
+          </div>
+          {readyForPrep.slice(0, 3).map((r, i) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 20px', borderBottom: '1px solid var(--a-rule-2)' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Package style={{ width: 16, height: 16, color: '#f59e0b' }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13, color: 'var(--a-ink)' }}>Prepare equipment</span>
+                  {i === 0 && <span className="a-pill p-warn" style={{ fontSize: 9, padding: '2px 7px', letterSpacing: '0.08em' }}>URGENT</span>}
+                </div>
+                <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--a-mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.equipment_name} ×{r.quantity} — {r.borrower_name || r.student_name || r.student_email} · approved {fmtDate(r.updated_at ?? r.created_at ?? r.createdAt)}
                 </div>
               </div>
-
-              {/* Legend */}
-              <div className="flex-1 min-w-0 space-y-2">
-                {equipmentByCategory.map((cat, i) => (
-                  <div key={cat.name} className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
-                      <span className="text-[12px] text-slate-700 truncate">{cat.name}</span>
-                    </div>
-                    <span className="text-[12px] font-bold text-slate-900 tabular-nums">{cat.value}</span>
-                  </div>
-                ))}
-              </div>
+              <button className="a-btn gold" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => navigate('/equipment-prep')}>
+                PREPARE <ChevronRight style={{ width: 12, height: 12 }} />
+              </button>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Equipment Prep Queue Table ── */}
+      <div className="a-panel">
+        <div className="p-head">
+          <h2>Equipment Prep Queue</h2>
+          <span className="count">{readyForPrep.length}</span>
+          <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--a-mute)' }}>Approved by head — prepare for pickup</span>
+          <div className="spacer" />
+          {readyForPrep.length > 0 && (
+            <button className="a-btn" style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => navigate('/equipment-prep')}>
+              VIEW ALL <ChevronRight style={{ width: 12, height: 12 }} />
+            </button>
+          )}
+        </div>
+        {readyForPrep.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 24px', gap: 8 }}>
+            <Package style={{ width: 28, height: 28, color: 'var(--a-ok)', opacity: 0.5 }} />
+            <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', color: 'var(--a-mute)', margin: 0 }}>Prep queue is clear — nothing to prepare.</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="a-table">
+              <thead>
+                <tr>
+                  <th>Equipment</th>
+                  <th>Student</th>
+                  <th className="num">Qty</th>
+                  <th>Approved</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {readyForPrep.slice(0, 5).map(r => (
+                  <tr key={r.id}>
+                    <td>
+                      <div className="primary">{r.equipment_name}</div>
+                      {r.category && <div className="muted" style={{ fontSize: 11 }}>{r.category}</div>}
+                    </td>
+                    <td className="muted">{r.borrower_name || r.student_name || r.student_email}</td>
+                    <td className="num">×{r.quantity}</td>
+                    <td className="muted" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>{fmtDate(r.updated_at ?? r.created_at ?? r.createdAt)}</td>
+                    <td>
+                      <button className="a-btn gold" style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}
+                        onClick={() => navigate('/equipment-prep')}>
+                        PREPARE <ChevronRight style={{ width: 11, height: 11 }} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Bottom: Equipment Chart + Top Borrowers ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16 }}>
+
+        {/* Equipment by Category Donut */}
+        <div className="a-panel" style={{ marginBottom: 0 }}>
+          <div className="p-head">
+            <h2>Equipment by Category</h2>
+            <span className="count">{totalUnits}</span>
+            <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--a-mute)' }}>total units across all categories</span>
+          </div>
+          <div style={{ padding: '20px 24px' }}>
+            {equipmentByCategory.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0', gap: 8 }}>
+                <Package style={{ width: 28, height: 28, color: 'var(--a-mute-2)', opacity: 0.5 }} />
+                <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--a-mute)', margin: 0 }}>No equipment data</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+                {/* Donut */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <ResponsiveContainer width={160} height={160}>
+                    <PieChart>
+                      <Pie
+                        data={equipmentByCategory}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={48}
+                        outerRadius={74}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {equipmentByCategory.map((_, i) => (
+                          <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(v, n) => [v, n]}
+                        contentStyle={{ borderRadius: 0, fontSize: 11, border: '1px solid var(--a-rule)', fontFamily: 'var(--sans)' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                    <span style={{ fontFamily: 'var(--serif)', fontSize: 26, fontWeight: 700, color: 'var(--a-navy)', lineHeight: 1 }}>{totalUnits}</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 8, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--a-mute)', marginTop: 4 }}>Total</span>
+                  </div>
+                </div>
+
+                {/* Category Legend */}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {equipmentByCategory.map((cat, i) => (
+                    <div key={cat.name} style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <span style={{ width: 10, height: 10, flexShrink: 0, background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
+                        <span style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--a-ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
+                      </div>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: 'var(--a-navy)', flexShrink: 0 }}>{cat.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Available / Out / Maint footer */}
-            <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderTop: '1px solid var(--a-rule)', marginTop: 20, paddingTop: 16, textAlign: 'center' }}>
               {[
-                { label: 'AVAILABLE', value: availableCount,   color: '#22c55e' },
-                { label: 'OUT',       value: outCount,         color: '#0d9488' },
-                { label: 'MAINT',     value: maintenanceCount, color: '#94a3b8' },
-              ].map((s) => (
-                <div key={s.label} className="flex flex-col items-center gap-0.5">
-                  <span className="text-[24px] font-extrabold" style={{ color: s.color }}>{s.value}</span>
-                  <span className="text-[10px] font-bold tracking-widest text-slate-400">{s.label}</span>
+                { label: 'AVAILABLE', value: equipment.filter(e => !e.status || e.status === 'available').length, color: 'var(--a-ok)' },
+                { label: 'OUT',       value: borrowed.length, color: '#2563eb' },
+                { label: 'FOR PREP',  value: readyForPrep.length, color: 'var(--a-gold)' },
+              ].map(s => (
+                <div key={s.label}>
+                  <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--a-mute)', marginTop: 4 }}>{s.label}</div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Equipment Prep Queue (full width) ── */}
-      <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
-        <CardHeader className="px-6 pt-5 pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-[16px] font-extrabold text-slate-900">
-                {t('equipmentPrepQueue') || 'Equipment Prep Queue'}
-              </CardTitle>
-              <CardDescription className="text-[12px] text-slate-500">
-                {t('prepQueueDesc') || 'Items approved by head of lab — prepare for pickup'}
-              </CardDescription>
-            </div>
-            {readyForPrep.length > 0 && (
-              <button
-                onClick={() => navigate('/equipment-prep')}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                {t('viewAll') || 'View all'} <ArrowRight className="h-3 w-3" />
-              </button>
-            )}
           </div>
-        </CardHeader>
-        <CardContent className="px-0 pb-2">
-          {readyForPrep.length === 0 ? (
-            <EmptyState
-              icon={Package}
-              message={t('noPrepQueue') || 'No items in prep queue'}
-              sub={t('noPrepQueueDesc') || 'All approved requests have been prepared'}
-            />
+        </div>
+
+        {/* Top Borrowers */}
+        <div className="a-panel" style={{ marginBottom: 0 }}>
+          <div className="p-head"><h2>Top Borrowers</h2></div>
+          {topBorrowers.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <p style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--a-mute)', margin: 0 }}>No request data yet</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                  <TableHead className="pl-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('equipment') || 'Equipment'}</TableHead>
-                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('student_label') || 'Student'}</TableHead>
-                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('quantity') || 'Qty'}</TableHead>
-                  <TableHead className="pr-6 text-right text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('action') || 'Action'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {readyForPrep.slice(0, 5).map((request) => (
-                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50/60">
-                    <TableCell className="pl-6 text-xs font-semibold text-slate-800">
-                      {request.equipment_name}
-                    </TableCell>
-                    <TableCell className="max-w-[160px] truncate text-xs text-slate-500">
-                      {request.student_email}
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-500">{request.quantity}</TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <button
-                        onClick={() => navigate('/equipment-prep')}
-                        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-                      >
-                        {t('prepare') || 'Prepare'}
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Row: Equipment Overview + Activity Summary ── */}
-      <div className="grid gap-4 lg:grid-cols-3">
-
-        {/* Equipment Overview Table */}
-        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden lg:col-span-2">
-          <CardHeader className="px-6 pt-5 pb-3">
-            <CardTitle className="text-[16px] font-extrabold text-slate-900">
-              {t('equipmentOverview') || 'Equipment Overview'}
-            </CardTitle>
-            <CardDescription className="text-[12px] text-slate-500 mt-0.5">
-              {t('equipmentStatusBreakdown') || 'All equipment and their current availability'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-0 pb-2">
-            {equipment.length === 0 ? (
-              <EmptyState icon={Package} message={t('noEquipment') || 'No equipment found'} />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="pl-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('equipmentName') || 'Name'}</TableHead>
-                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('category') || 'Category'}</TableHead>
-                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('quantity') || 'Qty'}</TableHead>
-                    <TableHead className="pr-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('status') || 'Status'}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...equipment].sort((a, b) => new Date(b.createdAt ?? b.created_at ?? 0) - new Date(a.createdAt ?? a.created_at ?? 0)).slice(0, 5).map((item) => (
-                    <TableRow key={item._id ?? item.id} className="border-slate-100 hover:bg-slate-50/60">
-                      <TableCell className="pl-6 text-xs font-semibold text-slate-800">
-                        {item.name}
-                      </TableCell>
-                      <TableCell className="text-xs text-slate-500">{item.category || '—'}</TableCell>
-                      <TableCell className="text-xs text-slate-500">{item.quantity ?? item.total_quantity ?? '—'}</TableCell>
-                      <TableCell className="pr-6">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            item.status === 'available'
-                              ? 'bg-green-100 text-green-700'
-                              : item.status === 'maintenance'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {item.status ?? 'available'}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Activity Summary */}
-        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
-          <CardHeader className="px-6 pt-5 pb-3">
-            <CardTitle className="text-[16px] font-extrabold text-slate-900">
-              {t('activitySummary') || 'Activity Summary'}
-            </CardTitle>
-            <CardDescription className="text-[12px] text-slate-500">
-              {t('currentStatusSnapshot') || 'Current status snapshot'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: t('readyForPrep')     || 'Ready for Prep',     sub: t('awaitingPrep')     || 'Awaiting prep',     value: readyForPrep.length,   color: '#f59e0b', icon: Package    },
-                { label: t('readyForPickup')    || 'Ready for Pickup',   sub: t('preparedItems')    || 'Prepared items',    value: readyForPickup.length, color: '#2563eb', icon: CheckCircle },
-                { label: t('currentlyBorrowed') || 'Currently Borrowed', sub: t('outOfLab')         || 'Out of lab',        value: borrowed.length,       color: '#22c55e', icon: Clock      },
-                { label: t('totalEquipment')    || 'Total Equipment',    sub: t('inInventory')      || 'In inventory',      value: equipment.length,      color: '#8b5cf6', icon: FileText   },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4"
-                >
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${item.color}15` }}
-                  >
-                    <item.icon className="h-5 w-5" style={{ color: item.color }} />
+            <div>
+              {topBorrowers.map(({ name, count }, i) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid var(--a-rule-2)' }}>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: i === 0 ? 'var(--a-gold)' : 'var(--a-mute)', width: 14, flexShrink: 0 }}>{i + 1}</span>
+                  <div style={{ width: 28, height: 28, background: 'var(--a-navy)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--mono)', fontSize: 9, fontWeight: 700, color: 'var(--a-gold)', flexShrink: 0 }}>
+                    {name.slice(0, 2).toUpperCase()}
                   </div>
-                  <div>
-                    <p className="text-3xl font-bold tabular-nums text-slate-900">{item.value}</p>
-                    <p className="text-xs font-semibold text-slate-600 mt-1">{item.label}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{item.sub}</p>
-                  </div>
+                  <span style={{ flex: 1, fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--a-ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--a-mute)', whiteSpace: 'nowrap' }}>{count} <span style={{ opacity: 0.6 }}>REQS</span></span>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Equipment Currently Out ── */}
-      <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
-        <CardHeader className="px-6 pt-5 pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-[16px] font-extrabold text-slate-900">
-                {t('equipmentCurrentlyOut') || 'Equipment Currently Out'}
-              </CardTitle>
-              <CardDescription className="text-[12px] text-slate-500">
-                {t('borrowedItemsDesc') || 'Items currently borrowed — pending return'}
-              </CardDescription>
-            </div>
-            {borrowed.length > 0 && (
-              <button
-                onClick={() => navigate('/returns')}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                {t('viewAll') || 'View all'} <ArrowRight className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="px-0 pb-2">
-          {borrowed.length === 0 ? (
-            <EmptyState
-              icon={FileText}
-              message={t('noBorrowed') || 'No equipment currently borrowed'}
-              sub={t('noBorrowedDesc') || 'All items have been returned'}
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                  <TableHead className="pl-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('equipment') || 'Equipment'}</TableHead>
-                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('student_label') || 'Student'}</TableHead>
-                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('quantity') || 'Qty'}</TableHead>
-                  <TableHead className="pr-6 text-right text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('action') || 'Action'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {borrowed.slice(0, 5).map((request) => (
-                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50/60">
-                    <TableCell className="pl-6 text-xs font-semibold text-slate-800">
-                      {request.equipment_name}
-                    </TableCell>
-                    <TableCell className="max-w-[160px] truncate text-xs text-slate-500">
-                      {request.student_email}
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-500">{request.quantity}</TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <button
-                        onClick={() => navigate('/returns')}
-                        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-green-300 hover:bg-green-50 hover:text-green-700"
-                      >
-                        {t('processReturn') || 'Return'}
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Currently Borrowed mini-list */}
+          {borrowed.length > 0 && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px 6px', borderTop: '1px solid var(--a-rule)' }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--a-mute)' }}>Currently Out</div>
+                <span className="a-pill p-info" style={{ fontSize: 9 }}>{borrowed.length}</span>
+              </div>
+              {borrowed.slice(0, 3).map(r => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 20px', borderBottom: '1px solid var(--a-rule-2)' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563eb', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--a-ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.equipment_name}</div>
+                    <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 10, color: 'var(--a-mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.borrower_name || r.student_email}</div>
+                  </div>
+                  <button className="a-btn" style={{ padding: '3px 8px', fontSize: 10, flexShrink: 0 }} onClick={() => navigate('/returns')}>
+                    Return
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
 
     </div>
   );
