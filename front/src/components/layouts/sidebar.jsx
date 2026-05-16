@@ -60,13 +60,7 @@ const menuConfig = {
       groupLabel: 'Application',
       items: [
         { label: 'dashboard', icon: Home, href: '/dashboard' },
-        {
-          label: 'inventory', icon: Package, href: '/inventory',
-          children: [
-            { label: 'addEquipment', icon: Plus, href: '/inventory/add-equipment' },
-            { label: 'editEquipment', icon: Pencil, href: '/inventory' },
-          ],
-        },
+        { label: 'inventory', icon: Package, href: '/inventory' },
       ],
     },
     {
