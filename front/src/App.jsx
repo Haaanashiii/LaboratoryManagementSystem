@@ -141,8 +141,10 @@ function App() {
             
             {/* Inventory */}
             <Route path="inventory" element={<Inventory />} />
-            <Route path="inventory/add-equipment" element={<AddEquipmentPage />} />
-            <Route path="inventory/edit-equipment/:id" element={<EditEquipmentPage />} />
+            <Route element={<RoleRoute allowedRoles={['admin', 'head_of_lab', 'lab_assistant']} />}>
+              <Route path="inventory/add-equipment" element={<AddEquipmentPage />} />
+              <Route path="inventory/edit-equipment/:id" element={<EditEquipmentPage />} />
+            </Route>
             <Route path="requests" element={<MyRequests />} />
             <Route path="equipment-prep" element={<EquipmentPrep />} />
             <Route element={<RoleRoute allowedRoles={['lab_assistant']} />}>

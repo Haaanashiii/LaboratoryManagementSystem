@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Package, CheckCircle, XCircle, Loader2, Search, ShieldCheck,
   ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, ArrowUp, ArrowDown,
-  User, Clock, Calendar, Hash, Eye, Printer, ChevronRight as ArrowRight,
-  BookOpen, MessageSquare
+  User, Clock, Calendar, Eye, Printer, ChevronRight as ArrowRight,
+  BookOpen, MessageSquare,
 } from 'lucide-react';
-import EquimonPageHeader from '@/components/ui/equimon/EquimonPageHeader';
+import '@/styles/equimon-admin.css';
 import { format, differenceInDays } from 'date-fns';
 import { useLang } from '@/components/i18n/LangContext';
 import { HeadFinalApprovalSkeleton } from '@/skeleton-framework/head of lab';
@@ -20,14 +16,11 @@ import { printItsReceipt } from '@/utils/printItsReceipt';
 import Swal from 'sweetalert2';
 
 const PAGE_SIZE = 10;
-const ACCENT = '#7c3aed';
 
 const getInitials = (name) => {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
-  return parts.length >= 2
-    ? (parts[0][0] + parts[1][0]).toUpperCase()
-    : name[0].toUpperCase();
+  return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name[0].toUpperCase();
 };
 
 const shortReqId = (id, createdDate) => {
@@ -38,32 +31,31 @@ const shortReqId = (id, createdDate) => {
 
 const getUrgency = (borrowDate, createdDate) => {
   const now = new Date();
-  if (borrowDate) {
-    const daysUntilBorrow = differenceInDays(new Date(borrowDate), now);
-    if (daysUntilBorrow <= 3) return 'urgent';
-  }
-  if (createdDate) {
-    const daysPending = differenceInDays(now, new Date(createdDate));
-    if (daysPending >= 3) return 'urgent';
-  }
+  if (borrowDate && differenceInDays(new Date(borrowDate), now) <= 3) return 'urgent';
+  if (createdDate && differenceInDays(now, new Date(createdDate)) >= 3) return 'urgent';
   return null;
 };
+
+const mL   = { display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 };
+const mLab  = { fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--a-mute)' };
+const mVal  = { fontSize: 11, fontWeight: 600, color: 'var(--a-ink)', lineHeight: 1 };
+const mSub  = { fontSize: 10, color: 'var(--a-mute)', lineHeight: 1, marginTop: 2 };
 
 export default function HeadApproval() {
   const { t } = useLang();
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [viewingRequest, setViewingRequest] = useState(null);
-  const [remarks, setRemarks] = useState('');
-  const [action, setAction] = useState(null);
-  const [search, setSearch] = useState('');
+  const [viewingRequest,  setViewingRequest]  = useState(null);
+  const [remarks,     setRemarks]     = useState('');
+  const [action,      setAction]      = useState(null);
+  const [search,      setSearch]      = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [dateSort, setDateSort] = useState('desc');
+  const [dateSort,    setDateSort]    = useState('desc');
   const [pdfLoadingId, setPdfLoadingId] = useState(null);
 
   const queryClient = useQueryClient();
 
   const hasExplicitTime = (v) => typeof v === 'string' && (v.includes('T') || v.includes(':'));
-  const fmtDate = (v) => v ? format(new Date(v), hasExplicitTime(v) ? 'MMM d, yyyy' : 'MMM d, yyyy') : '—';
+  const fmtDate     = (v) => v ? format(new Date(v), 'MMM d, yyyy') : '—';
   const fmtDateTime = (v) => v ? format(new Date(v), 'EEE, MMM d · HH:mm') : '—';
 
   const getRequestTimestamp = (r) => new Date(
@@ -87,12 +79,8 @@ export default function HeadApproval() {
     return map;
   }, [allEquipment]);
 
-  const getEquipmentData = (request) => {
-    const eqId = request?.equipment?._id || request?.equipment?.id || request?.equipment;
-    return eqId ? equipmentMap[eqId] : null;
-  };
-
-  const getEquipmentImage = (request) => getEquipmentData(request)?.image_url || null;
+  const getEquipmentData  = (r) => { const id = r?.equipment?._id || r?.equipment?.id || r?.equipment; return id ? equipmentMap[id] : null; };
+  const getEquipmentImage = (r) => getEquipmentData(r)?.image_url || null;
 
   const actionMutation = useMutation({
     mutationFn: ({ id, action, remarks }) => api.entities.BorrowRequest.headAction(id, action, remarks),
@@ -101,35 +89,16 @@ export default function HeadApproval() {
       queryClient.invalidateQueries({ queryKey: ['allRequests'] });
       queryClient.invalidateQueries({ queryKey: ['borrowRequests'] });
       closeDialog();
-
       if (variables.action === 'approve') {
-        Swal.fire({
-          icon: 'success',
-          title: 'Request Approved!',
-          text: 'The borrow request has been given final approval. The lab assistant will now prepare the equipment.',
-          confirmButtonColor: '#7c3aed',
-          confirmButtonText: 'Got it',
-          customClass: { popup: 'rounded-2xl font-sans' },
-          timer: 4000,
-          timerProgressBar: true,
-        });
+        Swal.fire({ icon: 'success', title: 'Request Approved!', text: 'The borrow request has been given final approval. The lab assistant will now prepare the equipment.', confirmButtonColor: '#0F2A4A', confirmButtonText: 'Got it', timer: 4000, timerProgressBar: true });
       } else {
-        Swal.fire({
-          icon: 'info',
-          title: 'Request Rejected',
-          text: 'The borrow request has been rejected and the borrower will be notified.',
-          confirmButtonColor: '#64748b',
-          confirmButtonText: 'OK',
-          customClass: { popup: 'rounded-2xl font-sans' },
-          timer: 4000,
-          timerProgressBar: true,
-        });
+        Swal.fire({ icon: 'info', title: 'Request Rejected', text: 'The borrow request has been rejected and the borrower will be notified.', confirmButtonColor: '#64748b', confirmButtonText: 'OK', timer: 4000, timerProgressBar: true });
       }
-    }
+    },
   });
 
-  const openApproveDialog = (request) => { setSelectedRequest(request); setAction('approve'); setRemarks(''); };
-  const openRejectDialog  = (request) => { setSelectedRequest(request); setAction('reject');  setRemarks(''); };
+  const openApproveDialog = (r) => { setSelectedRequest(r); setAction('approve'); setRemarks(''); };
+  const openRejectDialog  = (r) => { setSelectedRequest(r); setAction('reject');  setRemarks(''); };
   const closeDialog = () => { setSelectedRequest(null); setAction(null); setRemarks(''); };
   const handleSubmit = () => actionMutation.mutate({ id: selectedRequest.id, action, remarks: remarks.trim() });
 
@@ -179,523 +148,384 @@ export default function HeadApproval() {
     r.borrower_name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
+  const totalPages       = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   if (isLoading) return <HeadFinalApprovalSkeleton />;
 
   return (
-    <div className="w-full space-y-4 px-2 py-2">
+    <div className="eq-admin" style={{ minHeight: '100vh' }}>
 
-      <EquimonPageHeader
-        accent={ACCENT}
-        icon={ShieldCheck}
-        title="Final Approvals"
-        badgeCount={requests.length}
-        badge="pending"
-        sub="Review and action borrow requests forwarded by lecturers."
-      />
-
-      {/* ── Toolbar ── */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-violet-400" />
-            <p className="text-sm font-semibold text-slate-800">Awaiting your final decision</p>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-600">
-              {filteredRequests.length}
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs px-3 text-slate-600 border-slate-200"
-            onClick={() => { setCurrentPage(1); setDateSort(s => s === 'desc' ? 'asc' : 'desc'); }}
-          >
-            {dateSort === 'desc' ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
-            {dateSort === 'desc' ? 'Newest first' : 'Oldest first'}
-          </Button>
+      {/* ── Title strip ── */}
+      <div className="a-titlestrip">
+        <div style={{ flex: 1 }}>
+          <div className="a-eyebrow">Head of Lab · Final Approvals</div>
+          <h1>Final Approvals</h1>
+          <div className="a-deck">Review and action borrow requests forwarded by lecturers.</div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <Input
-              placeholder="Search equipment or borrower..."
-              value={search}
-              onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
-              className="h-8 pl-8 text-xs"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => paginatedRequests.forEach(r => handlePrint(r))}
-            className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors"
-          >
-            <Printer className="h-3.5 w-3.5" />
-            Print queue
-          </button>
+        <div className="a-right">
+          <ShieldCheck size={18} style={{ color: 'var(--a-gold-2)' }} />
+          <span className="a-pill p-warn">
+            <span className="dot" style={{ background: 'var(--a-warn)' }} />
+            {requests.length} pending
+          </span>
         </div>
       </div>
 
-      {/* ── Cards ── */}
-      {isError ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-20">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
-            <XCircle className="h-5 w-5 text-red-400" />
+      {/* ── Main panel ── */}
+      <div className="a-panel">
+
+        {/* Toolbar */}
+        <div className="p-head">
+          <h2>Awaiting your final decision</h2>
+          <span className="count">{filteredRequests.length}</span>
+          <div className="spacer" />
+          <button className="a-btn" style={{ padding: '7px 12px' }}
+            onClick={() => { setCurrentPage(1); setDateSort(s => s === 'desc' ? 'asc' : 'desc'); }}>
+            {dateSort === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
+            {dateSort === 'desc' ? 'Newest' : 'Oldest'}
+          </button>
+          <div className="a-search" style={{ minWidth: 220 }}>
+            <Search size={13} style={{ color: 'var(--a-mute)', flexShrink: 0 }} />
+            <input
+              placeholder="Search equipment or borrower..."
+              value={search}
+              onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
+            />
           </div>
-          <p className="text-sm font-medium text-slate-800">{t('unableLoadRequests')}</p>
-          <p className="max-w-xs text-center text-xs text-slate-500">{error?.message || t('failedConnectServer')}</p>
+          <button className="a-btn" style={{ padding: '7px 12px' }}
+            onClick={() => paginatedRequests.forEach(r => handlePrint(r))}>
+            <Printer size={12} /> Print queue
+          </button>
         </div>
-      ) : filteredRequests.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-20">
-          <CheckCircle className="w-8 h-8 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">{t('allCaughtUp')}</p>
-          <p className="text-xs text-slate-400">
-            {search ? 'No results match your search.' : t('noPendingRequestsRequireApproval')}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {paginatedRequests.map((request) => {
-            const img = getEquipmentImage(request);
-            const eq  = getEquipmentData(request);
-            const category = request.category || eq?.category;
-            const urgency  = getUrgency(request.borrow_date, request.created_date || request.createdAt);
-            const email    = request.student_email || request.borrower_email || '';
-            const borrowDays = request.borrow_date && request.return_date
-              ? differenceInDays(new Date(request.return_date), new Date(request.borrow_date))
-              : null;
 
-            return (
-              <div
-                key={request.id}
-                className="relative overflow-hidden flex gap-4 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm hover:shadow-md transition-shadow"
-              >
-                {/* ── Left accent stripe ── */}
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-1 rounded-r-sm"
-                  style={{ background: urgency === 'urgent' ? '#ef4444' : ACCENT }}
-                />
+        {/* Cards area */}
+        <div style={{ padding: '16px 20px 20px' }}>
+          {isError ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--a-mute)' }}>
+              <XCircle size={32} style={{ margin: '0 auto 12px', color: 'var(--a-bad)' }} />
+              <p style={{ fontFamily: 'var(--serif)', fontSize: 15 }}>Unable to load requests</p>
+              <p style={{ fontSize: 12, marginTop: 4 }}>{error?.message || 'Failed to connect to the server.'}</p>
+            </div>
+          ) : filteredRequests.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--a-mute)' }}>
+              <CheckCircle size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+              <p style={{ fontFamily: 'var(--serif)', fontSize: 15 }}>All caught up</p>
+              <p style={{ fontSize: 12, marginTop: 4 }}>{search ? 'No results match your search.' : 'No pending requests require your approval.'}</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {paginatedRequests.map((request) => {
+                const img      = getEquipmentImage(request);
+                const eq       = getEquipmentData(request);
+                const category = request.category || eq?.category;
+                const urgency  = getUrgency(request.borrow_date, request.created_date || request.createdAt);
+                const email    = request.student_email || request.borrower_email || '';
+                const borrowDays = request.borrow_date && request.return_date
+                  ? differenceInDays(new Date(request.return_date), new Date(request.borrow_date)) : null;
+                const tipColor = urgency === 'urgent' ? '#8C1F1F' : '#0F2A4A';
 
-                {/* ── Equipment image ── */}
-                <div className="w-16 h-[72px] rounded-xl bg-violet-50 border border-violet-100/80 flex items-center justify-center flex-shrink-0 overflow-hidden self-start mt-1">
-                  {img ? (
-                    <img src={img} alt={request.equipment_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Package className="w-7 h-7 text-violet-300" />
-                  )}
-                </div>
+                return (
+                  <div key={request.id} style={{
+                    position: 'relative', overflow: 'hidden',
+                    display: 'flex', gap: 16,
+                    background: 'var(--a-surface)', border: '1px solid var(--a-rule)',
+                    padding: '16px 20px 16px 24px',
+                  }}>
+                    {/* ── Left accent tip ── */}
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: tipColor }} />
 
-                {/* ── Main content ── */}
-                <div className="flex-1 min-w-0">
+                    {/* Equipment image */}
+                    <div style={{ width: 64, height: 72, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--a-surface-2)', border: '1px solid var(--a-rule)', overflow: 'hidden', alignSelf: 'flex-start', marginTop: 4 }}>
+                      {img
+                        ? <img src={img} alt={request.equipment_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <Package size={28} style={{ color: 'var(--a-mute-2)' }} />
+                      }
+                    </div>
 
-                  {/* Tag row */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                    {urgency === 'urgent' && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                        Urgent
-                      </span>
-                    )}
-                    {category && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
-                        {category}
-                      </span>
-                    )}
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 font-mono border border-indigo-100/60">
-                      {shortReqId(request.id, request.created_date || request.createdAt)}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
-                      ×{request.quantity}
-                    </span>
-                    {request.lecturer_remarks && (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-                        <MessageSquare className="w-2.5 h-2.5" />
-                        Lecturer noted
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Equipment name */}
-                  <h3 className="text-[15px] font-bold text-slate-900 leading-snug">
-                    {request.equipment_name}
-                  </h3>
-
-                  {/* Purpose or lecturer remarks */}
-                  {request.lecturer_remarks ? (
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed italic">
-                      Lecturer: "{request.lecturer_remarks}"
-                    </p>
-                  ) : request.purpose ? (
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                      {request.purpose}
-                    </p>
-                  ) : null}
-
-                  {/* Metadata row — labeled columns */}
-                  <div className="flex flex-wrap items-start gap-x-6 gap-y-2 mt-3 pt-3 border-t border-slate-100">
-
-                    {/* BORROWER */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 mb-1.5">
-                        <User className="w-3 h-3 text-slate-300" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Borrower</span>
+                    {/* Main content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Tags */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                        {urgency === 'urgent' && <span className="a-pill p-bad"><span className="dot" style={{ background: 'var(--a-bad)' }} />Urgent</span>}
+                        {category && <span className="a-pill p-mute">{category}</span>}
+                        <span className="a-pill p-info" style={{ fontFamily: 'var(--mono)' }}>{shortReqId(request.id, request.created_date || request.createdAt)}</span>
+                        <span className="a-pill p-gold">×{request.quantity}</span>
+                        {request.lecturer_remarks && (
+                          <span className="a-pill p-ok"><MessageSquare size={10} />Lecturer noted</span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold text-white"
-                          style={{ background: ACCENT }}
-                        >
-                          {getInitials(request.borrower_name)}
+
+                      <h3 style={{ fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 15, color: 'var(--a-navy)', margin: 0, lineHeight: 1.3 }}>
+                        {request.equipment_name}
+                      </h3>
+
+                      {request.lecturer_remarks ? (
+                        <p style={{ fontSize: 11, color: 'var(--a-mute)', marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>Lecturer: "{request.lecturer_remarks}"</p>
+                      ) : request.purpose ? (
+                        <p style={{ fontSize: 11, color: 'var(--a-mute)', marginTop: 4, lineHeight: 1.5 }}>{request.purpose}</p>
+                      ) : null}
+
+                      {/* Meta grid */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 24px', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--a-rule-2)' }}>
+                        <div>
+                          <div style={mL}><User size={11} style={{ color: 'var(--a-mute-2)' }} /><span style={mLab}>Borrower</span></div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--a-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 8, fontWeight: 700, color: '#fff' }}>
+                              {getInitials(request.borrower_name)}
+                            </div>
+                            <div>
+                              <p style={mVal}>{request.borrower_name || '—'}</p>
+                              {email && <p style={mSub}>{email}</p>}
+                            </div>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-semibold text-slate-700 leading-none">{request.borrower_name || '—'}</p>
-                          {email && <p className="text-[10px] text-slate-400 leading-none mt-0.5 truncate max-w-[130px]">{email}</p>}
+                        <div>
+                          <div style={mL}><BookOpen size={11} style={{ color: 'var(--a-mute-2)' }} /><span style={mLab}>Course</span></div>
+                          <p style={mVal}>{request.course || request.subject || request.course_code || '—'}</p>
+                          {request.department && <p style={mSub}>{request.department}</p>}
+                        </div>
+                        <div>
+                          <div style={mL}><Calendar size={11} style={{ color: 'var(--a-mute-2)' }} /><span style={mLab}>Period</span></div>
+                          <p style={mVal}>{request.borrow_date ? fmtDate(request.borrow_date) : '—'}</p>
+                          {request.return_date && <p style={mSub}>→ {fmtDate(request.return_date)}{borrowDays !== null ? ` (${borrowDays}d)` : ''}</p>}
+                        </div>
+                        <div>
+                          <div style={mL}><Clock size={11} style={{ color: 'var(--a-mute-2)' }} /><span style={mLab}>Submitted</span></div>
+                          <p style={mVal}>{(request.created_date || request.createdAt) ? fmtDateTime(request.created_date || request.createdAt) : '—'}</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* COURSE */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 mb-1.5">
-                        <BookOpen className="w-3 h-3 text-slate-300" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Course</span>
+                    {/* Right actions */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7, width: 148, flexShrink: 0, alignSelf: 'flex-start' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <span className="a-pill p-warn"><span className="dot" style={{ background: 'var(--a-warn)' }} />Awaiting You</span>
                       </div>
-                      <p className="text-[11px] font-semibold text-slate-700 leading-none truncate max-w-[130px]">
-                        {request.course || request.subject || request.course_code || '—'}
-                      </p>
-                      {request.department && (
-                        <p className="text-[10px] text-slate-400 leading-none mt-0.5">{request.department}</p>
-                      )}
-                    </div>
-
-                    {/* PERIOD */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 mb-1.5">
-                        <Calendar className="w-3 h-3 text-slate-300" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Period</span>
+                      <button className="a-btn primary" style={{ justifyContent: 'center', width: '100%', padding: '8px 12px' }}
+                        onClick={() => setViewingRequest(request)}>
+                        Review &amp; Decide <ArrowRight size={12} />
+                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="a-btn" style={{ flex: 1, justifyContent: 'center', padding: '7px 8px', color: 'var(--a-ok)', borderColor: 'var(--a-ok)', background: 'var(--a-ok-bg)', fontSize: 9 }}
+                          onClick={() => openApproveDialog(request)}>
+                          <ThumbsUp size={11} /> Approve
+                        </button>
+                        <button className="a-btn danger" style={{ flex: 1, justifyContent: 'center', padding: '7px 8px', fontSize: 9 }}
+                          onClick={() => openRejectDialog(request)}>
+                          <ThumbsDown size={11} /> Reject
+                        </button>
                       </div>
-                      <p className="text-[11px] font-semibold text-slate-700 leading-none">
-                        {request.borrow_date ? fmtDate(request.borrow_date) : '—'}
-                      </p>
-                      {request.return_date && (
-                        <p className="text-[10px] text-slate-400 leading-none mt-0.5">
-                          →{fmtDate(request.return_date)}{borrowDays !== null ? ` (${borrowDays}d)` : ''}
-                        </p>
-                      )}
+                      <button
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--a-mute)', fontSize: 11, fontFamily: 'var(--sans)', padding: '4px 0', opacity: pdfLoadingId === request.id ? 0.4 : 1 }}
+                        onClick={() => handlePrint(request)}
+                        disabled={pdfLoadingId === request.id}
+                      >
+                        {pdfLoadingId === request.id ? <Loader2 size={11} className="animate-spin" /> : <Printer size={11} />}
+                        Print details
+                      </button>
                     </div>
-
-                    {/* SUBMITTED */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1 mb-1.5">
-                        <Clock className="w-3 h-3 text-slate-300" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Submitted</span>
-                      </div>
-                      <p className="text-[11px] font-semibold text-slate-700 leading-none">
-                        {(request.created_date || request.createdAt) ? fmtDateTime(request.created_date || request.createdAt) : '—'}
-                      </p>
-                    </div>
-
                   </div>
-                </div>
-
-                {/* ── Right: action column ── */}
-                <div className="flex flex-col items-stretch gap-1.5 w-40 flex-shrink-0 self-start">
-
-                  {/* Awaiting You badge */}
-                  <div className="flex justify-end mb-0.5">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0" />
-                      Awaiting You
-                    </span>
-                  </div>
-
-                  {/* Review & Decide */}
-                  <button
-                    type="button"
-                    onClick={() => setViewingRequest(request)}
-                    className="flex items-center justify-center gap-1.5 h-9 rounded-xl text-xs font-bold text-white transition-colors w-full"
-                    style={{ background: ACCENT }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#6d28d9'}
-                    onMouseLeave={e => e.currentTarget.style.background = ACCENT}
-                  >
-                    Review &amp; Decide
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Approve + Reject */}
-                  <div className="flex gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => openApproveDialog(request)}
-                      className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
-                    >
-                      <ThumbsUp className="w-3 h-3" />
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openRejectDialog(request)}
-                      className="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors"
-                    >
-                      <ThumbsDown className="w-3 h-3" />
-                      Reject
-                    </button>
-                  </div>
-
-                  {/* Print details */}
-                  <button
-                    type="button"
-                    onClick={() => handlePrint(request)}
-                    disabled={pdfLoadingId === request.id}
-                    className="flex items-center justify-center gap-1.5 h-7 rounded-lg text-[11px] text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40"
-                  >
-                    {pdfLoadingId === request.id
-                      ? <Loader2 className="w-3 h-3 animate-spin" />
-                      : <Printer className="w-3 h-3" />
-                    }
-                    Print details
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* ── Pagination ── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white px-4 py-3 shadow-sm">
-          <p className="text-xs text-slate-500">
-            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredRequests.length)} of {filteredRequests.length}
-          </p>
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-7 w-7"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? 'default' : 'outline'}
-                size="icon"
-                className={`h-7 w-7 text-xs ${currentPage === page ? 'text-white' : ''}`}
-                style={currentPage === page ? { background: ACCENT } : {}}
-                onClick={() => setCurrentPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button variant="outline" size="icon" className="h-7 w-7"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="a-pagination">
+            <span className="info">Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredRequests.length)} of {filteredRequests.length}</span>
+            <div className="pages">
+              <button className="a-btn" style={{ padding: '6px 10px' }} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                <ChevronLeft size={13} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button key={page} className="a-btn"
+                  style={currentPage === page ? { background: 'var(--a-navy)', color: '#fff', borderColor: 'var(--a-navy)', padding: '6px 10px' } : { padding: '6px 10px' }}
+                  onClick={() => setCurrentPage(page)}>
+                  {page}
+                </button>
+              ))}
+              <button className="a-btn" style={{ padding: '6px 10px' }} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                <ChevronRight size={13} />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── View Request Detail Modal ── */}
       <Dialog open={!!viewingRequest} onOpenChange={() => setViewingRequest(null)}>
-        <DialogContent className="sm:max-w-[620px] rounded-2xl bg-white text-slate-900 overflow-hidden p-0 gap-0 max-h-[88vh] flex flex-col">
+        <DialogContent className="eq-admin sm:max-w-[620px] overflow-hidden p-0 gap-0 max-h-[88vh] flex flex-col" style={{ borderRadius: 0 }}>
           {(() => {
             const img = viewingRequest ? getEquipmentImage(viewingRequest) : null;
             return img ? (
-              <div className="relative h-32 w-full overflow-hidden flex-shrink-0 bg-slate-800">
-                <img src={img} alt={viewingRequest?.equipment_name} className="w-full h-full object-contain" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <div className="absolute top-3 right-3 rounded-full bg-black/30 backdrop-blur-sm px-2.5 py-0.5">
-                  <span className="text-[10px] font-medium text-white/80 tracking-wide uppercase">Final Approval</span>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 px-6 pb-5 pt-8">
-                  <p className="text-lg font-bold text-white leading-snug">{viewingRequest?.equipment_name}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2 py-0.5 text-[10px] font-semibold text-white">
-                      <Hash className="h-2.5 w-2.5" />Qty {viewingRequest?.quantity}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-violet-400/90 px-2 py-0.5 text-[10px] font-semibold text-violet-900">
-                      Pending Final Approval
-                    </span>
+              <div style={{ position: 'relative', height: 128, overflow: 'hidden', flexShrink: 0, background: 'var(--a-navy)' }}>
+                <img src={img} alt={viewingRequest?.equipment_name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,42,74,0.85) 0%, rgba(15,42,74,0.2) 60%, transparent 100%)' }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 24px 16px' }}>
+                  <p style={{ fontFamily: 'var(--serif)', fontSize: 17, fontWeight: 600, color: '#fff', margin: 0 }}>{viewingRequest?.equipment_name}</p>
+                  <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
+                    <span className="a-pill p-mute" style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'transparent', color: '#fff' }}>Qty {viewingRequest?.quantity}</span>
+                    <span className="a-pill p-gold">Pending Final Approval</span>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 px-6 py-5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 border border-slate-200">
-                  <Package className="h-6 w-6 text-slate-400" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--a-surface-2)', borderBottom: '1px solid var(--a-rule)', padding: '20px 24px' }}>
+                <div style={{ width: 48, height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--a-rule-2)', border: '1px solid var(--a-rule)' }}>
+                  <Package size={24} style={{ color: 'var(--a-mute)' }} />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Final Approval</p>
-                  <p className="text-base font-bold text-slate-900 leading-tight truncate">{viewingRequest?.equipment_name}</p>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <span className="text-xs text-slate-400">Qty {viewingRequest?.quantity}</span>
-                    <span className="text-slate-200">·</span>
-                    <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 border border-violet-100 rounded-full px-2 py-0.5">Pending Final Approval</span>
+                <div>
+                  <p style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--a-mute)', margin: 0 }}>Final Approval</p>
+                  <p style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600, color: 'var(--a-navy)', margin: '4px 0 0' }}>{viewingRequest?.equipment_name}</p>
+                  <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
+                    <span className="a-pill p-mute">Qty {viewingRequest?.quantity}</span>
+                    <span className="a-pill p-gold">Pending Final Approval</span>
                   </div>
                 </div>
               </div>
             );
           })()}
 
-          <DialogTitle className="sr-only">Borrow Request — {viewingRequest?.equipment_name}</DialogTitle>
+          <DialogTitle className="sr-only">Final Approval — {viewingRequest?.equipment_name}</DialogTitle>
 
-          <div className="px-4 pt-3 pb-3 overflow-y-auto flex-1">
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-2">
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Borrower</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100">
-                      <User className="h-3.5 w-3.5 text-violet-500" />
+          <div style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ border: '1px solid var(--a-rule)', background: 'var(--a-surface-2)', padding: '10px 12px' }}>
+                  <p style={{ ...mLab, display: 'block', marginBottom: 8 }}>Borrower</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--a-info-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <User size={14} style={{ color: 'var(--a-info)' }} />
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{viewingRequest?.borrower_name || '—'}</p>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)', margin: 0 }}>{viewingRequest?.borrower_name || '—'}</p>
                       {(viewingRequest?.student_email || viewingRequest?.borrower_email) && (
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {viewingRequest.student_email || viewingRequest.borrower_email}
-                        </p>
+                        <p style={{ fontSize: 10, color: 'var(--a-mute)', margin: '2px 0 0' }}>{viewingRequest.student_email || viewingRequest.borrower_email}</p>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Submitted</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100">
-                      <Clock className="h-3.5 w-3.5 text-violet-500" />
-                    </div>
-                    <p className="text-sm font-semibold text-slate-800">
-                      {viewingRequest?.created_date ? format(new Date(viewingRequest.created_date), 'MMM d, yyyy') : '—'}
-                    </p>
-                  </div>
+                <div style={{ border: '1px solid var(--a-rule)', background: 'var(--a-surface-2)', padding: '10px 12px' }}>
+                  <p style={{ ...mLab, display: 'block', marginBottom: 8 }}>Submitted</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)', margin: 0 }}>
+                    {viewingRequest?.created_date ? format(new Date(viewingRequest.created_date), 'MMM d, yyyy') : '—'}
+                  </p>
                 </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Borrow Period</p>
-                  <div className="space-y-1.5">
-                    <div className="rounded-lg bg-white border border-slate-200 px-3 py-2">
-                      <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">From</p>
-                      <p className="text-sm font-semibold text-slate-800">{fmtDate(viewingRequest?.borrow_date)}</p>
+                <div style={{ border: '1px solid var(--a-rule)', background: 'var(--a-surface-2)', padding: '10px 12px' }}>
+                  <p style={{ ...mLab, display: 'block', marginBottom: 8 }}>Borrow Period</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ border: '1px solid var(--a-rule)', padding: '8px 12px', background: '#fff' }}>
+                      <p style={{ ...mLab, display: 'block', marginBottom: 2 }}>From</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)', margin: 0 }}>{fmtDate(viewingRequest?.borrow_date)}</p>
                     </div>
-                    <div className="flex justify-center"><div className="h-3 w-px bg-slate-200" /></div>
-                    <div className="rounded-lg bg-white border border-slate-200 px-3 py-2">
-                      <p className="text-[9px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">Until</p>
-                      <p className="text-sm font-semibold text-slate-800">{fmtDate(viewingRequest?.return_date)}</p>
+                    <div style={{ border: '1px solid var(--a-rule)', padding: '8px 12px', background: '#fff' }}>
+                      <p style={{ ...mLab, display: 'block', marginBottom: 2 }}>Until</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)', margin: 0 }}>{fmtDate(viewingRequest?.return_date)}</p>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex flex-col">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Purpose</p>
-                  <p className="text-sm text-slate-700 leading-relaxed min-h-[48px]">
-                    {viewingRequest?.purpose || <span className="italic text-slate-300">No purpose provided.</span>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ border: '1px solid var(--a-rule)', background: 'var(--a-surface-2)', padding: '10px 12px', flex: 1 }}>
+                  <p style={{ ...mLab, display: 'block', marginBottom: 8 }}>Purpose</p>
+                  <p style={{ fontSize: 13, color: 'var(--a-ink-2)', lineHeight: 1.6, margin: 0, minHeight: 48 }}>
+                    {viewingRequest?.purpose || <span style={{ fontStyle: 'italic', color: 'var(--a-mute)' }}>No purpose provided.</span>}
                   </p>
                 </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Equipment</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-slate-400">Name</span>
-                      <span className="text-xs font-semibold text-slate-800 truncate max-w-[140px]">{viewingRequest?.equipment_name || '—'}</span>
-                    </div>
-                    <div className="h-px bg-slate-100" />
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-slate-400">Quantity</span>
-                      <span className="text-xs font-semibold text-slate-800">{viewingRequest?.quantity ?? '—'}</span>
-                    </div>
-                    {viewingRequest?.serial_number && (
-                      <>
-                        <div className="h-px bg-slate-100" />
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-400">Serial</span>
-                          <span className="text-xs font-semibold text-slate-800 font-mono">{viewingRequest.serial_number}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                <div style={{ border: '1px solid var(--a-rule)', background: 'var(--a-surface-2)', padding: '10px 12px' }}>
+                  <p style={{ ...mLab, display: 'block', marginBottom: 8 }}>Equipment</p>
+                  {[
+                    ['Name', viewingRequest?.equipment_name],
+                    ['Quantity', viewingRequest?.quantity],
+                    ...(viewingRequest?.serial_number ? [['Serial', viewingRequest.serial_number]] : []),
+                  ].map(([key, val], i, arr) => (
+                    <React.Fragment key={key}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                        <span style={{ fontSize: 10, color: 'var(--a-mute)' }}>{key}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--a-ink)', fontFamily: key === 'Serial' ? 'var(--mono)' : 'inherit' }}>{val || '—'}</span>
+                      </div>
+                      {i < arr.length - 1 && <div style={{ height: 1, background: 'var(--a-rule-2)' }} />}
+                    </React.Fragment>
+                  ))}
                 </div>
                 {viewingRequest?.lecturer_remarks && (
-                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
-                    <p className="text-[9px] font-semibold uppercase tracking-widest text-emerald-500 mb-1.5">Lecturer Remarks</p>
-                    <p className="text-xs text-emerald-800 leading-relaxed">{viewingRequest.lecturer_remarks}</p>
+                  <div style={{ border: '1px solid var(--a-ok)', background: 'var(--a-ok-bg)', padding: '10px 12px' }}>
+                    <p style={{ ...mLab, color: 'var(--a-ok)', display: 'block', marginBottom: 6 }}>Lecturer Remarks</p>
+                    <p style={{ fontSize: 12, color: 'var(--a-ok)', lineHeight: 1.5, margin: 0 }}>{viewingRequest.lecturer_remarks}</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 border-t border-slate-100 bg-slate-50/50 px-5 py-3">
-            <Button variant="ghost" size="sm"
-              className="h-9 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-              onClick={() => setViewingRequest(null)}>
-              Close
-            </Button>
-            <Button size="sm" variant="outline"
-              className="h-9 rounded-xl text-xs font-semibold text-violet-600 border-violet-200 bg-violet-50 hover:bg-violet-100 hover:border-violet-300"
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, borderTop: '1px solid var(--a-rule)', background: 'var(--a-surface-2)', padding: '12px 16px' }}>
+            <button className="a-btn" style={{ justifyContent: 'center' }} onClick={() => setViewingRequest(null)}>Close</button>
+            <button className="a-btn" style={{ justifyContent: 'center', color: '#7c3aed', borderColor: '#7c3aed', background: '#f5f3ff' }}
               disabled={pdfLoadingId === viewingRequest?.id}
               onClick={() => handlePreviewPdf(viewingRequest)}>
-              <Eye className="h-3 w-3 mr-1.5" />
-              {pdfLoadingId === viewingRequest?.id ? 'Loading…' : 'Preview PDF'}
-            </Button>
-            <Button size="sm" variant="outline"
-              className="h-9 rounded-xl text-xs font-semibold text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300"
+              <Eye size={12} /> {pdfLoadingId === viewingRequest?.id ? 'Loading…' : 'Preview PDF'}
+            </button>
+            <button className="a-btn danger" style={{ justifyContent: 'center' }}
               onClick={() => { setViewingRequest(null); openRejectDialog(viewingRequest); }}>
-              <ThumbsDown className="h-3 w-3 mr-1.5" />{t('reject')}
-            </Button>
-            <Button size="sm"
-              className="h-9 rounded-xl text-xs font-semibold text-white shadow-sm"
-              style={{ background: ACCENT }}
+              <ThumbsDown size={12} /> {t('reject')}
+            </button>
+            <button className="a-btn" style={{ justifyContent: 'center', background: 'var(--a-ok)', borderColor: 'var(--a-ok)', color: '#fff' }}
               onClick={() => { setViewingRequest(null); openApproveDialog(viewingRequest); }}>
-              <ThumbsUp className="h-3 w-3 mr-1.5" />{t('approve')}
-            </Button>
+              <ThumbsUp size={12} /> {t('approve')}
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* ── Approve / Reject Dialog ── */}
       <Dialog open={!!selectedRequest} onOpenChange={closeDialog}>
-        <DialogContent className="sm:max-w-md rounded-2xl bg-white text-slate-900">
-          <DialogHeader className="border-b border-slate-100 pb-4">
-            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${action === 'approve' ? 'bg-violet-50' : 'bg-red-50'}`}>
-                {action === 'approve'
-                  ? <ThumbsUp className="h-4 w-4 text-violet-600" />
-                  : <ThumbsDown className="h-4 w-4 text-red-500" />}
+        <DialogContent className="eq-admin sm:max-w-md p-0 gap-0" style={{ borderRadius: 0 }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--a-rule)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: action === 'approve' ? 'var(--a-ok-bg)' : 'var(--a-bad-bg)' }}>
+                {action === 'approve' ? <ThumbsUp size={16} style={{ color: 'var(--a-ok)' }} /> : <ThumbsDown size={16} style={{ color: 'var(--a-bad)' }} />}
               </div>
-              {action === 'approve' ? t('finalApproval') : t('rejectRequest')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-slate-500 leading-relaxed">
+              <DialogTitle style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 600, color: 'var(--a-navy)', margin: 0 }}>
+                {action === 'approve' ? t('finalApproval') : t('rejectRequest')}
+              </DialogTitle>
+            </div>
+          </div>
+          <div style={{ padding: '20px 24px' }}>
+            <p style={{ fontSize: 13, color: 'var(--a-mute)', lineHeight: 1.6, marginBottom: 16 }}>
               {action === 'approve'
-                ? <>Give final approval for <span className="font-medium text-slate-700">{selectedRequest?.borrower_name}</span>'s request for <span className="font-medium text-slate-700">{selectedRequest?.equipment_name}</span>. The lab assistant will prepare the equipment.</>
-                : <>Reject <span className="font-medium text-slate-700">{selectedRequest?.borrower_name}</span>'s request for <span className="font-medium text-slate-700">{selectedRequest?.equipment_name}</span>. The borrower will be notified.</>
+                ? <>Give final approval for <strong style={{ color: 'var(--a-ink)' }}>{selectedRequest?.borrower_name}</strong>'s request for <strong style={{ color: 'var(--a-ink)' }}>{selectedRequest?.equipment_name}</strong>. The lab assistant will prepare the equipment.</>
+                : <>Reject <strong style={{ color: 'var(--a-ink)' }}>{selectedRequest?.borrower_name}</strong>'s request for <strong style={{ color: 'var(--a-ink)' }}>{selectedRequest?.equipment_name}</strong>. The borrower will be notified.</>
               }
             </p>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-600">
-                {t('remarks')}
-                <span className="ml-1 text-slate-400 text-[10px] font-normal">(optional)</span>
-              </Label>
-              <Textarea
+            <div>
+              <p style={{ ...mLab, display: 'block', marginBottom: 6 }}>{t('remarks')} <span style={{ fontFamily: 'var(--sans)', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></p>
+              <textarea
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder={action === 'approve' ? t('optionalAddNotes') : t('provideRejectionReason')}
                 rows={3}
-                className="resize-none text-sm"
+                style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--a-ink)', border: '1px solid var(--a-rule)', padding: '8px 12px', resize: 'none', outline: 'none', background: '#fff', display: 'block' }}
+                onFocus={e => e.target.style.borderColor = 'var(--a-gold)'}
+                onBlur={e => e.target.style.borderColor = 'var(--a-rule)'}
               />
             </div>
           </div>
-          <DialogFooter className="gap-2 border-t border-slate-100 pt-4">
-            <Button variant="outline" size="sm" onClick={closeDialog} className="text-xs">{t('cancel')}</Button>
-            <Button
-              size="sm" onClick={handleSubmit} disabled={actionMutation.isPending}
-              className={`text-xs text-white ${action === 'approve' ? '' : 'bg-red-500 hover:bg-red-600'}`}
-              style={action === 'approve' ? { background: ACCENT } : {}}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 24px', borderTop: '1px solid var(--a-rule)', background: 'var(--a-surface-2)' }}>
+            <button className="a-btn" onClick={closeDialog}>{t('cancel')}</button>
+            <button className="a-btn" onClick={handleSubmit} disabled={actionMutation.isPending}
+              style={action === 'approve'
+                ? { background: 'var(--a-navy)', borderColor: 'var(--a-navy)', color: '#fff' }
+                : { background: 'var(--a-bad)', borderColor: 'var(--a-bad)', color: '#fff' }
+              }>
               {actionMutation.isPending
-                ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />{t('processing')}</>
-                : action === 'approve' ? t('approveRequest') : t('rejectRequest')}
-            </Button>
-          </DialogFooter>
+                ? <><Loader2 size={13} className="animate-spin" /> Processing…</>
+                : action === 'approve' ? t('approveRequest') : t('rejectRequest')
+              }
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

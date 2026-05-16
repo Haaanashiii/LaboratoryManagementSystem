@@ -86,7 +86,8 @@ export default function Inventory() {
   const totalPages        = Math.max(1, Math.ceil(displayedEquipment.length / PAGE_SIZE));
   const paginatedEquipment = displayedEquipment.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const activeCatConfig   = activeCategory ? categoryConfig.find(c => c.value === activeCategory) : null;
-  const canEdit = ['admin','head_of_lab','lab_assistant','lecturer'].includes(user?.role);
+  const canAdd  = user?.role === 'admin';
+  const canEdit = ['admin', 'head_of_lab', 'lab_assistant'].includes(user?.role);
 
   if (isLoading) return <InventorySkeleton />;
 
@@ -104,7 +105,7 @@ export default function Inventory() {
           <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--a-mute)' }}>
             {equipment.length} items · {equipment.filter(e => (e.available_quantity ?? 0) > 0).length} available
           </span>
-          {canEdit && (
+          {canAdd && (
             <button className="a-btn primary" onClick={() => navigate('/inventory/add-equipment')}>
               <Plus style={{ width: 13, height: 13 }} />
               Add Equipment
