@@ -52,7 +52,7 @@ const loginValidationWithAudit = (portal = 'default') => async (req, res, next) 
 };
 
 const loginRateLimiter = rateLimit({
-  windowMs: 30 * 60 * 1000,
+  windowMs: 5 * 60 * 1000,
   max: 5,
   skipSuccessfulRequests: true,
   standardHeaders: true,
@@ -74,12 +74,12 @@ const loginRateLimiter = rateLimit({
   },
   message: {
     success: false,
-    message: 'Too many failed login attempts. Please try again in 30 minutes.'
+    message: 'Too many failed login attempts. Please try again in 5 minutes.'
   }
 });
 
 const adminLoginRateLimiter = rateLimit({
-  windowMs: 30 * 60 * 1000,
+  windowMs: 5 * 60 * 1000,
   max: 5,
   skipSuccessfulRequests: true,
   standardHeaders: true,
@@ -101,7 +101,7 @@ const adminLoginRateLimiter = rateLimit({
   },
   message: {
     success: false,
-    message: 'Too many failed login attempts. Please try again in 30 minutes.'
+    message: 'Too many failed login attempts. Please try again in 5 minutes.'
   }
 });
 

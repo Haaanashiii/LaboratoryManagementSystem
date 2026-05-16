@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { api } from '@/api/apiClient';
 import { format } from 'date-fns';
+import EquimonPageHeader from '@/components/ui/equimon/EquimonPageHeader';
 
 // ─── Icon map for sidebar preview ────────────────────────────────────────────
 const ICON_MAP = {
@@ -217,31 +218,12 @@ export default function LecturerSettings() {
     <div className="w-full space-y-4 px-2 py-2">
 
       {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <Settings className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Settings</h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-sm font-bold text-blue-600">
-            {initials}
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold leading-none text-slate-800">{user?.name || 'Lecturer'}</p>
-            <p className="mt-0.5 text-[10px] font-medium text-slate-500">{user?.email || '—'}</p>
-          </div>
-        </div>
-      </div>
+      <EquimonPageHeader
+        accent="#2563eb"
+        icon={Settings}
+        title="Settings"
+        sub="Manage your account preferences and sidebar layout."
+      />
 
       {/* ── Tab pills ── */}
       <div className="grid grid-cols-2 gap-2">

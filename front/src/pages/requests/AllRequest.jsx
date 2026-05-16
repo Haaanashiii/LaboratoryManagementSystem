@@ -9,15 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Search, FileText, Clock3, CheckCircle2, RotateCcw, XCircle, Layers, ChevronLeft, ChevronRight, BarChart3, Printer } from 'lucide-react';
 import { AllRequestsSkeleton } from '@/skeleton-framework/admin';
 import { format } from 'date-fns';
-import BorrowRequestReportModal from '@/components/BorrowRequestReportModal';
+import EquimonPageHeader from '@/components/ui/equimon/EquimonPageHeader';
+import { printItsReceipt } from '@/utils/printItsReceipt';
 
 const STATUS_TABS = [
-  { key: 'all',      label: 'All',      statuses: null,                                            icon: Layers,       color: 'bg-slate-100 text-slate-700 border-slate-300',        dot: '#475569' },
-  { key: 'pending',  label: 'Pending',  statuses: ['Pending Lecturer', 'Pending Head'],            icon: Clock3,       color: 'bg-amber-50 text-amber-700 border-amber-200',          dot: '#d97706' },
-  { key: 'approved', label: 'Approved', statuses: ['Approved', 'Ready for pickup', 'Borrowed'],   icon: CheckCircle2, color: 'bg-blue-50 text-blue-700 border-blue-200',             dot: '#2563eb' },
-  { key: 'returned', label: 'Returned', statuses: ['Returned'],                                   icon: RotateCcw,    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',    dot: '#059669' },
-  { key: 'rejected', label: 'Rejected', statuses: ['Rejected'],                                   icon: XCircle,      color: 'bg-red-50 text-red-700 border-red-200',                dot: '#dc2626' },
+  { key: 'all',      label: 'ALL',      statuses: null,                                           icon: Layers,       color: '#475569' },
+  { key: 'pending',  label: 'PENDING',  statuses: ['Pending Lecturer', 'Pending Head'],           icon: Clock3,       color: '#d97706' },
+  { key: 'approved', label: 'APPROVED', statuses: ['Approved', 'Ready for pickup', 'Borrowed'],  icon: CheckCircle2, color: '#059669' },
+  { key: 'returned', label: 'RETURNED', statuses: ['Returned'],                                  icon: RotateCcw,    color: '#2563eb' },
+  { key: 'rejected', label: 'REJECTED', statuses: ['Rejected'],                                  icon: XCircle,      color: '#dc2626' },
 ];
+
+const CAT_COLORS = { Measurement: '#f97316', Microcontroller: '#3b82f6', Tools: '#ef4444', Power: '#8b5cf6', Optics: '#22c55e' };
+const getCatColor = (cat) => CAT_COLORS[cat] || '#64748b';
+
+const avatarColors = ['#f97316','#2563eb','#7c3aed','#059669','#dc2626','#0891b2','#d97706'];
+const getAvatarColor = (name = '') => avatarColors[name.charCodeAt(0) % avatarColors.length];
 
 const PAGE_SIZE = 10;
 
@@ -25,7 +32,6 @@ export default function AllRequests() {
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [reportRequestId, setReportRequestId] = useState(null);
 
   const { data: requests = [], isLoading, isError, error } = useQuery({
     queryKey: ['allRequests'],
@@ -36,6 +42,29 @@ export default function AllRequests() {
     queryKey: ['currentUser'],
     queryFn: () => api.auth.me(),
   });
+
+  const { data: allEquipment = [] } = useQuery({
+    queryKey: ['equipment'],
+    queryFn: () => api.entities.Equipment.list(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const equipmentMap = React.useMemo(() => {
+    const map = {};
+    allEquipment.forEach(eq => { map[eq.id] = eq; map[eq._id] = eq; });
+    return map;
+  }, [allEquipment]);
+
+  const getEquipmentImage = (request) => {
+    const eqId = request?.equipment?._id || request?.equipment?.id || request?.equipment;
+    const eq = eqId ? equipmentMap[eqId] : null;
+    return eq?.image_url || eq?.images_urls?.[0]
+      || request.equipment_image_url
+      || request.equipment?.image_url
+      || null;
+  };
+
+  const accent = '#7c3aed';
 
   const statusCounts = STATUS_TABS.reduce((acc, tab) => {
     acc[tab.key] = tab.statuses
@@ -60,63 +89,41 @@ export default function AllRequests() {
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const h = new Date().getHours();
-  const gc =
-    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
-    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
-             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
-
   if (isLoading) return <AllRequestsSkeleton />;
 
   return (
-    <>
-    <div className="w-full space-y-4 px-2 py-2">
+    <div className="w-full space-y-5 px-2 py-3">
 
       {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <BarChart3 className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">All Requests</h1>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2.5"> 
-        </div>
-      </div>
+      <EquimonPageHeader
+        accent={accent}
+        icon={BarChart3}
+        title="All Requests"
+        badgeCount={requests.length}
+        badge="total"
+        sub="Complete history of all equipment borrow requests."
+      />
 
-      {/* ── Status stat pills ── */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      {/* ── Status Filter Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {STATUS_TABS.map((tab) => {
           const isActive = activeStatus === tab.key;
           const TabIcon = tab.icon;
           return (
             <button
               key={tab.key}
-              type="button"
-              onClick={() => {
-                setCurrentPage(1);
-                setActiveStatus(activeStatus === tab.key && tab.key !== 'all' ? 'all' : tab.key);
-              }}
-              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                isActive
-                  ? `${tab.color} shadow-sm`
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+              onClick={() => { setCurrentPage(1); setActiveStatus(activeStatus === tab.key && tab.key !== 'all' ? 'all' : tab.key); }}
+              className={`relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                isActive ? 'border-slate-300 bg-white shadow-md' : 'border-slate-200/70 bg-white shadow-sm'
               }`}
             >
-              <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
-                <TabIcon className="h-4 w-4" style={isActive ? { color: tab.dot } : { color: '#64748b' }} />
+              {isActive && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-slate-900" />}
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `${tab.color}15` }}>
+                <TabIcon className="w-5 h-5" style={{ color: tab.color }} />
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{tab.label}</p>
-                <p className="text-lg font-semibold leading-tight text-slate-900">{statusCounts[tab.key] || 0}</p>
+              <div className="text-[10px] font-bold tracking-[1.5px] uppercase text-slate-400 mb-1">{tab.label}</div>
+              <div className="text-[32px] font-extrabold leading-none" style={{ color: isActive ? tab.color : '#0f172a' }}>
+                {statusCounts[tab.key] || 0}
               </div>
             </button>
           );
@@ -124,35 +131,27 @@ export default function AllRequests() {
       </div>
 
       {/* ── Search + Table Card ── */}
-      <Card className="overflow-hidden border-slate-200 shadow-none">
+      <Card className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
         {/* Toolbar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            {selectedTab.key !== 'all' && (
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: selectedTab.dot }} />
-            )}
-            <p className="text-sm font-medium text-slate-800">{selectedTab.label}</p>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {filteredRequests.length}
-            </span>
-            {activeStatus !== 'all' && (
-              <button
-                onClick={() => { setCurrentPage(1); setActiveStatus('all'); }}
-                className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Search by equipment or borrower..."
+              placeholder="Search by equipment, borrower, or ID..."
               value={search}
               onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
-              className="h-8 pl-8 text-xs"
+              className="pl-9 h-9 rounded-xl text-sm"
             />
           </div>
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-[13px] font-bold transition-colors shrink-0"
+            style={{ background: accent }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >
+            <Printer className="w-4 h-4" /> Print Report
+          </button>
         </div>
 
         <CardContent className="p-0">
@@ -162,22 +161,19 @@ export default function AllRequests() {
                 <FileText className="h-5 w-5 text-red-400" />
               </div>
               <p className="text-sm font-medium text-slate-800">Unable to load requests</p>
-              <p className="max-w-xs text-center text-xs text-slate-500">
-                {error?.message || 'Failed to connect to the server.'}
-              </p>
+              <p className="max-w-xs text-center text-xs text-slate-500">{error?.message || 'Failed to connect to the server.'}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">Equipment</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrower</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Borrow Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Return Date</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Created</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Report</TableHead>
+                    <TableHead className="pl-5 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Equipment</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Borrower</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Period</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Status</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Created</TableHead>
+                    <TableHead className="pr-5 text-right text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -193,58 +189,100 @@ export default function AllRequests() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedRequests.map((request) => (
-                      <TableRow key={request.id} className="border-slate-50 hover:bg-slate-50/50">
-                        <TableCell>
-                          <p className="text-sm font-medium text-slate-900">{request.equipment_name}</p>
-                          <p className="text-xs text-slate-400">Qty: {request.quantity}</p>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-sm font-medium text-slate-900">{request.borrower_name}</p>
-                          <p className="text-xs text-slate-400">{request.student_email || request.borrower_email}</p>
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-500">
-                          {request.borrow_date && format(new Date(request.borrow_date), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-500">
-                          {request.return_date && format(new Date(request.return_date), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={request.status} />
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-400">
-                          {request.created_date && format(new Date(request.created_date), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 border-slate-200 hover:border-blue-300 hover:bg-blue-50"
-                            title="Print borrow report"
-                            onClick={() => setReportRequestId(request.id)}
-                          >
-                            <Printer className="h-3.5 w-3.5 text-slate-500" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    paginatedRequests.map((request) => {
+                      const catColor = getCatColor(request.category || request.equipment_category);
+                      const initials = (request.borrower_name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                      const avatarColor = getAvatarColor(request.borrower_name || '');
+                      const reqId = `REQ-${new Date().getFullYear()}-${String(request.id).padStart(4, '0')}`;
+                      const createdRaw = request.created_date || request.createdAt;
+                      const equipImgUrl = getEquipmentImage(request);
+                      return (
+                        <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50/60">
+                          {/* Equipment */}
+                          <TableCell className="pl-5 py-4">
+                            <div className="flex items-center gap-3">
+                              {equipImgUrl ? (
+                                <img src={equipImgUrl} alt={request.equipment_name} className="w-10 h-10 rounded-xl object-cover shrink-0 border border-slate-100" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${catColor}15` }}>
+                                  <FileText className="w-4 h-4" style={{ color: catColor }} />
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-[13px] font-bold text-slate-900 leading-tight">{request.equipment_name}</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">Qty: {request.quantity} · {reqId}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          {/* Borrower */}
+                          <TableCell className="py-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ background: avatarColor }}>
+                                {initials}
+                              </div>
+                              <div>
+                                <p className="text-[13px] font-semibold text-slate-800 leading-tight">{request.borrower_name || '—'}</p>
+                                <p className="text-[11px] text-slate-400 truncate max-w-[160px]">{request.student_email || request.borrower_email || '—'}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          {/* Period */}
+                          <TableCell className="py-4">
+                            <p className="text-[12px] text-slate-700 leading-relaxed">
+                              {request.borrow_date ? format(new Date(request.borrow_date), 'MMM d, yyyy') : '—'}
+                            </p>
+                            {request.return_date && (
+                              <p className="text-[11px] text-slate-400">→ {format(new Date(request.return_date), 'MMM d, yyyy')}</p>
+                            )}
+                          </TableCell>
+                          {/* Status */}
+                          <TableCell className="py-4">
+                            <StatusBadge status={request.status} />
+                          </TableCell>
+                          {/* Created */}
+                          <TableCell className="py-4">
+                            {createdRaw ? (
+                              <>
+                                <p className="text-[12px] text-slate-700">{format(new Date(createdRaw), 'EEE, MMM d')}</p>
+                                <p className="text-[11px] text-slate-400">{format(new Date(createdRaw), 'HH:mm')}</p>
+                              </>
+                            ) : '—'}
+                          </TableCell>
+                          {/* Actions */}
+                          <TableCell className="pr-5 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => printItsReceipt(request)}
+                                className="px-3 py-1.5 rounded-lg text-white text-[12px] font-bold transition-colors"
+                                style={{ background: accent }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                Review
+                              </button>
+                              <button
+                                onClick={() => printItsReceipt(request)}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                                title="Print receipt"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
                   <p className="text-xs text-slate-500">
                     Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredRequests.length)} of {filteredRequests.length} requests
                   </p>
                   <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
                       <ChevronLeft className="h-3.5 w-3.5" />
                     </Button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -252,19 +290,14 @@ export default function AllRequests() {
                         key={page}
                         variant={currentPage === page ? 'default' : 'outline'}
                         size="icon"
-                        className={`h-7 w-7 text-xs ${currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
+                        className={`h-7 w-7 text-xs ${currentPage === page ? 'text-white' : ''}`}
+                        style={currentPage === page ? { background: accent } : {}}
                         onClick={() => setCurrentPage(page)}
                       >
                         {page}
                       </Button>
                     ))}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -275,13 +308,5 @@ export default function AllRequests() {
         </CardContent>
       </Card>
     </div>
-
-    {reportRequestId && (
-      <BorrowRequestReportModal
-        requestId={reportRequestId}
-        onClose={() => setReportRequestId(null)}
-      />
-    )}
-    </>
   );
 }

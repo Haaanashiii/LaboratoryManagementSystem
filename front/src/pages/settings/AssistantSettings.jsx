@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { api } from '@/api/apiClient';
 import { format } from 'date-fns';
+import EquimonPageHeader from '@/components/ui/equimon/EquimonPageHeader';
 
 // ─── Icon map for sidebar preview ────────────────────────────────────────────
 const ICON_MAP = {
@@ -61,7 +62,7 @@ const PWD_CHECKS = [
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 const TABS = [
   { id: 'security', label: 'Security', icon: Shield,          color: 'bg-slate-50 text-slate-700 border-slate-200',   dot: '#64748b' },
-  { id: 'sidebar',  label: 'Sidebar',  icon: LayoutDashboard, color: 'bg-amber-50 text-amber-700 border-amber-200',    dot: '#f59e0b' },
+  { id: 'sidebar',  label: 'Sidebar',  icon: LayoutDashboard, color: 'bg-teal-50 text-teal-700 border-teal-200',      dot: '#0d9488' },
 ];
 
 function PasswordField({
@@ -132,7 +133,7 @@ export default function AssistantSettings() {
   const h = new Date().getHours();
   const gc =
     h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
-    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
+    h < 18 ? { color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4' } :
              { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -219,31 +220,12 @@ export default function AssistantSettings() {
     <div className="w-full space-y-4 px-2 py-2">
 
       {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <Settings className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Settings</h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-sm font-bold text-amber-600">
-            {initials}
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold leading-none text-slate-800">{user?.name || 'Lab Assistant'}</p>
-            <p className="mt-0.5 text-[10px] font-medium text-slate-500">{user?.email || '—'}</p>
-          </div>
-        </div>
-      </div>
+      <EquimonPageHeader
+        accent="#0d9488"
+        icon={Settings}
+        title="Settings"
+        sub="Manage your account preferences and sidebar layout."
+      />
 
       {/* ── Tab pills ── */}
       <div className="grid grid-cols-2 gap-2">
@@ -492,7 +474,7 @@ export default function AssistantSettings() {
               })}
             </CardContent>
             <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-white px-4 py-4">
-              <Button onClick={saveSidebar} className="gap-2 bg-amber-500 hover:bg-amber-600 text-white">
+              <Button onClick={saveSidebar} className="gap-2 bg-teal-600 hover:bg-teal-700 text-white">
                 <Save className="w-3.5 h-3.5" />
                 Save Layout
               </Button>
@@ -516,8 +498,8 @@ export default function AssistantSettings() {
           {/* Live preview */}
           <Card className="border-slate-200 shadow-none overflow-hidden">
             <div className="flex items-center gap-3 border-b border-slate-100 bg-white px-6 py-4">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 border border-amber-100">
-                <LayoutDashboard className="w-4 h-4 text-amber-600" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-100">
+                <LayoutDashboard className="w-4 h-4 text-teal-600" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-800">Live Preview</p>
@@ -528,7 +510,7 @@ export default function AssistantSettings() {
               <div className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
                 {/* Mini header */}
                 <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2.5">
-                  <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-amber-600 shrink-0" />
+                  <div className="w-5 h-5 rounded-md bg-gradient-to-br from-teal-400 to-teal-600 shrink-0" />
                   <div>
                     <p className="text-[11px] font-semibold text-slate-800 leading-none">Equimon</p>
                     <p className="text-[9px] text-slate-400 leading-none mt-0.5">Lab Management</p>
@@ -543,7 +525,7 @@ export default function AssistantSettings() {
                         key={item.id}
                         className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ${
                           i === 0
-                            ? 'bg-amber-50 text-amber-700'
+                            ? 'bg-teal-50 text-teal-700'
                             : 'text-slate-500 hover:bg-slate-50'
                         }`}
                       >
@@ -557,7 +539,7 @@ export default function AssistantSettings() {
                 </div>
                 {/* Footer */}
                 <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
                     {initials}
                   </div>
                   <div className="min-w-0">

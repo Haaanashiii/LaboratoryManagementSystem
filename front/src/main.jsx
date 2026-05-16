@@ -11,7 +11,12 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Never retry auth errors — retrying would hammer the backend and trigger rate limiting
+        const status = error?.status;
+        if (status === 401 || status === 403 || status === 429) return false;
+        return failureCount < 1;
+      },
     },
   },
 })

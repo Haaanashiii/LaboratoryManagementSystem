@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import StatusBadge from '@/components/ui/StatusBadge';
+import EquimonStatCard from '@/components/ui/equimon/EquimonStatCard';
+import EquimonGreetingHeader from '@/components/ui/equimon/EquimonGreetingHeader';
+import EquimonActionPanel from '@/components/ui/equimon/EquimonActionPanel';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const REQUEST_STATUS_COLORS = {
@@ -46,43 +49,6 @@ const ACTIVITY_CHART_CONFIG = {
 };
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-function StatCard({ title, value, icon: Icon, color, sub, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="group relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-white p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)]"
-      style={{ borderColor: `${color}55` }}
-    >
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: `radial-gradient(130% 90% at 0% 0%, ${color}11 0%, transparent 65%)`,
-        }}
-      />
-      <div className="relative flex items-start justify-between">
-        <div
-          className="flex h-11 w-11 items-center justify-center rounded-xl"
-          style={{
-            backgroundColor: `${color}14`,
-            boxShadow: `0 0 0 1px ${color}25`,
-          }}
-        >
-          <Icon className="h-5 w-5" style={{ color }} />
-        </div>
-        <ArrowUpRight
-          className="h-4 w-4 opacity-25 transition-all duration-300 group-hover:opacity-75 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-          style={{ color }}
-        />
-      </div>
-      <div className="relative">
-        <p className="text-3xl font-bold tracking-tight text-slate-900">{value}</p>
-        <p className="mt-0.5 text-sm font-medium text-slate-500">{title}</p>
-        {sub && <p className="mt-1.5 text-xs text-slate-400">{sub}</p>}
-      </div>
-    </button>
-  );
-}
-
 function EmptyState({ message }) {
   return (
     <div className="flex h-[220px] flex-col items-center justify-center gap-2 text-slate-400">
@@ -220,73 +186,77 @@ export default function LecturerDashboard() {
     ? Math.round((rejectedByMe.length / totalRequests) * 100)
     : 0;
 
+  // ── greeting for EquimonGreetingHeader ──
+  const h = new Date().getHours();
+  const greetingText = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+  const greetingIcon = h < 12 ? Sun : h < 18 ? Sunset : Moon;
+
   // ── render ──
   return (
     <div className="w-full space-y-5 px-2 py-3">
 
-      {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <gc.Icon className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              {gc.greeting},{' '}
-              <span style={{ color: gc.color }}>
-                {user?.full_name?.split(' ')[0] || 'Lecturer'}
-              </span>
-            </h1>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-        </div>
-      </div>
+      {/* ── Hero Banner → EquimonGreetingHeader ── */}
+      <EquimonGreetingHeader
+        accent="#2563eb"
+        name={user?.full_name || user?.name || 'Lecturer'}
+        greeting={greetingText}
+        icon={greetingIcon}
+      />
 
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          title="Pending Approvals"
-          value={pendingApprovals.length}
+      {/* ── KPI Cards → EquimonStatCard ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <EquimonStatCard
+          tint="#fff7ed"
+          fg="#ea580c"
           icon={Clock}
-          color="#f59e0b"
+          label="Pending Approvals"
+          value={pendingApprovals.length}
           sub={`${recentRequests.filter((r) => r.status === 'pending_lecturer').length} new this week`}
           onClick={() => navigate('/lecturer-approvals')}
         />
-        <StatCard
-          title="Approved by Me"
-          value={approvedByMe.length}
+        <EquimonStatCard
+          tint="#eff6ff"
+          fg="#2563eb"
           icon={CheckCircle}
-          color="#22c55e"
+          label="Approved by Me"
+          value={approvedByMe.length}
           sub={`${approvalRate}% approval rate`}
           onClick={() => navigate('/approval-history')}
         />
-        <StatCard
-          title="Total Requests"
-          value={totalRequests}
+        <EquimonStatCard
+          tint="#ecfdf5"
+          fg="#059669"
           icon={Package}
-          color="#2563eb"
+          label="Total Requests"
+          value={totalRequests}
           sub={`${recentRequests.length} in last 7 days`}
           onClick={() => navigate('/all-approval-history')}
         />
-        <StatCard
-          title="Rejected"
-          value={rejectedByMe.length}
+        <EquimonStatCard
+          tint="#fef2f2"
+          fg="#dc2626"
           icon={AlertCircle}
-          color="#ef4444"
+          label="Rejected"
+          value={rejectedByMe.length}
           sub={`${rejectionRate}% rejection rate`}
           onClick={() => navigate('/all-approval-history')}
         />
       </div>
 
-      {/* ── Pending Approvals (full width) ── */}
-      <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md">
+      {/* ── Action Panel ── */}
+      <EquimonActionPanel
+        accent="#2563eb"
+        items={pendingApprovals.slice(0, 3).map((r) => ({
+          icon: CheckCircle,
+          color: '#2563eb',
+          title: 'Pending approval',
+          desc: `${r.equipment_name} ×${r.quantity || ''} — ${r.borrower_name || r.student_email || ''}`,
+          onClick: () => navigate('/lecturer-approvals'),
+        }))}
+      />
+
+      {/* ── Pending Approvals Table (full width) ── */}
+      <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm">
         <CardHeader className="px-6 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -316,16 +286,16 @@ export default function LecturerDashboard() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-100">
-                  <TableHead className="pl-6 text-xs font-medium text-slate-500">Equipment</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">Student</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">Qty</TableHead>
-                  <TableHead className="pr-6 text-right text-xs font-medium text-slate-500">Action</TableHead>
+                <TableRow className="border-slate-100 bg-slate-50/70">
+                  <TableHead className="pl-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Equipment</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Student</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Qty</TableHead>
+                  <TableHead className="pr-6 text-right text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pendingApprovals.slice(0, 5).map((request) => (
-                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50">
+                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50/60">
                     <TableCell className="pl-6 text-xs font-semibold text-slate-800">
                       {request.equipment_name}
                     </TableCell>
@@ -349,11 +319,11 @@ export default function LecturerDashboard() {
         </CardContent>
       </Card>
 
-      {/* ── Row 1: Activity chart + Recent Activity ── */}
+      {/* ── Row: Activity chart + Recent Activity ── */}
       <div className="grid gap-4 lg:grid-cols-3">
 
         {/* Approval Activity — Stacked Area Chart */}
-        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-2">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm lg:col-span-2">
           <CardHeader className="px-6 pt-5 pb-2">
             <div className="flex items-start justify-between">
               <div>
@@ -426,7 +396,7 @@ export default function LecturerDashboard() {
         </Card>
 
         {/* Recent Activity — 2×2 grid */}
-        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm">
           <CardHeader className="px-6 pt-5 pb-3">
             <CardTitle className="text-sm font-semibold text-slate-900">Recent Activity</CardTitle>
             <CardDescription className="text-xs text-slate-500">Summary snapshot</CardDescription>

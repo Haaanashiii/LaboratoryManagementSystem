@@ -2,52 +2,24 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '@/api/apiClient';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   CheckCircle, Package, Clock, History,
-  FileText, ArrowUpRight, ArrowRight,
+  FileText, ArrowRight,
   Sun, Sunset, Moon, BarChart2,
 } from 'lucide-react';
 import { useLang } from '@/components/i18n/LangContext';
 import { CATALOG_ROUTES_BY_ROLE } from '@/utils/roleCatalogRoutes';
 import { AssistantDashboardSkeleton } from '@/skeleton-framework/assistant';
+import EquimonStatCard from '@/components/ui/equimon/EquimonStatCard';
+import EquimonGreetingHeader from '@/components/ui/equimon/EquimonGreetingHeader';
+import EquimonActionPanel from '@/components/ui/equimon/EquimonActionPanel';
 
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-function StatCard({ title, value, icon: Icon, color, sub, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="group relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-white p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)]"
-      style={{ borderColor: `${color}55` }}
-    >
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{ background: `radial-gradient(130% 90% at 0% 0%, ${color}11 0%, transparent 65%)` }}
-      />
-      <div className="relative flex items-start justify-between">
-        <div
-          className="flex h-11 w-11 items-center justify-center rounded-xl"
-          style={{ backgroundColor: `${color}14`, boxShadow: `0 0 0 1px ${color}25` }}
-        >
-          <Icon className="h-5 w-5" style={{ color }} />
-        </div>
-        <ArrowUpRight
-          className="h-4 w-4 opacity-25 transition-all duration-300 group-hover:opacity-75 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-          style={{ color }}
-        />
-      </div>
-      <div className="relative">
-        <p className="text-3xl font-bold tracking-tight text-slate-900">{value}</p>
-        <p className="mt-0.5 text-sm font-medium text-slate-500">{title}</p>
-        {sub && <p className="mt-1.5 text-xs text-slate-400">{sub}</p>}
-      </div>
-    </button>
-  );
-}
-
 function EmptyState({ icon: Icon = BarChart2, message, sub }) {
   return (
     <div className="flex h-[180px] flex-col items-center justify-center gap-2 text-slate-400">
@@ -84,89 +56,181 @@ export default function LabAssistantDashboard() {
   const readyForPickup = allRequests.filter(r => r.status === 'ready_pickup');
   const borrowed       = allRequests.filter(r => r.status === 'borrowed');
 
-  // ── greeting ──
-  const getGreetingConfig = () => {
-    const h = new Date().getHours();
-    if (h < 12) return { greeting: t('goodMorning')    || 'Good morning',    Icon: Sun,    color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' };
-    if (h < 18) return { greeting: t('goodAfternoon')  || 'Good afternoon',  Icon: Sunset, color: '#f97316', bg: '#fff7ed', border: '#fed7aa' };
-    return         { greeting: t('goodEvening')       || 'Good evening',     Icon: Moon,   color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
-  };
-  const gc = getGreetingConfig();
+  const CATEGORY_COLORS = ['#f97316', '#3b82f6', '#ef4444', '#8b5cf6', '#22c55e', '#f59e0b', '#06b6d4'];
+
+  const equipmentByCategory = React.useMemo(() => {
+    const map = {};
+    equipment.forEach((item) => {
+      const cat = item.category || 'Other';
+      const qty = Number(item.quantity ?? item.total_quantity ?? 1);
+      map[cat] = (map[cat] || 0) + qty;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [equipment]);
+
+  const totalUnits = equipmentByCategory.reduce((s, c) => s + c.value, 0);
+
+  const availableCount    = equipment.filter(e => e.status === 'available'    || !e.status).length;
+  const maintenanceCount  = equipment.filter(e => e.status === 'maintenance').length;
+  const outCount          = equipment.length - availableCount - maintenanceCount;
 
   if (requestsLoading || equipmentLoading) return <AssistantDashboardSkeleton />;
+
+  // ── greeting ──
+  const h = new Date().getHours();
+  const greetingText = h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+  const greetingIcon = h < 12 ? Sun : h < 18 ? Sunset : Moon;
+
+  // ── action panel items ──
+  const actionItems = [
+    ...readyForPrep.slice(0, 2).map(r => ({
+      icon: Package, color: '#f59e0b',
+      title: 'Prepare equipment',
+      desc: `${r.equipment_name} ×${r.quantity} — ${r.borrower_name || r.student_email}`,
+      onClick: () => navigate('/equipment-prep'),
+    })),
+    ...borrowed.slice(0, 2).map(r => ({
+      icon: History, color: '#7c3aed',
+      title: 'Awaiting return',
+      desc: `${r.equipment_name} — ${r.borrower_name || r.student_email}`,
+      onClick: () => navigate('/returns'),
+    })),
+  ];
 
   // ── render ──
   return (
     <div className="w-full space-y-5 px-2 py-3">
 
-      {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <gc.Icon className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              {gc.greeting},{' '}
-              <span style={{ color: gc.color }}>
-                {user?.full_name?.split(' ')[0] || user?.name?.split(' ')[0] || 'Assistant'}
-              </span>
-            </h1>
-          </div>
-        </div>
-      </div>
+      {/* ── Hero Banner → EquimonGreetingHeader ── */}
+      <EquimonGreetingHeader
+        accent="#0d9488"
+        name={user?.full_name || user?.name || 'Assistant'}
+        greeting={greetingText}
+        icon={greetingIcon}
+      />
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          title={t('readyForPrep') || 'Ready for Prep'}
-          value={readyForPrep.length}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <EquimonStatCard
+          tint="#f0fdfa"
+          fg="#0d9488"
           icon={Package}
-          color="#f59e0b"
-          sub={t('awaitingPreparation') || 'Awaiting preparation'}
+          label="Ready for Prep"
+          value={readyForPrep.length}
+          sub="Awaiting preparation"
           onClick={() => navigate('/equipment-prep')}
         />
-        <StatCard
-          title={t('readyForPickup') || 'Ready for Pickup'}
-          value={readyForPickup.length}
+        <EquimonStatCard
+          tint="#eff6ff"
+          fg="#2563eb"
           icon={CheckCircle}
-          color="#2563eb"
-          sub={t('preparedAndWaiting') || 'Prepared and waiting'}
+          label="Ready for Pickup"
+          value={readyForPickup.length}
+          sub="Prepared and waiting"
           onClick={() => navigate('/equipment-prep')}
         />
-        <StatCard
-          title={t('currentlyBorrowed') || 'Currently Borrowed'}
-          value={borrowed.length}
+        <EquimonStatCard
+          tint="#ecfdf5"
+          fg="#059669"
           icon={Clock}
-          color="#22c55e"
-          sub={t('activeLoans') || 'Active loans out'}
-          onClick={() => navigate('/returns')}
-        />
-        <StatCard
-          title={t('pendingReturns') || 'Pending Returns'}
+          label="Currently Borrowed"
           value={borrowed.length}
-          icon={History}
-          color="#8b5cf6"
-          sub={t('awaitingReturn') || 'Awaiting return'}
+          sub="Active loans out"
           onClick={() => navigate('/returns')}
         />
+        <EquimonStatCard
+          tint="#faf5ff"
+          fg="#7c3aed"
+          icon={History}
+          label="Pending Returns"
+          value={borrowed.length}
+          sub="Awaiting return"
+          onClick={() => navigate('/returns')}
+        />
+      </div>
+
+      {/* ── Action Panel + Equipment Status ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <EquimonActionPanel accent="#0d9488" items={actionItems} />
+
+        {/* Equipment Status Donut */}
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
+          <CardHeader className="px-6 pt-5 pb-3">
+            <CardTitle className="text-[16px] font-extrabold text-slate-900">Equipment Status</CardTitle>
+            <CardDescription className="text-[12px] text-slate-500">Inventory across all categories</CardDescription>
+          </CardHeader>
+          <CardContent className="px-6 pb-5">
+            <div className="flex items-center gap-6">
+              {/* Donut */}
+              <div className="relative shrink-0">
+                <ResponsiveContainer width={160} height={160}>
+                  <PieChart>
+                    <Pie
+                      data={equipmentByCategory.length ? equipmentByCategory : [{ name: 'No data', value: 1 }]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={48}
+                      outerRadius={74}
+                      paddingAngle={2}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {equipmentByCategory.map((_, i) => (
+                        <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(v, n) => [v, n]}
+                      contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #e2e8f0' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[26px] font-extrabold text-slate-900 leading-none">{totalUnits}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mt-1">Total</span>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex-1 min-w-0 space-y-2">
+                {equipmentByCategory.map((cat, i) => (
+                  <div key={cat.name} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
+                      <span className="text-[12px] text-slate-700 truncate">{cat.name}</span>
+                    </div>
+                    <span className="text-[12px] font-bold text-slate-900 tabular-nums">{cat.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Available / Out / Maint footer */}
+            <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-4">
+              {[
+                { label: 'AVAILABLE', value: availableCount,   color: '#22c55e' },
+                { label: 'OUT',       value: outCount,         color: '#0d9488' },
+                { label: 'MAINT',     value: maintenanceCount, color: '#94a3b8' },
+              ].map((s) => (
+                <div key={s.label} className="flex flex-col items-center gap-0.5">
+                  <span className="text-[24px] font-extrabold" style={{ color: s.color }}>{s.value}</span>
+                  <span className="text-[10px] font-bold tracking-widest text-slate-400">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* ── Equipment Prep Queue (full width) ── */}
-      <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md">
+      <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
         <CardHeader className="px-6 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-sm font-semibold text-slate-900">
+              <CardTitle className="text-[16px] font-extrabold text-slate-900">
                 {t('equipmentPrepQueue') || 'Equipment Prep Queue'}
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
+              <CardDescription className="text-[12px] text-slate-500">
                 {t('prepQueueDesc') || 'Items approved by head of lab — prepare for pickup'}
               </CardDescription>
             </div>
@@ -190,16 +254,16 @@ export default function LabAssistantDashboard() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-100">
-                  <TableHead className="pl-6 text-xs font-medium text-slate-500">{t('equipment') || 'Equipment'}</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">{t('student_label') || 'Student'}</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">{t('quantity') || 'Qty'}</TableHead>
-                  <TableHead className="pr-6 text-right text-xs font-medium text-slate-500">{t('action') || 'Action'}</TableHead>
+                <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
+                  <TableHead className="pl-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('equipment') || 'Equipment'}</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('student_label') || 'Student'}</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('quantity') || 'Qty'}</TableHead>
+                  <TableHead className="pr-6 text-right text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('action') || 'Action'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {readyForPrep.slice(0, 5).map((request) => (
-                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50">
+                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50/60">
                     <TableCell className="pl-6 text-xs font-semibold text-slate-800">
                       {request.equipment_name}
                     </TableCell>
@@ -210,7 +274,7 @@ export default function LabAssistantDashboard() {
                     <TableCell className="pr-6 text-right">
                       <button
                         onClick={() => navigate('/equipment-prep')}
-                        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
+                        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
                       >
                         {t('prepare') || 'Prepare'}
                       </button>
@@ -223,16 +287,16 @@ export default function LabAssistantDashboard() {
         </CardContent>
       </Card>
 
-      {/* ── Row: Equipment Chart + Activity Summary ── */}
+      {/* ── Row: Equipment Overview + Activity Summary ── */}
       <div className="grid gap-4 lg:grid-cols-3">
 
         {/* Equipment Overview Table */}
-        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-2">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden lg:col-span-2">
           <CardHeader className="px-6 pt-5 pb-3">
-            <CardTitle className="text-sm font-semibold text-slate-900">
+            <CardTitle className="text-[16px] font-extrabold text-slate-900">
               {t('equipmentOverview') || 'Equipment Overview'}
             </CardTitle>
-            <CardDescription className="text-xs text-slate-500 mt-0.5">
+            <CardDescription className="text-[12px] text-slate-500 mt-0.5">
               {t('equipmentStatusBreakdown') || 'All equipment and their current availability'}
             </CardDescription>
           </CardHeader>
@@ -242,16 +306,16 @@ export default function LabAssistantDashboard() {
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-100">
-                    <TableHead className="pl-6 text-xs font-medium text-slate-500">{t('equipmentName') || 'Name'}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('category') || 'Category'}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('quantity') || 'Qty'}</TableHead>
-                    <TableHead className="pr-6 text-xs font-medium text-slate-500">{t('status') || 'Status'}</TableHead>
+                  <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
+                    <TableHead className="pl-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('equipmentName') || 'Name'}</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('category') || 'Category'}</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('quantity') || 'Qty'}</TableHead>
+                    <TableHead className="pr-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('status') || 'Status'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {[...equipment].sort((a, b) => new Date(b.createdAt ?? b.created_at ?? 0) - new Date(a.createdAt ?? a.created_at ?? 0)).slice(0, 5).map((item) => (
-                    <TableRow key={item._id ?? item.id} className="border-slate-100 hover:bg-slate-50">
+                    <TableRow key={item._id ?? item.id} className="border-slate-100 hover:bg-slate-50/60">
                       <TableCell className="pl-6 text-xs font-semibold text-slate-800">
                         {item.name}
                       </TableCell>
@@ -279,12 +343,12 @@ export default function LabAssistantDashboard() {
         </Card>
 
         {/* Activity Summary */}
-        <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md">
+        <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
           <CardHeader className="px-6 pt-5 pb-3">
-            <CardTitle className="text-sm font-semibold text-slate-900">
+            <CardTitle className="text-[16px] font-extrabold text-slate-900">
               {t('activitySummary') || 'Activity Summary'}
             </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
+            <CardDescription className="text-[12px] text-slate-500">
               {t('currentStatusSnapshot') || 'Current status snapshot'}
             </CardDescription>
           </CardHeader>
@@ -319,14 +383,14 @@ export default function LabAssistantDashboard() {
       </div>
 
       {/* ── Equipment Currently Out ── */}
-      <Card className="rounded-2xl border-slate-200 shadow-sm transition-all duration-200 hover:shadow-md">
+      <Card className="rounded-2xl border border-slate-200/70 bg-white shadow-sm overflow-hidden">
         <CardHeader className="px-6 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-sm font-semibold text-slate-900">
+              <CardTitle className="text-[16px] font-extrabold text-slate-900">
                 {t('equipmentCurrentlyOut') || 'Equipment Currently Out'}
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
+              <CardDescription className="text-[12px] text-slate-500">
                 {t('borrowedItemsDesc') || 'Items currently borrowed — pending return'}
               </CardDescription>
             </div>
@@ -350,16 +414,16 @@ export default function LabAssistantDashboard() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-100">
-                  <TableHead className="pl-6 text-xs font-medium text-slate-500">{t('equipment') || 'Equipment'}</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">{t('student_label') || 'Student'}</TableHead>
-                  <TableHead className="text-xs font-medium text-slate-500">{t('quantity') || 'Qty'}</TableHead>
-                  <TableHead className="pr-6 text-right text-xs font-medium text-slate-500">{t('action') || 'Action'}</TableHead>
+                <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
+                  <TableHead className="pl-6 text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('equipment') || 'Equipment'}</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('student_label') || 'Student'}</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('quantity') || 'Qty'}</TableHead>
+                  <TableHead className="pr-6 text-right text-[11px] font-bold tracking-[1.2px] uppercase text-slate-500">{t('action') || 'Action'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {borrowed.slice(0, 5).map((request) => (
-                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50">
+                  <TableRow key={request.id} className="border-slate-100 hover:bg-slate-50/60">
                     <TableCell className="pl-6 text-xs font-semibold text-slate-800">
                       {request.equipment_name}
                     </TableCell>

@@ -10,342 +10,353 @@ const getPaginationRange = (current, total, delta = 2) => {
   if (total > 1) range.push(total);
   return range;
 };
+
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Search, RefreshCw, Download, ClipboardList,
-  LogIn, ShieldAlert, PackagePlus, PackageCheck, RotateCcw, AlertTriangle, LayoutList,
-  ChevronLeft, ChevronRight,
+  Search, Download, LayoutList, AlertTriangle,
+  CheckCircle2, Shield,
 } from 'lucide-react';
 import { AdminAuditLogsSkeleton } from '@/skeleton-framework/admin';
 import { useLang } from '@/components/i18n/LangContext';
 import { format } from 'date-fns';
+import '@/styles/equimon-admin.css';
 
 const PAGE_SIZE = 15;
 
-const ACTION_CONFIG = [
-  { value: 'all',            labelKey: 'allLogs',       color: 'bg-slate-50 text-slate-700 border-slate-200',      dot: '#64748b', icon: LayoutList },
-  { value: 'login_success',  labelKey: 'loginSuccess',  color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: '#22c55e', icon: LogIn },
-  { value: 'login_failed',   labelKey: 'loginFailed',   color: 'bg-red-50 text-red-700 border-red-200',             dot: '#ef4444', icon: ShieldAlert },
-  { value: 'borrow_created', labelKey: 'borrowCreated', color: 'bg-blue-50 text-blue-700 border-blue-200',          dot: '#3b82f6', icon: PackagePlus },
-  { value: 'borrow_released',labelKey: 'released',      color: 'bg-violet-50 text-violet-700 border-violet-200',    dot: '#8b5cf6', icon: PackageCheck },
-  { value: 'borrow_returned',labelKey: 'returned',      color: 'bg-cyan-50 text-cyan-700 border-cyan-200',          dot: '#06b6d4', icon: RotateCcw },
-  { value: 'damage_verified',labelKey: 'damageVerified',color: 'bg-amber-50 text-amber-700 border-amber-200',       dot: '#f59e0b', icon: AlertTriangle },
-];
+const ACTION_PILL = {
+  login_success:   'p-ok',
+  login_failed:    'p-bad',
+  borrow_created:  'p-info',
+  borrow_released: 'p-gold',
+  borrow_returned: 'p-ok',
+  damage_verified: 'p-warn',
+};
 
-const normalizeIpForDisplay = (value) => {
-  if (!value) return '-';
-  const ip = String(value).trim();
-  if (!ip) return '-';
+const NORMAL_ACTIONS = new Set(['login_success', 'login_failed', 'borrow_created', 'borrow_released', 'borrow_returned']);
+
+const AVATAR_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#f97316', '#ec4899'];
+const getAvatarColor = (str) => {
+  if (!str) return '#94a3b8';
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+};
+
+const getInitials = (name, email) => {
+  if (name) {
+    const p = name.trim().split(/\s+/);
+    return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : name[0].toUpperCase();
+  }
+  return email ? email[0].toUpperCase() : '?';
+};
+
+const normalizeIp = (v) => {
+  if (!v) return '-';
+  const ip = String(v).trim();
   if (ip === '::1') return '127.0.0.1';
   if (ip.startsWith('::ffff:')) return ip.slice(7);
-  return ip;
+  return ip || '-';
 };
+
+// ─── Shared button style for pagination ──────────────────────────────────────
+
+const btnBase = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  minWidth: 28, height: 28, padding: '0 6px', borderRadius: 6,
+  border: '1px solid var(--a-rule)', background: 'var(--a-surface)',
+  fontSize: 12, color: 'var(--a-ink)', cursor: 'pointer',
+};
+const btnActive = { ...btnBase, background: 'var(--a-navy)', color: '#fff', borderColor: 'var(--a-navy)' };
+
+function Pager({ page, total, onPage }) {
+  if (total <= 1) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <button style={btnBase} onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}>Prev</button>
+      {getPaginationRange(page, total).map((item, idx) =>
+        item === '...' ? (
+          <span key={`e-${idx}`} style={{ padding: '0 4px', fontSize: 12, color: 'var(--a-mute)' }}>…</span>
+        ) : (
+          <button key={item} style={page === item ? btnActive : btnBase} onClick={() => onPage(item)}>{item}</button>
+        )
+      )}
+      <button style={btnBase} onClick={() => onPage(Math.min(total, page + 1))} disabled={page === total}>Next</button>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function AdminAuditLogs() {
   const { t } = useLang();
-  const [isExporting, setIsExporting] = useState(false);
-  const [search, setSearch] = useState('');
-  const [activeAction, setActiveAction] = useState('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [isExporting, setIsExporting]       = useState(false);
+  const [searchInput, setSearchInput]       = useState('');
+  const [startDateInput, setStartDateInput] = useState('');
+  const [endDateInput, setEndDateInput]     = useState('');
+  const [appliedSearch, setAppliedSearch]   = useState('');
+  const [appliedStart, setAppliedStart]     = useState('');
+  const [appliedEnd, setAppliedEnd]         = useState('');
+  const [activeFilter, setActiveFilter]     = useState('all');
+  const [currentPage, setCurrentPage]       = useState(1);
 
   const queryFilters = useMemo(() => {
-    const next = {};
-    if (search.trim()) next.user = search.trim();
-    if (startDate) next.start_date = startDate;
-    if (endDate) next.end_date = endDate;
-    next.limit = 1000;
-    return next;
-  }, [search, startDate, endDate]);
+    const f = { limit: 1000 };
+    if (appliedSearch.trim()) f.user = appliedSearch.trim();
+    if (appliedStart) f.start_date = appliedStart;
+    if (appliedEnd)   f.end_date   = appliedEnd;
+    return f;
+  }, [appliedSearch, appliedStart, appliedEnd]);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['adminAuditLogs', queryFilters],
     queryFn: () => api.entities.AuditLogs.list(queryFilters),
   });
 
   const allLogs = data?.data || [];
 
-  const logsByAction = useMemo(() =>
-    ACTION_CONFIG.reduce((acc, cfg) => {
-      acc[cfg.value] = cfg.value === 'all'
-        ? allLogs
-        : allLogs.filter((l) => l.action_type === cfg.value);
-      return acc;
-    }, {}),
-  [allLogs]);
+  const counts = useMemo(() => ({
+    all:           allLogs.length,
+    login_success: allLogs.filter(l => l.action_type === 'login_success').length,
+    login_failed:  allLogs.filter(l => l.action_type === 'login_failed').length,
+    sensitive:     allLogs.filter(l => !NORMAL_ACTIONS.has(l.action_type)).length,
+  }), [allLogs]);
 
-  const displayedLogs = logsByAction[activeAction] || allLogs;
-  const totalPages = Math.max(1, Math.ceil(displayedLogs.length / PAGE_SIZE));
+  const displayedLogs = useMemo(() => {
+    if (activeFilter === 'login_success') return allLogs.filter(l => l.action_type === 'login_success');
+    if (activeFilter === 'login_failed')  return allLogs.filter(l => l.action_type === 'login_failed');
+    if (activeFilter === 'sensitive')     return allLogs.filter(l => !NORMAL_ACTIONS.has(l.action_type));
+    return allLogs;
+  }, [allLogs, activeFilter]);
+
+  const totalPages    = Math.max(1, Math.ceil(displayedLogs.length / PAGE_SIZE));
   const paginatedLogs = displayedLogs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const activeConfig = ACTION_CONFIG.find((c) => c.value === activeAction) || ACTION_CONFIG[0];
+  const handleApplyFilter = () => {
+    setAppliedSearch(searchInput);
+    setAppliedStart(startDateInput);
+    setAppliedEnd(endDateInput);
+    setCurrentPage(1);
+  };
 
-  const handleActionChange = (value) => {
-    setActiveAction(value);
+  const handleStatClick = (key) => {
+    setActiveFilter(key);
     setCurrentPage(1);
   };
 
   const handleExportPdf = async () => {
     try {
       setIsExporting(true);
-      const exportFilters = { ...queryFilters, limit: 5000 };
-      const blob = await api.entities.AuditLogs.exportPdf(exportFilters);
+      const blob = await api.entities.AuditLogs.exportPdf({ ...queryFilters, limit: 5000 });
       const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = 'audit_logs.pdf';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
+      const a = document.createElement('a');
+      a.href = url; a.download = 'audit_logs.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      alert(error.message || t('failedExportAuditPdf'));
+    } catch (err) {
+      alert(err.message || t('failedExportAuditPdf'));
     } finally {
       setIsExporting(false);
     }
   };
 
-  const h = new Date().getHours();
-  const gc =
-    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
-    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
-             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
-
   if (isLoading) return <AdminAuditLogsSkeleton />;
 
+  const KPI_TABS = [
+    { key: 'all',           label: 'All Logs',         count: counts.all,           Icon: LayoutList   },
+    { key: 'login_success', label: 'Login Success',     count: counts.login_success, Icon: CheckCircle2 },
+    { key: 'login_failed',  label: 'Login Failed',      count: counts.login_failed,  Icon: AlertTriangle },
+    { key: 'sensitive',     label: 'Sensitive Actions', count: counts.sensitive,     Icon: Shield       },
+  ];
+
   return (
-    <div className="w-full space-y-4 px-2 py-2">
+    <div className="eq-admin" style={{ paddingBottom: 40 }}>
 
-      {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <ClipboardList className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('Audit Logs')}</h1>
-          </div>
+      {/* ── Title Strip ── */}
+      <div className="a-titlestrip">
+        <div style={{ flex: 1 }}>
+          <div className="a-eyebrow">Security &amp; Compliance · Audit</div>
+          <h1>System Audit Trail</h1>
+          <p className="a-deck">Review and export comprehensive activity logs for security and compliance.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => refetch()}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            {t('Refresh Logs')}
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 bg-emerald-600 text-xs hover:bg-emerald-700 disabled:opacity-70"
-            onClick={handleExportPdf}
-            disabled={isExporting}
-          >
-            <Download className="h-3.5 w-3.5" />
-            {isExporting ? t('Exporting') : t('Export PDF')}
-          </Button>
+        <div className="a-right">
+          <button className="a-btn gold" onClick={handleExportPdf} disabled={isExporting}>
+            <Download style={{ width: 14, height: 14 }} />
+            {isExporting ? 'Exporting…' : 'Export PDF'}
+          </button>
         </div>
       </div>
 
-      {/* ── Action type stat cards ── */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        {ACTION_CONFIG.map((cfg) => {
-          const count = logsByAction[cfg.value]?.length || 0;
-          const isActive = activeAction === cfg.value;
-          const CfgIcon = cfg.icon;
-          return (
+      <div style={{ padding: '0 24px' }}>
+
+        {/* ── KPI Tab Strip ── */}
+        <div className="a-tabs" style={{ marginTop: 20, gridTemplateColumns: `repeat(${KPI_TABS.length}, 1fr)` }}>
+          {KPI_TABS.map(({ key, label, count, Icon }) => (
             <button
-              key={cfg.value}
+              key={key}
               type="button"
-              onClick={() => handleActionChange(cfg.value)}
-              className={`flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all ${
-                isActive
-                  ? `${cfg.color} shadow-sm`
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-              }`}
+              className={`a-tab${activeFilter === key ? ' active' : ''}`}
+              onClick={() => handleStatClick(key)}
+              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4, padding: '12px 20px', minWidth: 130 }}
             >
-              <div className={`rounded-lg p-1.5 ${isActive ? 'bg-white/60' : 'bg-slate-100'}`}>
-                <CfgIcon className="h-4 w-4" style={isActive ? { color: cfg.dot } : { color: '#64748b' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon style={{ width: 13, height: 13 }} />
+                <span style={{ fontSize: 11, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs text-slate-500">{t(cfg.labelKey)}</p>
-                <p className="text-lg font-semibold leading-tight text-slate-900">{count}</p>
-              </div>
+              <span style={{ fontSize: 24, fontFamily: 'var(--serif)', fontWeight: 700, lineHeight: 1, marginTop: 2 }}>
+                {count.toLocaleString()}
+              </span>
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* ── Search + Table Card ── */}
-      <Card className="overflow-hidden border-slate-200 shadow-none">
-        {/* Toolbar */}
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            {activeAction !== 'all' && (
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeConfig.dot }} />
-            )}
-            <p className="text-sm font-medium text-slate-800">{t(activeConfig.labelKey)}</p>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {displayedLogs.length}
-            </span>
-            {activeAction !== 'all' && (
-              <button
-                onClick={() => handleActionChange('all')}
-                className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
-              >
-                {t('clear')}
-              </button>
-            )}
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:w-56">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder={t('filterByUserEmailOrId')}
-                value={search}
-                onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
-                className="h-8 pl-8 text-xs"
-              />
+        {/* ── Filter Panel ── */}
+        <div className="a-panel" style={{ marginTop: 16 }}>
+          <div className="a-filters" style={{ padding: '14px 18px' }}>
+            <div className="a-field" style={{ flex: '1 1 220px' }}>
+              <label>Search User</label>
+              <div className="a-search">
+                <Search style={{ width: 14, height: 14 }} />
+                <input
+                  placeholder="Email or user ID…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyFilter()}
+                />
+              </div>
             </div>
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => { setCurrentPage(1); setStartDate(e.target.value); }}
-              className="h-8 w-full text-xs sm:w-36"
-            />
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => { setCurrentPage(1); setEndDate(e.target.value); }}
-              className="h-8 w-full text-xs sm:w-36"
-            />
+            <div className="a-field">
+              <label>From</label>
+              <input type="date" value={startDateInput} onChange={(e) => setStartDateInput(e.target.value)} />
+            </div>
+            <div className="a-field">
+              <label>To</label>
+              <input type="date" value={endDateInput} onChange={(e) => setEndDateInput(e.target.value)} />
+            </div>
+            <div className="a-field" style={{ justifyContent: 'flex-end' }}>
+              <button className="a-btn primary" onClick={handleApplyFilter}>
+                Apply Filter
+              </button>
+            </div>
           </div>
         </div>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="text-xs font-medium text-slate-500">{t('timestamp')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('user')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('action')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('entity')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('ipAddress')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('details')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedLogs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-14 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                            <ClipboardList className="h-4 w-4 text-slate-400" />
-                          </div>
-                          <p className="text-sm text-slate-500">{t('noLogsFoundForFilters')}</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedLogs.map((log) => {
-                      const actionCfg = ACTION_CONFIG.find((c) => c.value === log.action_type);
-                      return (
-                        <TableRow key={log._id} className="border-slate-50 hover:bg-slate-50/50 align-top">
-                          <TableCell className="whitespace-nowrap text-xs">
-                            {new Date(log.createdAt).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500">
-                            {log.user?.email || log.user_email || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
-                              actionCfg ? actionCfg.color : 'bg-slate-50 text-slate-600 border-slate-200'
-                            }`}>
-                              {actionCfg && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: actionCfg.dot }} />}
-                              {log.action_type}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
-                              log.status === 'success'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-red-50 text-red-700 border-red-200'
-                            }`}>
-                              {log.status}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500">{log.entity_type || '-'}</TableCell>
-                          <TableCell className="whitespace-nowrap text-xs text-slate-500">{normalizeIpForDisplay(log.ip_address)}</TableCell>
-                          <TableCell className="max-w-xs truncate text-xs text-slate-500">
-                            {log.details ? JSON.stringify(log.details) : '-'}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-                  <p className="text-xs text-slate-500">
-                    {t('showing')} {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, displayedLogs.length)} {t('ofLabel')} {displayedLogs.length} {t('logsLabel')}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </Button>
-                    {getPaginationRange(currentPage, totalPages).map((item, idx) =>
-                      item === '...' ? (
-                        <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400">…</span>
-                      ) : (
-                        <Button
-                          key={item}
-                          variant={currentPage === item ? 'default' : 'outline'}
-                          size="icon"
-                          className={`h-7 w-7 text-xs ${currentPage === item ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
-                          onClick={() => setCurrentPage(item)}
-                        >
-                          {item}
-                        </Button>
-                      )
-                    )}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+        {/* ── Table ── */}
+        <div className="a-panel" style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--a-rule)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>Log Entries</span>
+              <span className="a-pill p-mute">{displayedLogs.length.toLocaleString()}</span>
             </div>
-        </CardContent>
-      </Card>
+            <span style={{ fontSize: 11, color: 'var(--a-mute)', fontFamily: 'var(--mono)' }}>
+              Showing {PAGE_SIZE} per page
+            </span>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="a-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Status</th>
+                  <th>Entity</th>
+                  <th>IP Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: 56, color: 'var(--a-mute)', fontSize: 13 }}>
+                      {t('noLogsFoundForFilters')}
+                    </td>
+                  </tr>
+                ) : paginatedLogs.map((log) => {
+                  const name       = log.user?.name  || log.user_name  || '';
+                  const email      = log.user?.email || log.user_email || '';
+                  const initials   = getInitials(name, email);
+                  const avatarColor = getAvatarColor(email || name);
+                  const pillClass  = ACTION_PILL[log.action_type] || 'p-mute';
+                  const isSuccess  = log.status === 'success';
+                  const d          = new Date(log.createdAt);
+
+                  return (
+                    <tr key={log._id}>
+                      {/* Timestamp */}
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)', fontFamily: 'var(--mono)' }}>
+                          {format(d, 'MMM d, yyyy')}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--a-mute)', fontFamily: 'var(--mono)' }}>
+                          {format(d, 'HH:mm:ss')}
+                        </div>
+                      </td>
+
+                      {/* User */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                            background: avatarColor, display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff',
+                          }}>
+                            {initials}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>
+                              {name || 'Unknown'}
+                            </div>
+                            {email && (
+                              <div style={{ fontSize: 11, color: 'var(--a-mute)', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{email}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Action */}
+                      <td>
+                        <span className={`a-pill ${pillClass}`} style={{ whiteSpace: 'nowrap' }}>
+                          {log.action_type}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: isSuccess ? 'var(--a-ok)' : 'var(--a-warn)' }}>
+                          {isSuccess
+                            ? <CheckCircle2 style={{ width: 13, height: 13, flexShrink: 0 }} />
+                            : <AlertTriangle style={{ width: 13, height: 13, flexShrink: 0 }} />
+                          }
+                          {isSuccess ? 'Success' : (log.status || 'Failed')}
+                        </div>
+                      </td>
+
+                      {/* Entity */}
+                      <td style={{ fontSize: 12, color: 'var(--a-ink-2)' }}>{log.entity_type || '-'}</td>
+
+                      {/* IP */}
+                      <td style={{ fontSize: 12, color: 'var(--a-mute)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>
+                        {normalizeIp(log.ip_address)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {displayedLogs.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: '1px solid var(--a-rule)' }}>
+              <span style={{ fontSize: 12, color: 'var(--a-mute)' }}>
+                Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, displayedLogs.length)}–{Math.min(currentPage * PAGE_SIZE, displayedLogs.length)} of {displayedLogs.length.toLocaleString()} entries
+              </span>
+              <Pager page={currentPage} total={totalPages} onPage={setCurrentPage} />
+            </div>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 }

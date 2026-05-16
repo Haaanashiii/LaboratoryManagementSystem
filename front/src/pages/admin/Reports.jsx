@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 const getPaginationRange = (current, total, delta = 2) => {
   const left = Math.max(2, current - delta);
@@ -10,29 +10,28 @@ const getPaginationRange = (current, total, delta = 2) => {
   if (total > 1) range.push(total);
   return range;
 };
+
 import { useQuery } from '@tanstack/react-query';
 import { ReportsSkeleton } from '@/skeleton-framework/admin';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import {
-  FileSpreadsheet, FileText, BarChart3, RefreshCw,
-  ChevronLeft, ChevronRight, Search, Users, Package,
-  ChevronDown, ChevronUp, CalendarDays, Layers, ClipboardList,
-  PackagePlus,
+  FileSpreadsheet, FileText, RefreshCw,
+  ChevronLeft, ChevronRight, Search,
+  ChevronDown, ChevronUp, CalendarDays,
+  ClipboardList, PackagePlus, Users,
 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { format, startOfWeek, endOfWeek, parseISO } from 'date-fns';
+import { format, endOfWeek, parseISO } from 'date-fns';
 import { api } from '@/api/apiClient';
 import { useLang } from '@/components/i18n/LangContext';
 import { useAuth } from '@/components/hooks/useAuth.js';
-import itsLogoUrl from '@/assets/images/logo-its-l-min.jpg';
+import {
+  printFullReleaseReport,
+  printWeeklySummaryReport,
+  printInventoryChangesReport,
+  printBorrowRequestsReport,
+} from '@/utils/printEquimonReport';
+import '@/styles/equimon-admin.css';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const REPORT_TYPE_KEYS = [
   { labelKey: 'weekly',  value: 'weekly'  },
@@ -80,119 +79,98 @@ const triggerDownload = (blob, filename) => {
 const dateTag = () => new Date().toISOString().slice(0, 10);
 
 const STATUS_COLORS = {
-  pending:          { bg: '#fef9c3', color: '#854d0e', labelKey: 'pending' },
-  pending_lecturer: { bg: '#fef9c3', color: '#854d0e', labelKey: 'pendingLecturer' },
-  pending_head:     { bg: '#fef9c3', color: '#854d0e', labelKey: 'pendingHeadApproval' },
-  head_approved:    { bg: '#dcfce7', color: '#166534', labelKey: 'headapproved' },
-  approved:         { bg: '#dcfce7', color: '#166534', labelKey: 'approved' },
-  ready_pickup:     { bg: '#dbeafe', color: '#1e40af', labelKey: 'readyPickup' },
-  borrowed:         { bg: '#ede9fe', color: '#5b21b6', labelKey: 'borrowed' },
-  returned:         { bg: '#f0fdf4', color: '#15803d', labelKey: 'returned' },
-  rejected:         { bg: '#fee2e2', color: '#991b1b', labelKey: 'rejected' },
+  pending:          { labelKey: 'pending' },
+  pending_lecturer: { labelKey: 'pendingLecturer' },
+  pending_head:     { labelKey: 'pendingHeadApproval' },
+  head_approved:    { labelKey: 'headapproved' },
+  approved:         { labelKey: 'approved' },
+  ready_pickup:     { labelKey: 'readyPickup' },
+  borrowed:         { labelKey: 'borrowed' },
+  returned:         { labelKey: 'returned' },
+  rejected:         { labelKey: 'rejected' },
 };
-
-function StatusBadge({ status }) {
-  const { t } = useLang();
-  const s = STATUS_COLORS[status] || { bg: '#f1f5f9', color: '#475569' };
-  return (
-    <span
-      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-      style={{ background: s.bg, color: s.color }}
-    >
-      {s.labelKey ? t(s.labelKey) : (status?.replace(/_/g, ' ') || status)}
-    </span>
-  );
-}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, accent }) {
+function statusPillClass(status) {
+  switch (status) {
+    case 'returned':
+    case 'approved':     return 'p-ok';
+    case 'pending':
+    case 'pending_lecturer':
+    case 'pending_head': return 'p-warn';
+    case 'rejected':     return 'p-bad';
+    case 'borrowed':
+    case 'ready_pickup': return 'p-info';
+    case 'head_approved':return 'p-gold';
+    default:             return 'p-mute';
+  }
+}
+
+function StatusBadge({ status }) {
+  const { t } = useLang();
   return (
-    <div
-      className="flex items-center gap-3 rounded-xl border p-3"
-      style={{ borderColor: accent + '33', backgroundColor: accent + '0d' }}
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: accent + '1a' }}>
-        <Icon className="h-4 w-4" style={{ color: accent }} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="text-xl font-bold leading-tight tabular-nums text-slate-900">{value}</p>
-      </div>
-    </div>
+    <span className={`a-pill ${statusPillClass(status)}`}>
+      {STATUS_COLORS[status]?.labelKey ? t(STATUS_COLORS[status].labelKey) : (status?.replace(/_/g, ' ') || status)}
+    </span>
   );
 }
 
 function LecturerGroupRow({ group, isExpanded, onToggle, t }) {
   return (
     <>
-      <TableRow
-        className="cursor-pointer border-slate-100 bg-slate-50/80 hover:bg-slate-100/60"
-        onClick={onToggle}
-      >
-        <TableCell colSpan={2} className="py-2.5 pl-4">
-          <div className="flex items-center gap-2">
+      <tr onClick={onToggle} style={{ cursor: 'pointer', background: 'rgba(15,42,74,0.04)' }}>
+        <td colSpan={2} style={{ padding: '10px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isExpanded
-              ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
-              : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
-            <span className="text-sm font-semibold text-slate-800">{group.lecturerName}</span>
+              ? <ChevronUp style={{ width: 14, height: 14, color: 'var(--a-mute)', flexShrink: 0 }} />
+              : <ChevronDown style={{ width: 14, height: 14, color: 'var(--a-mute)', flexShrink: 0 }} />}
+            <span style={{ fontFamily: 'var(--serif)', fontWeight: 600, color: 'var(--a-navy)' }}>{group.lecturerName}</span>
             {group.lecturerEmail && (
-              <span className="hidden text-xs text-slate-400 sm:inline">({group.lecturerEmail})</span>
+              <span style={{ fontSize: 11, color: 'var(--a-mute)' }}>({group.lecturerEmail})</span>
             )}
           </div>
-        </TableCell>
-        <TableCell className="text-xs text-slate-500">{group.lecturerEmail || '—'}</TableCell>
-        <TableCell />
-        <TableCell className="text-center text-sm font-semibold text-blue-700">
-          {group.totalReleased}
-        </TableCell>
-        <TableCell className="text-center text-sm font-semibold text-emerald-700">
-          {group.totalQuantity}
-        </TableCell>
-        <TableCell />
-        <TableCell />
-      </TableRow>
+        </td>
+        <td style={{ fontSize: 12, color: 'var(--a-ink-2)' }}>{group.lecturerEmail || '—'}</td>
+        <td />
+        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--a-navy)' }}>{group.totalReleased}</td>
+        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--a-ok)' }}>{group.totalQuantity}</td>
+        <td />
+        <td />
+      </tr>
       {isExpanded && group.releases.map((rec, idx) => (
-        <TableRow key={idx} className="border-slate-50 bg-white hover:bg-slate-50/50">
-          <TableCell className="pl-10 text-xs text-slate-400">#{idx + 1}</TableCell>
-          <TableCell className="text-sm font-medium text-slate-900">
-            {rec.studentName}
-            {rec.studentId && <span className="ml-1.5 text-xs text-slate-400">({rec.studentId})</span>}
-          </TableCell>
-          <TableCell className="text-xs text-slate-500">{rec.studentEmail || '—'}</TableCell>
-          <TableCell className="text-sm text-slate-800">{rec.equipmentName}</TableCell>
-          <TableCell className="text-center text-sm text-slate-700">{rec.quantity}</TableCell>
-          <TableCell />
-          <TableCell className="whitespace-nowrap text-xs text-slate-500">{formatDateTime(rec.releasedAt)}</TableCell>
-          <TableCell>
-            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusBadge(rec.status)}`}>
-              {STATUS_COLORS[rec.status] ? t(STATUS_COLORS[rec.status].labelKey) : (rec.status?.replace(/_/g, ' ') || '—')}
+        <tr key={idx}>
+          <td style={{ paddingLeft: 40, color: 'var(--a-mute)', fontSize: 12 }}>#{idx + 1}</td>
+          <td>
+            <span style={{ fontWeight: 500, color: 'var(--a-ink)' }}>{rec.studentName}</span>
+            {rec.studentId && (
+              <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--a-mute)' }}>({rec.studentId})</span>
+            )}
+          </td>
+          <td style={{ fontSize: 12, color: 'var(--a-ink-2)' }}>{rec.studentEmail || '—'}</td>
+          <td style={{ color: 'var(--a-ink)' }}>{rec.equipmentName}</td>
+          <td style={{ textAlign: 'center' }}>{rec.quantity}</td>
+          <td />
+          <td style={{ whiteSpace: 'nowrap', fontSize: 12, color: 'var(--a-ink-2)' }}>{formatDateTime(rec.releasedAt)}</td>
+          <td>
+            <span className={`a-pill ${statusPillClass(rec.status)}`}>
+              {STATUS_COLORS[rec.status]?.labelKey ? t(STATUS_COLORS[rec.status].labelKey) : (rec.status?.replace(/_/g, ' ') || '—')}
             </span>
-          </TableCell>
-        </TableRow>
+          </td>
+        </tr>
       ))}
     </>
   );
 }
 
-function statusBadge(status) {
-  switch (status) {
-    case 'borrowed':     return 'border-blue-200 bg-blue-50 text-blue-700';
-    case 'returned':     return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    case 'ready_pickup': return 'border-amber-200 bg-amber-50 text-amber-700';
-    case 'head_approved':return 'border-indigo-200 bg-indigo-50 text-indigo-700';
-    default:             return 'border-slate-200 bg-slate-50 text-slate-600';
-  }
-}
-
-function inventoryActionBadge(action) {
+function inventoryActionPill(action) {
   switch (action) {
-    case 'added':            return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    case 'deleted':          return 'border-red-200 bg-red-50 text-red-700';
-    case 'quantity_changed': return 'border-amber-200 bg-amber-50 text-amber-700';
-    case 'published':        return 'border-blue-200 bg-blue-50 text-blue-700';
-    case 'unpublished':      return 'border-slate-200 bg-slate-100 text-slate-600';
-    default:                 return 'border-slate-200 bg-slate-50 text-slate-600';
+    case 'added':            return 'p-ok';
+    case 'deleted':          return 'p-bad';
+    case 'quantity_changed': return 'p-warn';
+    case 'published':        return 'p-info';
+    case 'unpublished':      return 'p-mute';
+    default:                 return 'p-mute';
   }
 }
 
@@ -216,7 +194,7 @@ function inventoryDetails(record) {
   return '—';
 }
 
-// ─── Export helpers ───────────────────────────────────────────────────────────
+// ─── CSV helpers ──────────────────────────────────────────────────────────────
 
 function exportCsvAll(records, startDate, endDate) {
   const headers = [
@@ -233,10 +211,7 @@ function exportCsvAll(records, startDate, endDate) {
     formatDateTime(r.releasedAt), r.status,
   ]);
   const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
-  triggerDownload(
-    new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
-    `lecturer-releases-${dateTag()}.csv`
-  );
+  triggerDownload(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `lecturer-releases-${dateTag()}.csv`);
 }
 
 function exportCsvWeekly(weeklySummary) {
@@ -249,229 +224,79 @@ function exportCsvWeekly(weeklySummary) {
     } else {
       lecturers.forEach((l, i) => {
         rows.push([
-          i === 0 ? wk.weekStart      : '',
-          i === 0 ? wk.totalReleased  : '',
-          i === 0 ? wk.totalQuantity  : '',
+          i === 0 ? wk.weekStart     : '',
+          i === 0 ? wk.totalReleased : '',
+          i === 0 ? wk.totalQuantity : '',
           l.lecturerName, l.totalReleased, l.totalQuantity,
         ]);
       });
     }
   });
   const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
-  triggerDownload(
-    new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
-    `weekly-lecturer-summary-${dateTag()}.csv`
-  );
-}
-
-// ─── PDF shared helpers ───────────────────────────────────────────────────────
-
-function addDocHeader(doc, logoDataUrl, title, metaLines = []) {
-  const pageW = doc.internal.pageSize.getWidth();
-
-  if (logoDataUrl) {
-    try { doc.addImage(logoDataUrl, 'JPEG', 14, 8, 20, 20); } catch (_) {}
-  }
-
-  const textX = logoDataUrl ? 38 : 14;
-
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('INSTITUT TEKNOLOGI SEPULUH NOPEMBER', textX, 14);
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text('Laboratory Management System', textX, 19.5);
-
-  doc.setFontSize(7.5);
-  doc.text('Jl. Arief Rahman Hakim No.100, Sukolilo, Surabaya 60111', textX, 24);
-
-  // Double rule
-  doc.setLineWidth(0.8);
-  doc.setDrawColor(15, 23, 42);
-  doc.line(14, 31, pageW - 14, 31);
-  doc.setLineWidth(0.3);
-  doc.line(14, 32.5, pageW - 14, 32.5);
-
-  // Title band
-  doc.setFillColor(239, 246, 255);
-  doc.roundedRect(14, 34.5, pageW - 28, 10, 2, 2, 'F');
-  doc.setDrawColor(191, 219, 254);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(14, 34.5, pageW - 28, 10, 2, 2, 'S');
-
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(37, 99, 235);
-  doc.text(title, pageW / 2, 41, { align: 'center' });
-
-  let y = 49;
-  if (metaLines.length > 0) {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    metaLines.forEach((line) => {
-      doc.text(line, 14, y);
-      y += 5;
-    });
-  }
-
-  return y + 2;
-}
-
-function addDocFooter(doc, printedBy) {
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-
-  doc.setLineWidth(0.3);
-  doc.setDrawColor(203, 213, 225);
-  doc.line(14, pageH - 16, pageW - 14, pageH - 16);
-
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-
-  if (printedBy) {
-    const roleLabel = (printedBy.role || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-    doc.text(
-      `Printed by: ${printedBy.name || '—'} (${roleLabel}) — ${printedBy.email || '—'}`,
-      14, pageH - 11
-    );
-  }
-
-  doc.text(
-    `Printed on: ${new Date().toLocaleString()}`,
-    pageW - 14, pageH - 11,
-    { align: 'right' }
-  );
-
-  doc.text(
-    'This document is system-generated — Institut Teknologi Sepuluh Nopember. Unauthorized alteration is prohibited.',
-    pageW / 2, pageH - 6,
-    { align: 'center' }
-  );
-}
-
-function exportPdfAll(records, summary, startDate, endDate, logoDataUrl, printedBy) {
-  const doc = new jsPDF({ orientation: 'landscape' });
-  const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
-
-  const startY = addDocHeader(doc, logoDataUrl, 'EQUIPMENT RELEASE REPORT – BY LECTURER', [
-    `Date Range: ${range}`,
-    `Total Releases: ${summary.totalReleases}   Total Quantity: ${summary.totalQuantity}   Lecturers: ${summary.totalLecturers}`,
-  ]);
-
-  autoTable(doc, {
-    startY,
-    head: [['Lecturer', 'Student', 'Student ID', 'Equipment', 'Qty', 'Released At', 'Status']],
-    body: records.map((r) => [
-      r.lecturerName,
-      r.studentName,
-      r.studentId || '—',
-      r.equipmentName,
-      r.quantity,
-      formatDateTime(r.releasedAt),
-      r.status?.replace(/_/g, ' ') || '—',
-    ]),
-    styles:     { fontSize: 8 },
-    headStyles: { fillColor: [37, 99, 235] },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
-
-  addDocFooter(doc, printedBy);
-  doc.save(`lecturer-releases-${dateTag()}.pdf`);
-}
-
-function exportPdfWeekly(weeklySummary, summary, startDate, endDate, logoDataUrl, printedBy) {
-  const doc = new jsPDF({ orientation: 'portrait' });
-  const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
-
-  const startY = addDocHeader(doc, logoDataUrl, 'WEEKLY EQUIPMENT RELEASE SUMMARY – BY LECTURER', [
-    `Date Range: ${range}`,
-  ]);
-
-  const body = [];
-  weeklySummary.forEach((wk) => {
-    const lecturers = Object.values(wk.byLecturer);
-    if (lecturers.length === 0) {
-      body.push([wk.weekStart, '—', wk.totalReleased, wk.totalQuantity]);
-    } else {
-      lecturers.forEach((l, i) => {
-        body.push([
-          i === 0 ? wk.weekStart : '',
-          l.lecturerName,
-          l.totalReleased,
-          l.totalQuantity,
-        ]);
-      });
-      body.push(['', 'Week Total', wk.totalReleased, wk.totalQuantity]);
-    }
-  });
-
-  autoTable(doc, {
-    startY,
-    head:   [['Week Start', 'Lecturer', 'Releases', 'Total Qty']],
-    body,
-    styles:     { fontSize: 9 },
-    headStyles: { fillColor: [5, 150, 105] },
-    didParseCell: (data) => {
-      if (data.row.raw[1] === 'Week Total') {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [241, 245, 249];
-      }
-    },
-  });
-
-  addDocFooter(doc, printedBy);
-  doc.save(`weekly-lecturer-summary-${dateTag()}.pdf`);
+  triggerDownload(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `weekly-lecturer-summary-${dateTag()}.csv`);
 }
 
 function exportCsvInventory(records) {
   const headers = ['Date & Time', 'Equipment', 'Category', 'Action', 'Details', 'Done By'];
   const rows = records.map((r) => [
-    formatDateTime(r.createdAt),
-    r.equipmentName,
-    r.category,
-    inventoryActionLabel(r.action),
-    inventoryDetails(r),
-    r.performedByName,
+    formatDateTime(r.createdAt), r.equipmentName, r.category,
+    inventoryActionLabel(r.action), inventoryDetails(r), r.performedByName,
   ]);
   const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
-  triggerDownload(
-    new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
-    `inventory-changes-${dateTag()}.csv`
+  triggerDownload(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `inventory-changes-${dateTag()}.csv`);
+}
+
+// ─── Pager ────────────────────────────────────────────────────────────────────
+
+const btnBase = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  minWidth: 28, height: 28, padding: '0 6px', borderRadius: 6,
+  border: '1px solid var(--a-rule)', background: 'var(--a-surface)',
+  fontSize: 12, color: 'var(--a-ink)', cursor: 'pointer',
+};
+const btnActive = { ...btnBase, background: 'var(--a-navy)', color: '#fff', borderColor: 'var(--a-navy)' };
+
+function Pager({ page, total, onPage }) {
+  if (total <= 1) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <button style={btnBase} onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}>
+        <ChevronLeft style={{ width: 13, height: 13 }} />
+      </button>
+      {getPaginationRange(page, total).map((item, idx) =>
+        item === '...' ? (
+          <span key={`e-${idx}`} style={{ padding: '0 4px', fontSize: 12, color: 'var(--a-mute)' }}>…</span>
+        ) : (
+          <button key={item} style={page === item ? btnActive : btnBase} onClick={() => onPage(item)}>
+            {item}
+          </button>
+        )
+      )}
+      <button style={btnBase} onClick={() => onPage(Math.min(total, page + 1))} disabled={page === total}>
+        <ChevronRight style={{ width: 13, height: 13 }} />
+      </button>
+    </div>
   );
 }
 
-function exportPdfInventory(records, summary, startDate, endDate, logoDataUrl, printedBy) {
-  const doc = new jsPDF({ orientation: 'landscape' });
-  const range = `${startDate || 'Default Start'} – ${endDate || 'Today'}`;
+// ─── Filter chip button ───────────────────────────────────────────────────────
 
-  const startY = addDocHeader(doc, logoDataUrl, 'EQUIPMENT INVENTORY CHANGES REPORT', [
-    `Date Range: ${range}`,
-    `Added: ${summary.totalAdded}   Deleted: ${summary.totalDeleted}   Qty Changes: ${summary.totalQuantityChanges}`,
-  ]);
-
-  autoTable(doc, {
-    startY,
-    head: [['Date & Time', 'Equipment', 'Category', 'Action', 'Details', 'Done By']],
-    body: records.map((r) => [
-      formatDateTime(r.createdAt),
-      r.equipmentName,
-      r.category,
-      inventoryActionLabel(r.action),
-      inventoryDetails(r),
-      r.performedByName,
-    ]),
-    styles:     { fontSize: 8 },
-    headStyles: { fillColor: [245, 158, 11] },
-    alternateRowStyles: { fillColor: [255, 251, 235] },
-  });
-
-  addDocFooter(doc, printedBy);
-  doc.save(`inventory-changes-${dateTag()}.pdf`);
+function Chip({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+        fontFamily: 'var(--mono)', cursor: 'pointer', transition: 'all .15s',
+        border: `1px solid ${active ? 'var(--a-gold)' : 'var(--a-rule)'}`,
+        background: active ? 'rgba(200,162,70,0.12)' : 'transparent',
+        color: active ? 'var(--a-gold)' : 'var(--a-mute)',
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -479,36 +304,20 @@ function exportPdfInventory(records, summary, startDate, endDate, logoDataUrl, p
 export default function Reports() {
   const { t } = useLang();
   const { user } = useAuth();
-  const logoRef = useRef(null);
 
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-      logoRef.current = canvas.toDataURL('image/jpeg');
-    };
-    img.src = itsLogoUrl;
-  }, []);
-  const [activeTab, setActiveTab]       = useState('lecturer'); // 'lecturer' | 'weekly' | 'borrow'
-  const [type, setType]                 = useState('monthly');
-  const [startDate, setStartDate]       = useState('');
-  const [endDate, setEndDate]           = useState('');
-  const [lecturerFilter, setLecturerFilter] = useState('');
-  const [search, setSearch]             = useState('');
-  const [currentPage, setCurrentPage]   = useState(1);
-  const [weekPage, setWeekPage]           = useState(1);
+  const [activeTab, setActiveTab]               = useState('lecturer');
+  const [type, setType]                         = useState('monthly');
+  const [startDate, setStartDate]               = useState('');
+  const [endDate, setEndDate]                   = useState('');
+  const [lecturerFilter, setLecturerFilter]     = useState('');
+  const [search, setSearch]                     = useState('');
+  const [currentPage, setCurrentPage]           = useState(1);
+  const [weekPage, setWeekPage]                 = useState(1);
   const [expandedLecturers, setExpandedLecturers] = useState({});
-
-  // Borrow requests tab state
   const [borrowSearch, setBorrowSearch]         = useState('');
   const [borrowStatusFilter, setBorrowStatusFilter] = useState('');
   const [borrowPage, setBorrowPage]             = useState(1);
-
-  // Inventory changes tab state
-  const [inventoryPage, setInventoryPage]                 = useState(1);
+  const [inventoryPage, setInventoryPage]       = useState(1);
   const [inventoryActionFilter, setInventoryActionFilter] = useState('');
 
   const {
@@ -521,9 +330,9 @@ export default function Reports() {
     queryKey: ['lecturerReleases', type, startDate, endDate, lecturerFilter],
     queryFn: async () => {
       const filters = { type };
-      if (startDate) filters.startDate = startDate;
-      if (endDate)   filters.endDate   = endDate;
-      if (lecturerFilter) filters.lecturerId = lecturerFilter;
+      if (startDate)      filters.startDate   = startDate;
+      if (endDate)        filters.endDate     = endDate;
+      if (lecturerFilter) filters.lecturerId  = lecturerFilter;
       const reportsApi = api?.entities?.Reports;
       if (!reportsApi?.lecturerReleases) throw new Error('Reports API is not available.');
       return reportsApi.lecturerReleases(filters);
@@ -546,26 +355,18 @@ export default function Reports() {
     }
   }, [lecturerGroups]);
 
-  // ── Borrow Requests (all) for admin report tab ─────────────────────────
-  const {
-    data: borrowRequests = [],
-    isLoading: borrowLoading,
-  } = useQuery({
+  const { data: borrowRequests = [], isLoading: borrowLoading } = useQuery({
     queryKey: ['adminBorrowRequests'],
     queryFn: () => api.entities.BorrowRequest.list(),
   });
 
-  // ── Inventory Changes tab ───────────────────────────────────────────────
-  const {
-    data: inventoryData,
-    isLoading: inventoryLoading,
-  } = useQuery({
+  const { data: inventoryData, isLoading: inventoryLoading } = useQuery({
     queryKey: ['equipmentChanges', type, startDate, endDate, inventoryActionFilter],
     queryFn: () =>
       api.entities.Reports.equipmentChanges({
         type,
         ...(startDate && { startDate }),
-        ...(endDate && { endDate }),
+        ...(endDate   && { endDate }),
         ...(inventoryActionFilter && { action: inventoryActionFilter }),
       }),
     refetchOnWindowFocus: false,
@@ -574,7 +375,6 @@ export default function Reports() {
   const inventorySummary = inventoryData?.summary ?? { totalAdded: 0, totalDeleted: 0, totalQuantityChanges: 0, totalPublished: 0, totalUnpublished: 0 };
   const inventoryRecords = inventoryData?.records ?? [];
 
-  // All unique lecturers for filter dropdown
   const lecturerOptions = useMemo(() => {
     const seen = new Set();
     return lecturerGroups
@@ -582,19 +382,6 @@ export default function Reports() {
       .map((g) => ({ id: g.lecturerId, name: g.lecturerName }));
   }, [lecturerGroups]);
 
-  // Filtered flat records for search / pagination (used in flat-table mode)
-  const filteredRecords = useMemo(() => {
-    if (!search.trim()) return allRecords;
-    const q = search.trim().toLowerCase();
-    return allRecords.filter((r) =>
-      (r.lecturerName   || '').toLowerCase().includes(q) ||
-      (r.studentName    || '').toLowerCase().includes(q) ||
-      (r.studentId      || '').toLowerCase().includes(q) ||
-      (r.equipmentName  || '').toLowerCase().includes(q)
-    );
-  }, [allRecords, search]);
-
-  // Filtered lecturer groups for grouped view
   const filteredGroups = useMemo(() => {
     if (!search.trim()) return lecturerGroups;
     const q = search.trim().toLowerCase();
@@ -608,42 +395,32 @@ export default function Reports() {
           (r.equipmentName || '').toLowerCase().includes(q)
         ),
       }))
-      .filter((g) =>
-        g.releases.length > 0 ||
-        (g.lecturerName || '').toLowerCase().includes(q)
-      );
+      .filter((g) => g.releases.length > 0 || (g.lecturerName || '').toLowerCase().includes(q));
   }, [lecturerGroups, search]);
 
   const toggleLecturerExpand = (key) =>
     setExpandedLecturers((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  // Borrow requests filtering + pagination
   const filteredBorrowRequests = useMemo(() => {
     let list = borrowRequests;
     if (borrowStatusFilter) list = list.filter((r) => r.status === borrowStatusFilter);
     if (borrowSearch.trim()) {
       const q = borrowSearch.trim().toLowerCase();
       list = list.filter((r) =>
-        (r.borrower_name || '').toLowerCase().includes(q) ||
-        (r.student_id    || '').toLowerCase().includes(q) ||
-        (r.equipment?.name || '').toLowerCase().includes(q) ||
-        (r.status || '').toLowerCase().includes(q)
+        (r.borrower_name      || '').toLowerCase().includes(q) ||
+        (r.student_id         || '').toLowerCase().includes(q) ||
+        (r.equipment?.name    || '').toLowerCase().includes(q) ||
+        (r.status             || '').toLowerCase().includes(q)
       );
     }
     return list;
   }, [borrowRequests, borrowStatusFilter, borrowSearch]);
 
-  const totalBorrowPages = Math.max(1, Math.ceil(filteredBorrowRequests.length / PAGE_SIZE));
-  const paginatedBorrowRequests = filteredBorrowRequests.slice(
-    (borrowPage - 1) * PAGE_SIZE,
-    borrowPage * PAGE_SIZE
-  );
+  const totalBorrowPages        = Math.max(1, Math.ceil(filteredBorrowRequests.length / PAGE_SIZE));
+  const paginatedBorrowRequests = filteredBorrowRequests.slice((borrowPage - 1) * PAGE_SIZE, borrowPage * PAGE_SIZE);
 
-  const totalInventoryPages = Math.max(1, Math.ceil(inventoryRecords.length / PAGE_SIZE));
-  const paginatedInventoryRecords = inventoryRecords.slice(
-    (inventoryPage - 1) * PAGE_SIZE,
-    inventoryPage * PAGE_SIZE
-  );
+  const totalInventoryPages       = Math.max(1, Math.ceil(inventoryRecords.length / PAGE_SIZE));
+  const paginatedInventoryRecords = inventoryRecords.slice((inventoryPage - 1) * PAGE_SIZE, inventoryPage * PAGE_SIZE);
 
   const totalGroupPages = Math.max(1, Math.ceil(filteredGroups.length / GROUP_PAGE_SIZE));
   const paginatedGroups = filteredGroups.slice((currentPage - 1) * GROUP_PAGE_SIZE, currentPage * GROUP_PAGE_SIZE);
@@ -651,471 +428,306 @@ export default function Reports() {
   const totalWeekPages = Math.max(1, Math.ceil(weeklySummary.length / PAGE_SIZE));
   const paginatedWeeks = weeklySummary.slice((weekPage - 1) * PAGE_SIZE, weekPage * PAGE_SIZE);
 
-  const h = new Date().getHours();
-  const gc =
-    h < 12 ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' } :
-    h < 18 ? { color: '#f97316', bg: '#fff7ed', border: '#fed7aa' } :
-             { color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' };
-
   if (loading) return <ReportsSkeleton />;
 
+  const TABS = [
+    { key: 'lecturer',  label: t('groupedByLecturer'), icon: <Users style={{ width: 14, height: 14 }} /> },
+    { key: 'weekly',    label: t('weeklySummaryTab'),  icon: <CalendarDays style={{ width: 14, height: 14 }} /> },
+    { key: 'borrow',    label: t('allBorrowRequests'), icon: <ClipboardList style={{ width: 14, height: 14 }} /> },
+    { key: 'inventory', label: 'Inventory Changes',    icon: <PackagePlus style={{ width: 14, height: 14 }} /> },
+  ];
+
+  const statCards = activeTab === 'inventory'
+    ? [
+        { label: 'Items Added',    value: inventorySummary.totalAdded },
+        { label: 'Items Deleted',  value: inventorySummary.totalDeleted },
+        { label: 'Qty Changes',    value: inventorySummary.totalQuantityChanges },
+        { label: 'Published',      value: inventorySummary.totalPublished },
+        { label: 'Unpublished',    value: inventorySummary.totalUnpublished },
+      ]
+    : [
+        { label: t('totalReleases'),     value: summary.totalReleases },
+        { label: t('totalQtyReleased'),  value: summary.totalQuantity },
+        { label: t('lecturersInvolved'), value: summary.totalLecturers },
+      ];
+
   return (
-    <div className="w-full space-y-4 px-2 py-2">
+    <div className="eq-admin" style={{ paddingBottom: 40 }}>
 
-      {/* ── Hero Banner ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border"
-            style={{ backgroundColor: gc.bg, borderColor: gc.border }}
-          >
-            <BarChart3 className="h-6 w-6" style={{ color: gc.color }} />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
-            </p>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t('equipmentReleaseReports')}</h1>
-          </div>
+      {/* ── Title Strip ── */}
+      <div className="a-titlestrip">
+        <div style={{ flex: 1 }}>
+          <div className="a-eyebrow">Inventory &amp; Lending · Reports</div>
+          <h1>{t('equipmentReleaseReports')}</h1>
+          <p className="a-deck">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-xs"
-          onClick={() => loadReports()}
-          disabled={isFetching}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {t('refresh')}
-        </Button>
-      </div>
-
-      {/* ── Summary stat cards ── */}
-      <div className={`grid grid-cols-1 gap-3 ${activeTab === 'inventory' ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
-        {activeTab === 'inventory' ? (
-          <>
-            <StatCard icon={Package}     label="Items Added"      value={inventorySummary.totalAdded}           accent="#10b981" />
-            <StatCard icon={Package}     label="Items Deleted"    value={inventorySummary.totalDeleted}         accent="#ef4444" />
-            <StatCard icon={Layers}      label="Qty Changes"      value={inventorySummary.totalQuantityChanges} accent="#f59e0b" />
-            <StatCard icon={Package}     label="Published"        value={inventorySummary.totalPublished}       accent="#3b82f6" />
-            <StatCard icon={Package}     label="Unpublished"      value={inventorySummary.totalUnpublished}     accent="#94a3b8" />
-          </>
-        ) : (
-          <>
-            <StatCard icon={Package}     label={t('totalReleases')}     value={summary.totalReleases}   accent="#3b82f6" />
-            <StatCard icon={Layers}      label={t('totalQtyReleased')}  value={summary.totalQuantity}   accent="#10b981" />
-            <StatCard icon={Users}       label={t('lecturersInvolved')} value={summary.totalLecturers}  accent="#8b5cf6" />
-          </>
-        )}
-      </div>
-
-      {/* ── Filters ── */}
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        {/* Report type */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t('reportPeriod')}</p>
-          <div className="flex gap-2">
-            {REPORT_TYPE_KEYS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => { setType(opt.value); setCurrentPage(1); }}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
-                  type === opt.value
-                    ? 'border-blue-200 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {t(opt.labelKey)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Date range */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t('startDate')}</p>
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-            className="h-8 w-36 text-xs"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t('endDate')}</p>
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-            className="h-8 w-36 text-xs"
-          />
-        </div>
-
-        {/* Lecturer filter */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t('lecturer')}</p>
-          <select
-            value={lecturerFilter}
-            onChange={(e) => { setLecturerFilter(e.target.value); setCurrentPage(1); }}
-            className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
-          >
-            <option value="">{t('allLecturers')}</option>
-            {lecturerOptions.map((l) => (
-              <option key={l.id || l.name} value={l.id || ''}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {(startDate || endDate || lecturerFilter) && (
-          <button
-            type="button"
-            onClick={() => { setStartDate(''); setEndDate(''); setLecturerFilter(''); setCurrentPage(1); }}
-            className="self-end text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
-          >
-            {t('clearFilters')}
+        <div className="a-right">
+          <button className="a-btn" onClick={() => loadReports()} disabled={isFetching}>
+            <RefreshCw style={{ width: 13, height: 13 }} />
+            {t('refresh')}
           </button>
-        )}
-      </div>
-
-      {/* ── Export Section ── */}
-      <Card className="border-slate-200 shadow-none">
-        <div className="border-b border-slate-100 bg-white px-4 py-3">
-          <p className="text-sm font-medium text-slate-800">{t('exportReports')}</p>
-          <p className="mt-0.5 text-xs text-slate-500">{t('exportReportsDesc')}</p>
         </div>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-            {/* Full release report */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <p className="text-sm font-semibold text-slate-800">{t('fullReleaseReport')}</p>
-              <p className="mt-1 text-xs text-slate-500">{t('fullReleaseReportDesc')}</p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  className="h-7 gap-1.5 bg-blue-600 text-xs hover:bg-blue-700"
-                  onClick={() => exportPdfAll(allRecords, summary, startDate, endDate, logoRef.current, user)}
-                  disabled={isFetching || allRecords.length === 0}
-                >
-                  <FileText className="h-3.5 w-3.5" /> PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={() => exportCsvAll(allRecords, startDate, endDate)}
-                  disabled={isFetching || allRecords.length === 0}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> Excel / CSV
-                </Button>
-              </div>
-            </div>
-
-            {/* Weekly summary */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <p className="text-sm font-semibold text-slate-800">{t('weeklySummaryTab')}</p>
-              <p className="mt-1 text-xs text-slate-500">{t('weeklySummaryTabDesc')}</p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  className="h-7 gap-1.5 bg-emerald-600 text-xs hover:bg-emerald-700"
-                  onClick={() => exportPdfWeekly(weeklySummary, summary, startDate, endDate, logoRef.current, user)}
-                  disabled={isFetching || weeklySummary.length === 0}
-                >
-                  <FileText className="h-3.5 w-3.5" /> PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={() => exportCsvWeekly(weeklySummary)}
-                  disabled={isFetching || weeklySummary.length === 0}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> Excel / CSV
-                </Button>
-              </div>
-            </div>
-
-            {/* Inventory changes report */}
-            <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4">
-              <div className="flex items-center gap-1.5">
-                <PackagePlus className="h-3.5 w-3.5 text-amber-600" />
-                <p className="text-sm font-semibold text-slate-800">Inventory Changes Report</p>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                All equipment additions, deletions, quantity changes, and publish/unpublish actions — including who performed each action.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  className="h-7 gap-1.5 bg-amber-500 text-xs hover:bg-amber-600"
-                  onClick={() => exportPdfInventory(inventoryRecords, inventorySummary, startDate, endDate, logoRef.current, user)}
-                  disabled={inventoryLoading || inventoryRecords.length === 0}
-                >
-                  <FileText className="h-3.5 w-3.5" /> PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={() => exportCsvInventory(inventoryRecords)}
-                  disabled={inventoryLoading || inventoryRecords.length === 0}
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> Excel / CSV
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── Tab switcher ── */}
-      <div className="flex gap-2 rounded-xl border border-slate-200 bg-white p-1 shadow-sm w-fit">
-        <button
-          type="button"
-          onClick={() => { setActiveTab('lecturer'); setCurrentPage(1); }}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-            activeTab === 'lecturer'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <Users className="h-3.5 w-3.5" /> {t('groupedByLecturer')}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setActiveTab('weekly'); setWeekPage(1); }}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-            activeTab === 'weekly'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <CalendarDays className="h-3.5 w-3.5" /> {t('weeklySummaryTab')}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setActiveTab('borrow'); setBorrowPage(1); }}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-            activeTab === 'borrow'
-              ? 'bg-violet-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <ClipboardList className="h-3.5 w-3.5" /> {t('allBorrowRequests')}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setActiveTab('inventory'); setInventoryPage(1); }}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-            activeTab === 'inventory'
-              ? 'bg-amber-500 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <PackagePlus className="h-3.5 w-3.5" /> Inventory Changes
-        </button>
       </div>
 
-      {/* ── Error state ── */}
-      {error && (
-        <Card className="border-red-200 shadow-none">
-          <CardContent className="flex flex-col items-center justify-center gap-2 py-14">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
-              <BarChart3 className="h-5 w-5 text-red-400" />
-            </div>
-            <p className="text-sm font-medium text-slate-800">{t('failedLoadRecords')}</p>
-            <p className="max-w-xs text-center text-xs text-slate-500">{error}</p>
-          </CardContent>
-        </Card>
-      )}
+      <div style={{ padding: '0 24px' }}>
 
-      {/* ═══════════════ TAB: LECTURER GROUPED ═══════════════ */}
-      {!error && activeTab === 'lecturer' && (
-        <Card className="overflow-hidden border-slate-200 shadow-none">
-          {/* Toolbar */}
-          <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-slate-800">{t('releaseRecords')}</p>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {filteredGroups.reduce((s, g) => s + g.releases.length, 0)}
-              </span>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder={t('searchLecturerStudentItem')}
-                value={search}
-                onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
-                className="h-8 pl-8 text-xs"
-              />
-            </div>
-          </div>
-
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
-                    <TableHead className="w-8 text-xs font-medium text-slate-500">#</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('studentOrLecturer')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('email')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('equipment')}</TableHead>
-                    <TableHead className="text-center text-xs font-medium text-slate-500">{t('releases')}</TableHead>
-                    <TableHead className="text-center text-xs font-medium text-slate-500">{t('totalUnits')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('releasedBy')}</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">{t('status')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredGroups.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="py-14 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                            <Users className="h-4 w-4 text-slate-400" />
-                          </div>
-                          <p className="text-sm text-slate-500">{t('noReleaseRecordsFound')}</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedGroups.map((group) => {
-                      const key = group.lecturerId || group.lecturerName;
-                      return (
-                        <LecturerGroupRow
-                          key={key}
-                          group={group}
-                          isExpanded={!!expandedLecturers[key]}
-                          onToggle={() => toggleLecturerExpand(key)}
-                          t={t}
-                        />
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-
-              {totalGroupPages > 1 && (
-                <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-                  <p className="text-xs text-slate-500">
-                    {t('showing')} {(currentPage - 1) * GROUP_PAGE_SIZE + 1}–{Math.min(currentPage * GROUP_PAGE_SIZE, filteredGroups.length)} {t('ofLabel')} {filteredGroups.length} {t('lecturers').toLowerCase()}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline" size="icon" className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </Button>
-                    {getPaginationRange(currentPage, totalGroupPages).map((item, idx) =>
-                      item === '...' ? (
-                        <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400">…</span>
-                      ) : (
-                        <Button
-                          key={item}
-                          variant={currentPage === item ? 'default' : 'outline'}
-                          size="icon"
-                          className={`h-7 w-7 text-xs ${currentPage === item ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
-                          onClick={() => setCurrentPage(item)}
-                        >
-                          {item}
-                        </Button>
-                      )
-                    )}
-                    <Button
-                      variant="outline" size="icon" className="h-7 w-7"
-                      onClick={() => setCurrentPage((p) => Math.min(totalGroupPages, p + 1))}
-                      disabled={currentPage === totalGroupPages}
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ═══════════════ TAB: WEEKLY SUMMARY ═══════════════ */}
-      {!error && activeTab === 'weekly' && (
-        <Card className="overflow-hidden border-slate-200 shadow-none">
-          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-emerald-600" />
-              <p className="text-sm font-medium text-slate-800">{t('weeklySummaryTab')}</p>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {weeklySummary.length} week{weeklySummary.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-
-          <CardContent className="p-0">
-            {weeklySummary.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-14">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                  <CalendarDays className="h-4 w-4 text-slate-400" />
-                </div>
-                <p className="text-sm text-slate-500">{t('noWeeklyData')}</p>
+        {/* ── Stat Cards ── */}
+        <div className="a-cards" style={{ marginTop: 20 }}>
+          {statCards.map((c) => (
+            <div key={c.label} className="a-card gold-edge">
+              <div style={{ fontSize: 11, color: 'var(--a-mute)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--mono)', marginBottom: 6 }}>
+                {c.label}
               </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {paginatedWeeks.map((wk) => {
-                  const weekEnd = (() => {
-                    try {
-                      const d = parseISO(wk.weekStart);
-                      return format(endOfWeek(d, { weekStartsOn: 1 }), 'MMM d');
-                    } catch { return ''; }
-                  })();
-                  const weekStartFmt = (() => {
-                    try { return format(parseISO(wk.weekStart), 'MMM d, yyyy'); } catch { return wk.weekStart; }
-                  })();
+              <div style={{ fontSize: 30, fontFamily: 'var(--serif)', fontWeight: 700, color: 'var(--a-navy)', lineHeight: 1 }}>
+                {c.value}
+              </div>
+            </div>
+          ))}
+        </div>
 
+        {/* ── Filters ── */}
+        <div className="a-panel" style={{ marginTop: 16 }}>
+          <div className="a-filters">
+            <div className="a-field">
+              <label>{t('reportPeriod')}</label>
+              <div className="a-seg">
+                {REPORT_TYPE_KEYS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setType(opt.value); setCurrentPage(1); }}
+                    className={`s${type === opt.value ? ' on' : ''}`}
+                  >
+                    {t(opt.labelKey)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="a-field">
+              <label>{t('startDate')}</label>
+              <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }} />
+            </div>
+
+            <div className="a-field">
+              <label>{t('endDate')}</label>
+              <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }} />
+            </div>
+
+            <div className="a-field">
+              <label>{t('lecturer')}</label>
+              <select value={lecturerFilter} onChange={(e) => { setLecturerFilter(e.target.value); setCurrentPage(1); }}>
+                <option value="">{t('allLecturers')}</option>
+                {lecturerOptions.map((l) => (
+                  <option key={l.id || l.name} value={l.id || ''}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {(startDate || endDate || lecturerFilter) && (
+              <div className="a-field" style={{ justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  style={{ ...btnBase, fontSize: 12 }}
+                  onClick={() => { setStartDate(''); setEndDate(''); setLecturerFilter(''); setCurrentPage(1); }}
+                >
+                  {t('clearFilters')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Export Section ── */}
+        <div className="a-panel" style={{ marginTop: 16 }}>
+          <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--a-rule)' }}>
+            <span style={{ fontFamily: 'var(--serif)', fontWeight: 600, color: 'var(--a-navy)', fontSize: 14 }}>{t('exportReports')}</span>
+            <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--a-mute)' }}>{t('exportReportsDesc')}</span>
+          </div>
+          <div className="a-export">
+            <div className="e focus">
+              <div className="e-title">{t('fullReleaseReport')}</div>
+              <div className="e-desc">{t('fullReleaseReportDesc')}</div>
+              <div className="e-actions">
+                <button className="a-btn gold" onClick={() => printFullReleaseReport(allRecords, summary, { startDate, endDate, lecturerFilter }, user)} disabled={isFetching || allRecords.length === 0}>
+                  <FileText style={{ width: 13, height: 13 }} /> PDF
+                </button>
+                <button className="a-btn" onClick={() => exportCsvAll(allRecords, startDate, endDate)} disabled={isFetching || allRecords.length === 0}>
+                  <FileSpreadsheet style={{ width: 13, height: 13 }} /> CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="e">
+              <div className="e-title">{t('weeklySummaryTab')}</div>
+              <div className="e-desc">{t('weeklySummaryTabDesc')}</div>
+              <div className="e-actions">
+                <button className="a-btn gold" onClick={() => printWeeklySummaryReport(weeklySummary, summary, { startDate, endDate }, user)} disabled={isFetching || weeklySummary.length === 0}>
+                  <FileText style={{ width: 13, height: 13 }} /> PDF
+                </button>
+                <button className="a-btn" onClick={() => exportCsvWeekly(weeklySummary)} disabled={isFetching || weeklySummary.length === 0}>
+                  <FileSpreadsheet style={{ width: 13, height: 13 }} /> CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="e">
+              <div className="e-title">Inventory Changes Report</div>
+              <div className="e-desc">All equipment additions, deletions, quantity changes, and publish/unpublish actions.</div>
+              <div className="e-actions">
+                <button className="a-btn gold" onClick={() => printInventoryChangesReport(inventoryRecords, inventorySummary, { startDate, endDate }, user)} disabled={inventoryLoading || inventoryRecords.length === 0}>
+                  <FileText style={{ width: 13, height: 13 }} /> PDF
+                </button>
+                <button className="a-btn" onClick={() => exportCsvInventory(inventoryRecords)} disabled={inventoryLoading || inventoryRecords.length === 0}>
+                  <FileSpreadsheet style={{ width: 13, height: 13 }} /> CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Tab Switcher ── */}
+        <div className="a-subnav" style={{ marginTop: 20 }}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`s${activeTab === tab.key ? ' on' : ''}`}
+              onClick={() => {
+                setActiveTab(tab.key);
+                if (tab.key === 'lecturer')  setCurrentPage(1);
+                if (tab.key === 'weekly')    setWeekPage(1);
+                if (tab.key === 'borrow')    setBorrowPage(1);
+                if (tab.key === 'inventory') setInventoryPage(1);
+              }}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Error ── */}
+        {error && (
+          <div className="a-panel" style={{ marginTop: 12, padding: 40, textAlign: 'center' }}>
+            <p style={{ color: 'var(--a-bad)', fontWeight: 600, marginBottom: 4 }}>{t('failedLoadRecords')}</p>
+            <p style={{ fontSize: 13, color: 'var(--a-mute)' }}>{error}</p>
+          </div>
+        )}
+
+        {/* ═══ TAB: LECTURER GROUPED ═══ */}
+        {!error && activeTab === 'lecturer' && (
+          <div className="a-panel" style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--a-rule)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>{t('releaseRecords')}</span>
+                <span className="a-pill p-mute">{filteredGroups.reduce((s, g) => s + g.releases.length, 0)}</span>
+              </div>
+              <div className="a-search" style={{ width: 240 }}>
+                <Search style={{ width: 14, height: 14 }} />
+                <input
+                  placeholder={t('searchLecturerStudentItem')}
+                  value={search}
+                  onChange={(e) => { setCurrentPage(1); setSearch(e.target.value); }}
+                />
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table className="a-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>{t('studentOrLecturer')}</th>
+                    <th>{t('email')}</th>
+                    <th>{t('equipment')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('releases')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('totalUnits')}</th>
+                    <th>{t('releasedBy')}</th>
+                    <th>{t('status')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredGroups.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: 56, color: 'var(--a-mute)', fontSize: 13 }}>
+                        {t('noReleaseRecordsFound')}
+                      </td>
+                    </tr>
+                  ) : paginatedGroups.map((group) => {
+                    const key = group.lecturerId || group.lecturerName;
+                    return (
+                      <LecturerGroupRow
+                        key={key}
+                        group={group}
+                        isExpanded={!!expandedLecturers[key]}
+                        onToggle={() => toggleLecturerExpand(key)}
+                        t={t}
+                      />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {totalGroupPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: '1px solid var(--a-rule)' }}>
+                <span style={{ fontSize: 12, color: 'var(--a-mute)' }}>
+                  {t('showing')} {(currentPage - 1) * GROUP_PAGE_SIZE + 1}–{Math.min(currentPage * GROUP_PAGE_SIZE, filteredGroups.length)} {t('ofLabel')} {filteredGroups.length}
+                </span>
+                <Pager page={currentPage} total={totalGroupPages} onPage={setCurrentPage} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ TAB: WEEKLY SUMMARY ═══ */}
+        {!error && activeTab === 'weekly' && (
+          <div className="a-panel" style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--a-rule)' }}>
+              <CalendarDays style={{ width: 15, height: 15, color: 'var(--a-gold)' }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>{t('weeklySummaryTab')}</span>
+              <span className="a-pill p-mute">{weeklySummary.length} week{weeklySummary.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {weeklySummary.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 56, fontSize: 13, color: 'var(--a-mute)' }}>{t('noWeeklyData')}</div>
+            ) : (
+              <>
+                {paginatedWeeks.map((wk) => {
+                  const weekStartFmt = (() => { try { return format(parseISO(wk.weekStart), 'MMM d, yyyy'); } catch { return wk.weekStart; } })();
+                  const weekEnd      = (() => { try { return format(endOfWeek(parseISO(wk.weekStart), { weekStartsOn: 1 }), 'MMM d'); } catch { return ''; } })();
                   return (
-                    <div key={wk.weekStart} className="px-4 py-4">
-                      {/* Week header */}
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                            {weekStartFmt}{weekEnd ? ` – ${weekEnd}` : ''}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
-                          <span><span className="font-semibold text-blue-700">{wk.totalReleased}</span> {t('releases').toLowerCase()}</span>
-                          <span><span className="font-semibold text-emerald-700">{wk.totalQuantity}</span> {t('qty').toLowerCase()}</span>
+                    <div key={wk.weekStart} style={{ padding: 16, borderBottom: '1px solid var(--a-hair)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <span className="a-pill p-gold" style={{ fontSize: 12 }}>
+                          {weekStartFmt}{weekEnd ? ` – ${weekEnd}` : ''}
+                        </span>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--a-mute)' }}>
+                          <span><strong style={{ color: 'var(--a-navy)' }}>{wk.totalReleased}</strong> {t('releases').toLowerCase()}</span>
+                          <span><strong style={{ color: 'var(--a-navy)' }}>{wk.totalQuantity}</strong> {t('qty').toLowerCase()}</span>
                         </div>
                       </div>
-
-                      {/* Per-lecturer breakdown */}
-                      <div className="overflow-x-auto rounded-lg border border-slate-100">
-                        <table className="w-full text-xs">
+                      <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--a-rule)' }}>
+                        <table className="a-table" style={{ fontSize: 12 }}>
                           <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/60">
-                              <th className="py-2 pl-4 pr-2 text-left font-medium text-slate-500">{t('lecturer')}</th>
-                              <th className="px-3 py-2 text-right font-medium text-slate-500">{t('releases')}</th>
-                              <th className="py-2 pl-3 pr-4 text-right font-medium text-slate-500">{t('totalUnits')}</th>
+                            <tr>
+                              <th style={{ width: '60%' }}>{t('lecturer')}</th>
+                              <th style={{ textAlign: 'right' }}>{t('releases')}</th>
+                              <th style={{ textAlign: 'right' }}>{t('totalUnits')}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {Object.values(wk.byLecturer).map((l, i) => (
-                              <tr
-                                key={i}
-                                className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50"
-                              >
-                                <td className="py-2 pl-4 pr-2 text-slate-800">{l.lecturerName}</td>
-                                <td className="px-3 py-2 text-right font-medium text-blue-700">{l.totalReleased}</td>
-                                <td className="py-2 pl-3 pr-4 text-right font-medium text-emerald-700">{l.totalQuantity}</td>
+                              <tr key={i}>
+                                <td style={{ fontFamily: 'var(--serif)', fontWeight: 600, color: 'var(--a-navy)' }}>{l.lecturerName}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 600 }}>{l.totalReleased}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 600 }}>{l.totalQuantity}</td>
                               </tr>
                             ))}
-                            {/* Week total row */}
-                            <tr className="bg-slate-100/60 font-semibold">
-                              <td className="py-2 pl-4 pr-2 text-slate-700">{t('weekTotal')}</td>
-                              <td className="px-3 py-2 text-right text-blue-800">{wk.totalReleased}</td>
-                              <td className="py-2 pl-3 pr-4 text-right text-emerald-800">{wk.totalQuantity}</td>
+                            <tr style={{ background: 'rgba(15,42,74,0.04)' }}>
+                              <td style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', color: 'var(--a-ink-2)' }}>{t('weekTotal')}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--a-navy)' }}>{wk.totalReleased}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--a-navy)' }}>{wk.totalQuantity}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -1124,364 +736,177 @@ export default function Reports() {
                   );
                 })}
                 {totalWeekPages > 1 && (
-                  <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-                    <p className="text-xs text-slate-500">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: '1px solid var(--a-rule)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--a-mute)' }}>
                       Showing {(weekPage - 1) * PAGE_SIZE + 1}–{Math.min(weekPage * PAGE_SIZE, weeklySummary.length)} of {weeklySummary.length} week{weeklySummary.length !== 1 ? 's' : ''}
-                    </p>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline" size="icon" className="h-7 w-7"
-                        onClick={() => setWeekPage((p) => Math.max(1, p - 1))}
-                        disabled={weekPage === 1}
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                      </Button>
-                      {getPaginationRange(weekPage, totalWeekPages).map((item, idx) =>
-                        item === '...' ? (
-                          <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400">…</span>
-                        ) : (
-                          <Button
-                            key={item}
-                            variant={weekPage === item ? 'default' : 'outline'}
-                            size="icon"
-                            className={`h-7 w-7 text-xs ${weekPage === item ? 'bg-emerald-600 text-white hover:bg-emerald-700' : ''}`}
-                            onClick={() => setWeekPage(item)}
-                          >
-                            {item}
-                          </Button>
-                        )
-                      )}
-                      <Button
-                        variant="outline" size="icon" className="h-7 w-7"
-                        onClick={() => setWeekPage((p) => Math.min(totalWeekPages, p + 1))}
-                        disabled={weekPage === totalWeekPages}
-                      >
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    </span>
+                    <Pager page={weekPage} total={totalWeekPages} onPage={setWeekPage} />
                   </div>
                 )}
-              </div>
+              </>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* ═══════════════ TAB: BORROW REQUESTS ═══════════════ */}
-      {activeTab === 'borrow' && (
-        <Card className="overflow-hidden border-slate-200 shadow-none">
-          {/* Toolbar */}
-          <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-medium text-slate-800">{t('allBorrowRequests')}</p>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {filteredBorrowRequests.length}
-              </span>
-              {/* Status filter pills */}
-              <div className="flex gap-1.5 flex-wrap">
+        {/* ═══ TAB: BORROW REQUESTS ═══ */}
+        {activeTab === 'borrow' && (
+          <div className="a-panel" style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--a-rule)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>{t('allBorrowRequests')}</span>
+                <span className="a-pill p-mute">{filteredBorrowRequests.length}</span>
                 {['', 'pending', 'approved', 'rejected', 'borrowed', 'returned'].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => { setBorrowStatusFilter(s); setBorrowPage(1); }}
-                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
-                      borrowStatusFilter === s
-                        ? 'border-violet-200 bg-violet-50 text-violet-700'
-                        : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
-                    }`}
-                  >
-                    {s === '' ? 'All' : STATUS_COLORS[s]?.label || s}
-                  </button>
+                  <Chip key={s} active={borrowStatusFilter === s} onClick={() => { setBorrowStatusFilter(s); setBorrowPage(1); }}>
+                    {s === '' ? 'All' : STATUS_COLORS[s]?.labelKey || s}
+                  </Chip>
                 ))}
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative w-full sm:w-56">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder={t('searchBorrowerEquipment')}
-                  value={borrowSearch}
-                  onChange={(e) => { setBorrowPage(1); setBorrowSearch(e.target.value); }}
-                  className="h-8 pl-8 text-xs"
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="a-search" style={{ width: 220 }}>
+                  <Search style={{ width: 14, height: 14 }} />
+                  <input placeholder={t('searchBorrowerEquipment')} value={borrowSearch} onChange={(e) => { setBorrowPage(1); setBorrowSearch(e.target.value); }} />
+                </div>
+                <button
+                  className="a-btn"
+                  onClick={() => {
+                    const headers = ['Borrower', 'Student ID', 'Equipment', 'Serial No.', 'Borrow Date', 'Return Date', 'Status', 'Submitted'];
+                    const rows = filteredBorrowRequests.map((r) => [
+                      r.borrower_name || '—', r.student_id || '—', r.equipment?.name || '—', r.serial_number || '—',
+                      formatDate(r.borrow_date), formatDate(r.return_date), STATUS_COLORS[r.status]?.labelKey || r.status, formatDate(r.createdAt),
+                    ]);
+                    const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
+                    triggerDownload(new Blob([csv], { type: 'text/csv' }), `borrow-requests-${dateTag()}.csv`);
+                  }}
+                  disabled={filteredBorrowRequests.length === 0}
+                >
+                  <FileSpreadsheet style={{ width: 13, height: 13 }} /> CSV
+                </button>
+                <button className="a-btn gold" onClick={() => printBorrowRequestsReport(filteredBorrowRequests, user)} disabled={filteredBorrowRequests.length === 0}>
+                  <FileText style={{ width: 13, height: 13 }} /> PDF
+                </button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 text-xs shrink-0"
-                onClick={() => {
-                  const rows = filteredBorrowRequests.map((r) => [
-                    r.borrower_name || '—',
-                    r.student_id || '—',
-                    r.equipment?.name || '—',
-                    r.serial_number || '—',
-                    formatDate(r.borrow_date),
-                    formatDate(r.return_date),
-                    STATUS_COLORS[r.status]?.label || r.status,
-                    formatDate(r.createdAt),
-                  ]);
-                  const headers = ['Borrower', 'Student ID', 'Equipment', 'Serial No.', 'Borrow Date', 'Return Date', 'Status', 'Submitted'];
-                  const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(',')).join('\n');
-                  triggerDownload(new Blob([csv], { type: 'text/csv' }), `borrow-requests-${dateTag()}.csv`);
-                }}
-                disabled={filteredBorrowRequests.length === 0}
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
-              </Button>
-              <Button
-                size="sm"
-                className="h-8 gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 shrink-0"
-                onClick={() => {
-                  const doc = new jsPDF({ orientation: 'landscape' });
-                  const startY = addDocHeader(doc, logoRef.current, 'BORROW REQUEST REPORT', [
-                    `Generated: ${new Date().toLocaleString()}   Total Records: ${filteredBorrowRequests.length}`,
-                  ]);
-                  autoTable(doc, {
-                    startY,
-                    head: [['Borrower', 'Student ID', 'Equipment', 'Serial No.', 'Borrow Date', 'Return Date', 'Status', 'Submitted']],
-                    body: filteredBorrowRequests.map((r) => [
-                      r.borrower_name || '—',
-                      r.student_id || '—',
-                      r.equipment?.name || '—',
-                      r.serial_number || '—',
-                      formatDate(r.borrow_date),
-                      formatDate(r.return_date),
-                      STATUS_COLORS[r.status]?.label || r.status,
-                      formatDate(r.createdAt),
-                    ]),
-                    headStyles: { fillColor: [109, 40, 217], fontSize: 8 },
-                    bodyStyles: { fontSize: 8 },
-                    alternateRowStyles: { fillColor: [245, 243, 255] },
-                  });
-                  addDocFooter(doc, user);
-                  doc.save(`borrow-requests-${dateTag()}.pdf`);
-                }}
-                disabled={filteredBorrowRequests.length === 0}
-              >
-                <FileText className="h-3.5 w-3.5" /> PDF
-              </Button>
             </div>
-          </div>
 
-          <CardContent className="p-0">
             {borrowLoading ? (
-              <div className="flex items-center justify-center py-16 text-sm text-slate-400">{t('loadingBorrowRequests')}</div>
+              <div style={{ textAlign: 'center', padding: 64, fontSize: 13, color: 'var(--a-mute)' }}>{t('loadingBorrowRequests')}</div>
             ) : paginatedBorrowRequests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-16">
-                <ClipboardList className="h-8 w-8 text-slate-300" />
-                <p className="text-sm text-slate-400">{t('noBorrowRequestsFound')}</p>
-              </div>
+              <div style={{ textAlign: 'center', padding: 64, fontSize: 13, color: 'var(--a-mute)' }}>{t('noBorrowRequestsFound')}</div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-100 bg-slate-50/60 hover:bg-slate-50/60">
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('borrower')}</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('studentId')}</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('equipment')}</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('serialNo')}</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('borrowDate')}</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('returnDate')}</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('status')}</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">{t('submitted')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="a-table">
+                  <thead>
+                    <tr>
+                      <th>{t('borrower')}</th>
+                      <th>{t('studentId')}</th>
+                      <th>{t('equipment')}</th>
+                      <th>{t('serialNo')}</th>
+                      <th>{t('borrowDate')}</th>
+                      <th>{t('returnDate')}</th>
+                      <th>{t('status')}</th>
+                      <th>{t('submitted')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {paginatedBorrowRequests.map((r) => (
-                      <TableRow key={r._id || r.id} className="border-slate-50 hover:bg-slate-50/50">
-                        <TableCell className="text-xs font-medium text-slate-800">{r.borrower_name || '—'}</TableCell>
-                        <TableCell className="text-xs text-slate-600">{r.student_id || '—'}</TableCell>
-                        <TableCell className="text-xs text-slate-600">{r.equipment?.name || '—'}</TableCell>
-                        <TableCell className="text-xs text-slate-500 font-mono">{r.serial_number || '—'}</TableCell>
-                        <TableCell className="text-xs text-slate-600">{formatDate(r.borrow_date)}</TableCell>
-                        <TableCell className="text-xs text-slate-600">{formatDate(r.return_date)}</TableCell>
-                        <TableCell><StatusBadge status={r.status} /></TableCell>
-                        <TableCell className="text-xs text-slate-500">{formatDate(r.createdAt)}</TableCell>
-                      </TableRow>
+                      <tr key={r._id || r.id}>
+                        <td style={{ fontWeight: 500, color: 'var(--a-ink)' }}>{r.borrower_name || '—'}</td>
+                        <td style={{ color: 'var(--a-ink-2)' }}>{r.student_id || '—'}</td>
+                        <td style={{ color: 'var(--a-ink-2)' }}>{r.equipment?.name || '—'}</td>
+                        <td style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--a-mute)' }}>{r.serial_number || '—'}</td>
+                        <td style={{ fontSize: 12 }}>{formatDate(r.borrow_date)}</td>
+                        <td style={{ fontSize: 12 }}>{formatDate(r.return_date)}</td>
+                        <td><StatusBadge status={r.status} /></td>
+                        <td style={{ fontSize: 12, color: 'var(--a-mute)' }}>{formatDate(r.createdAt)}</td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
             )}
 
-            {/* Pagination */}
             {totalBorrowPages > 1 && (
-              <div className="flex items-center justify-end gap-1.5 border-t border-slate-100 px-4 py-3">
-                <Button
-                  variant="outline" size="icon" className="h-7 w-7"
-                  onClick={() => setBorrowPage((p) => Math.max(1, p - 1))}
-                  disabled={borrowPage === 1}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                {getPaginationRange(borrowPage, totalBorrowPages).map((item, idx) =>
-                  item === '...' ? (
-                    <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400">…</span>
-                  ) : (
-                    <Button
-                      key={item}
-                      variant={borrowPage === item ? 'default' : 'outline'}
-                      size="icon"
-                      className={`h-7 w-7 text-xs ${borrowPage === item ? 'bg-violet-600 text-white hover:bg-violet-700' : ''}`}
-                      onClick={() => setBorrowPage(item)}
-                    >
-                      {item}
-                    </Button>
-                  )
-                )}
-                <Button
-                  variant="outline" size="icon" className="h-7 w-7"
-                  onClick={() => setBorrowPage((p) => Math.min(totalBorrowPages, p + 1))}
-                  disabled={borrowPage === totalBorrowPages}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid var(--a-rule)' }}>
+                <Pager page={borrowPage} total={totalBorrowPages} onPage={setBorrowPage} />
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* ═══════════════ TAB: INVENTORY CHANGES ═══════════════ */}
-      {activeTab === 'inventory' && (
-        <Card className="overflow-hidden border-slate-200 shadow-none">
-          {/* Toolbar */}
-          <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 flex-wrap">
-              <PackagePlus className="h-4 w-4 text-amber-500" />
-              <p className="text-sm font-medium text-slate-800">Inventory Changes</p>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {inventoryRecords.length}
-              </span>
-              <div className="flex gap-1.5 flex-wrap">
+        {/* ═══ TAB: INVENTORY CHANGES ═══ */}
+        {activeTab === 'inventory' && (
+          <div className="a-panel" style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--a-rule)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <PackagePlus style={{ width: 15, height: 15, color: 'var(--a-gold)' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--a-ink)' }}>Inventory Changes</span>
+                <span className="a-pill p-mute">{inventoryRecords.length}</span>
                 {[
-                  { value: '',                 label: 'All' },
-                  { value: 'added',            label: 'Added' },
-                  { value: 'deleted',          label: 'Deleted' },
+                  { value: '', label: 'All' },
+                  { value: 'added', label: 'Added' },
+                  { value: 'deleted', label: 'Deleted' },
                   { value: 'quantity_changed', label: 'Qty Changed' },
-                  { value: 'published',        label: 'Published' },
-                  { value: 'unpublished',      label: 'Unpublished' },
+                  { value: 'published', label: 'Published' },
+                  { value: 'unpublished', label: 'Unpublished' },
                 ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => { setInventoryActionFilter(opt.value); setInventoryPage(1); }}
-                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
-                      inventoryActionFilter === opt.value
-                        ? 'border-amber-200 bg-amber-50 text-amber-700'
-                        : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
-                    }`}
-                  >
+                  <Chip key={opt.value} active={inventoryActionFilter === opt.value} onClick={() => { setInventoryActionFilter(opt.value); setInventoryPage(1); }}>
                     {opt.label}
-                  </button>
+                  </Chip>
                 ))}
               </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => exportCsvInventory(inventoryRecords)}
-                disabled={inventoryRecords.length === 0}
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
-              </Button>
-              <Button
-                size="sm"
-                className="h-8 gap-1.5 text-xs bg-amber-500 hover:bg-amber-600"
-                onClick={() => exportPdfInventory(inventoryRecords, inventorySummary, startDate, endDate, logoRef.current, user)}
-                disabled={inventoryRecords.length === 0}
-              >
-                <FileText className="h-3.5 w-3.5" /> PDF
-              </Button>
-            </div>
-          </div>
-
-          <CardContent className="p-0">
-            {inventoryLoading ? (
-              <div className="flex items-center justify-center py-16 text-sm text-slate-400">Loading...</div>
-            ) : paginatedInventoryRecords.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-16">
-                <PackagePlus className="h-8 w-8 text-slate-300" />
-                <p className="text-sm text-slate-400">No inventory changes found for this period.</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="a-btn" onClick={() => exportCsvInventory(inventoryRecords)} disabled={inventoryRecords.length === 0}>
+                  <FileSpreadsheet style={{ width: 13, height: 13 }} /> CSV
+                </button>
+                <button className="a-btn gold" onClick={() => printInventoryChangesReport(inventoryRecords, inventorySummary, { startDate, endDate }, user)} disabled={inventoryRecords.length === 0}>
+                  <FileText style={{ width: 13, height: 13 }} /> PDF
+                </button>
               </div>
+            </div>
+
+            {inventoryLoading ? (
+              <div style={{ textAlign: 'center', padding: 64, fontSize: 13, color: 'var(--a-mute)' }}>Loading…</div>
+            ) : paginatedInventoryRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 64, fontSize: 13, color: 'var(--a-mute)' }}>No inventory changes found for this period.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-100 bg-slate-50/60 hover:bg-slate-50/60">
-                      <TableHead className="text-xs font-semibold text-slate-500">#</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">Date & Time</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">Equipment</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">Category</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">Action</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">Details</TableHead>
-                      <TableHead className="text-xs font-semibold text-slate-500">Done By</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="a-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Date &amp; Time</th>
+                      <th>Equipment</th>
+                      <th>Category</th>
+                      <th>Action</th>
+                      <th>Details</th>
+                      <th>Done By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {paginatedInventoryRecords.map((r, idx) => (
-                      <TableRow key={r._id || idx} className="border-slate-50 hover:bg-slate-50/50">
-                        <TableCell className="text-xs text-slate-400">
-                          {(inventoryPage - 1) * PAGE_SIZE + idx + 1}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs text-slate-500">
-                          {formatDateTime(r.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-xs font-medium text-slate-800">{r.equipmentName || '—'}</TableCell>
-                        <TableCell className="text-xs text-slate-500">{r.category || '—'}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${inventoryActionBadge(r.action)}`}>
-                            {inventoryActionLabel(r.action)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-xs text-slate-600">{inventoryDetails(r)}</TableCell>
-                        <TableCell className="text-xs text-slate-500">{r.performedByName || '—'}</TableCell>
-                      </TableRow>
+                      <tr key={r._id || idx}>
+                        <td style={{ color: 'var(--a-mute)', fontSize: 12 }}>{(inventoryPage - 1) * PAGE_SIZE + idx + 1}</td>
+                        <td style={{ whiteSpace: 'nowrap', fontSize: 12, color: 'var(--a-ink-2)' }}>{formatDateTime(r.createdAt)}</td>
+                        <td style={{ fontWeight: 500, color: 'var(--a-ink)' }}>{r.equipmentName || '—'}</td>
+                        <td style={{ fontSize: 12, color: 'var(--a-mute)' }}>{r.category || '—'}</td>
+                        <td><span className={`a-pill ${inventoryActionPill(r.action)}`}>{inventoryActionLabel(r.action)}</span></td>
+                        <td style={{ fontSize: 12, color: 'var(--a-ink-2)' }}>{inventoryDetails(r)}</td>
+                        <td style={{ fontSize: 12, color: 'var(--a-mute)' }}>{r.performedByName || '—'}</td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
             )}
 
             {totalInventoryPages > 1 && (
-              <div className="flex items-center justify-end gap-1.5 border-t border-slate-100 px-4 py-3">
-                <Button
-                  variant="outline" size="icon" className="h-7 w-7"
-                  onClick={() => setInventoryPage((p) => Math.max(1, p - 1))}
-                  disabled={inventoryPage === 1}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                {getPaginationRange(inventoryPage, totalInventoryPages).map((item, idx) =>
-                  item === '...' ? (
-                    <span key={`ellipsis-${idx}`} className="px-1 text-xs text-slate-400">…</span>
-                  ) : (
-                    <Button
-                      key={item}
-                      variant={inventoryPage === item ? 'default' : 'outline'}
-                      size="icon"
-                      className={`h-7 w-7 text-xs ${inventoryPage === item ? 'bg-amber-500 text-white hover:bg-amber-600' : ''}`}
-                      onClick={() => setInventoryPage(item)}
-                    >
-                      {item}
-                    </Button>
-                  )
-                )}
-                <Button
-                  variant="outline" size="icon" className="h-7 w-7"
-                  onClick={() => setInventoryPage((p) => Math.min(totalInventoryPages, p + 1))}
-                  disabled={inventoryPage === totalInventoryPages}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid var(--a-rule)' }}>
+                <Pager page={inventoryPage} total={totalInventoryPages} onPage={setInventoryPage} />
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
+      </div>
     </div>
   );
 }
