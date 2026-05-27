@@ -227,7 +227,6 @@ export default function MyRequests() {
     },
   });
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
   const defaultExtDate = (returnDate) => {
     const today     = new Date().toISOString().slice(0, 10);
     const returnMin = new Date(returnDate).toISOString().slice(0, 10);
